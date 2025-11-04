@@ -26,6 +26,10 @@ pub struct Config {
     /// Default toolchain
     pub default_toolchain: Option<String>,
 
+    /// Directory overrides (path -> toolchain)
+    #[serde(default)]
+    pub overrides: std::collections::HashMap<String, String>,
+
     /// Telemetry opt-out
     #[serde(default)]
     pub telemetry: bool,
@@ -138,6 +142,7 @@ impl Default for Config {
             network: NetworkConfig::default(),
             sources: SourcesConfig::default(),
             default_toolchain: Some("stable".to_string()),
+            overrides: std::collections::HashMap::new(),
             telemetry: false,
         }
     }
@@ -270,6 +275,45 @@ impl Config {
     /// Get retry delay as Duration
     pub fn retry_delay(&self) -> Duration {
         Duration::from_secs(self.network.retry_delay)
+    }
+
+    /// Set a directory override
+    pub fn set_override(&mut self, path: PathBuf, toolchain: String) -> Result<()> {
+        let canonical_path = path
+            .canonicalize()
+            .context("Failed to canonicalize path")?;
+        self.overrides
+            .insert(canonical_path.display().to_string(), toolchain);
+        Ok(())
+    }
+
+    /// Remove a directory override
+    pub fn remove_override(&mut self, path: &PathBuf) -> Result<bool> {
+        let canonical_path = path
+            .canonicalize()
+            .context("Failed to canonicalize path")?;
+        Ok(self.overrides.remove(&canonical_path.display().to_string()).is_some())
+    }
+
+    /// Find override for a directory by walking up the tree
+    pub fn find_override(&self, start_path: &PathBuf) -> Option<(String, String)> {
+        let mut current = start_path.as_path();
+
+        loop {
+            if let Ok(canonical) = current.canonicalize() {
+                let path_str = canonical.display().to_string();
+                if let Some(toolchain) = self.overrides.get(&path_str) {
+                    return Some((path_str, toolchain.clone()));
+                }
+            }
+
+            match current.parent() {
+                Some(parent) => current = parent,
+                None => break,
+            }
+        }
+
+        None
     }
 }
 

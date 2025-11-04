@@ -38,9 +38,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
     config.default_toolchain = Some(toolchain.to_string());
 
     // Save config
-    config
-        .save()
-        .context("Failed to save configuration")?;
+    config.save().context("Failed to save configuration")?;
 
     // Show success message
     if let Some(old) = old_default {

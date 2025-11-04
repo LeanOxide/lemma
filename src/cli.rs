@@ -34,11 +34,20 @@ pub enum Commands {
         command: ToolchainCommands,
     },
 
+    /// Modify directory toolchain overrides
+    Override {
+        #[command(subcommand)]
+        command: OverrideCommands,
+    },
+
     /// Set the default toolchain
     Default {
         /// Toolchain to set as default
         toolchain: String,
     },
+
+    /// Show the active toolchain and installed toolchains
+    Show,
 
     /// Update installed toolchains
     Update {
@@ -140,4 +149,27 @@ pub enum ProxyCommands {
 
     /// Show current proxy settings
     Show,
+}
+
+#[derive(Subcommand)]
+pub enum OverrideCommands {
+    /// Set directory override for a toolchain
+    Set {
+        /// Toolchain to use in this directory
+        toolchain: String,
+
+        /// Directory to override (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
+    },
+
+    /// Remove directory override
+    Unset {
+        /// Directory to remove override from (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
+    },
+
+    /// List all directory overrides
+    List,
 }

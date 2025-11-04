@@ -10,14 +10,17 @@ pub mod init;
 pub mod install;
 pub mod link;
 pub mod list;
+pub mod r#override;
 pub mod proxy;
+pub mod proxy_mode;
 pub mod self_update;
+pub mod show;
 pub mod uninstall;
 pub mod update;
 
 use anyhow::Result;
 
-use crate::cli::{Commands, ToolchainCommands};
+use crate::cli::{Commands, OverrideCommands, ToolchainCommands};
 
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands) -> Result<()> {
@@ -29,7 +32,11 @@ pub fn handle_command(command: Commands) -> Result<()> {
 
         Commands::Toolchain { command } => handle_toolchain_command(command),
 
+        Commands::Override { command } => r#override::execute(command),
+
         Commands::Default { toolchain } => default::execute(&toolchain),
+
+        Commands::Show => show::execute(),
 
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
 
