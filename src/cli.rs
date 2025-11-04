@@ -28,27 +28,10 @@ pub enum Commands {
         default_toolchain: String,
     },
 
-    /// Install a toolchain
-    Install {
-        /// Toolchain to install (e.g., stable, nightly, v4.0.0, owner/repo:tag)
-        toolchain: String,
-
-        /// Force reinstall if already installed
-        #[arg(short, long)]
-        force: bool,
-    },
-
-    /// Uninstall a toolchain
-    Uninstall {
-        /// Toolchain to uninstall
-        toolchain: String,
-    },
-
-    /// List installed toolchains
-    List {
-        /// Show verbose information
-        #[arg(short, long)]
-        verbose: bool,
+    /// Manage toolchains
+    Toolchain {
+        #[command(subcommand)]
+        command: ToolchainCommands,
     },
 
     /// Set the default toolchain
@@ -85,6 +68,41 @@ pub enum Commands {
 
     /// Self-update lemma
     SelfUpdate,
+}
+
+#[derive(Subcommand)]
+pub enum ToolchainCommands {
+    /// Install a toolchain
+    Install {
+        /// Toolchain to install (e.g., stable, v4.24.0, owner/repo:tag, https://...)
+        toolchain: String,
+
+        /// Force reinstall if already installed
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Uninstall a toolchain
+    Uninstall {
+        /// Toolchain to uninstall
+        toolchain: String,
+    },
+
+    /// List installed toolchains
+    List {
+        /// Show verbose information
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Link a custom toolchain
+    Link {
+        /// Name for the toolchain
+        name: String,
+
+        /// Path to the toolchain directory
+        path: String,
+    },
 }
 
 #[derive(Subcommand)]

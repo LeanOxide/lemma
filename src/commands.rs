@@ -8,6 +8,7 @@ pub mod default;
 pub mod info;
 pub mod init;
 pub mod install;
+pub mod link;
 pub mod list;
 pub mod proxy;
 pub mod self_update;
@@ -16,7 +17,7 @@ pub mod update;
 
 use anyhow::Result;
 
-use crate::cli::Commands;
+use crate::cli::{Commands, ToolchainCommands};
 
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands) -> Result<()> {
@@ -26,11 +27,7 @@ pub fn handle_command(command: Commands) -> Result<()> {
             default_toolchain,
         } => init::execute(no_path, &default_toolchain),
 
-        Commands::Install { toolchain, force } => install::execute(&toolchain, force),
-
-        Commands::Uninstall { toolchain } => uninstall::execute(&toolchain),
-
-        Commands::List { verbose } => list::execute(verbose),
+        Commands::Toolchain { command } => handle_toolchain_command(command),
 
         Commands::Default { toolchain } => default::execute(&toolchain),
 
@@ -43,5 +40,18 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Info => info::execute(),
 
         Commands::SelfUpdate => self_update::execute(),
+    }
+}
+
+/// Handle toolchain subcommands
+fn handle_toolchain_command(command: ToolchainCommands) -> Result<()> {
+    match command {
+        ToolchainCommands::Install { toolchain, force } => install::execute(&toolchain, force),
+
+        ToolchainCommands::Uninstall { toolchain } => uninstall::execute(&toolchain),
+
+        ToolchainCommands::List { verbose } => list::execute(verbose),
+
+        ToolchainCommands::Link { name, path } => link::execute(&name, &path),
     }
 }
