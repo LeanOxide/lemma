@@ -17,17 +17,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Initialize lemma configuration
-    Init {
-        /// Skip PATH configuration
-        #[arg(long)]
-        no_path: bool,
-
-        /// Default toolchain to install
-        #[arg(short, long, default_value = "stable")]
-        default_toolchain: String,
-    },
-
     /// Manage toolchains
     Toolchain {
         #[command(subcommand)]
@@ -48,6 +37,12 @@ pub enum Commands {
 
     /// Show the active toolchain and installed toolchains
     Show,
+
+    /// Display the path to a binary in the active toolchain
+    Which {
+        /// Name of the binary (e.g., lean, lake, leanc)
+        binary: String,
+    },
 
     /// Update installed toolchains
     Update {

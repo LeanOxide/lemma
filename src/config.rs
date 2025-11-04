@@ -30,6 +30,10 @@ pub struct Config {
     #[serde(default)]
     pub overrides: std::collections::HashMap<String, String>,
 
+    /// Whether PATH setup message has been shown
+    #[serde(default)]
+    pub path_setup_shown: bool,
+
     /// Telemetry opt-out
     #[serde(default)]
     pub telemetry: bool,
@@ -143,6 +147,7 @@ impl Default for Config {
             sources: SourcesConfig::default(),
             default_toolchain: Some("stable".to_string()),
             overrides: std::collections::HashMap::new(),
+            path_setup_shown: false,
             telemetry: false,
         }
     }
@@ -175,11 +180,19 @@ fn default_github_api() -> String {
 impl Config {
     /// Load configuration from file, with environment variable overrides
     pub fn load() -> Result<Self> {
-        let config_path = Self::config_path()?;
+        let settings_path = Self::settings_path()?;
 
-        let mut config = if config_path.exists() {
-            let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
-            toml::from_str(&content).context("Failed to parse config file")?
+        // Migration: check for old config.toml and rename it
+        let old_config_path = Self::lemma_home()?.join("config.toml");
+        if old_config_path.exists() && !settings_path.exists() {
+            fs::rename(&old_config_path, &settings_path)
+                .context("Failed to migrate config.toml to settings.toml")?;
+        }
+
+        let mut config = if settings_path.exists() {
+            let content =
+                fs::read_to_string(&settings_path).context("Failed to read settings file")?;
+            toml::from_str(&content).context("Failed to parse settings file")?
         } else {
             Self::default()
         };
@@ -226,24 +239,30 @@ impl Config {
 
     /// Save configuration to file
     pub fn save(&self) -> Result<()> {
-        let config_path = Self::config_path()?;
+        let settings_path = Self::settings_path()?;
 
         // Ensure parent directory exists
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent).context("Failed to create config directory")?;
+        if let Some(parent) = settings_path.parent() {
+            fs::create_dir_all(parent).context("Failed to create lemma directory")?;
         }
 
-        let content = toml::to_string_pretty(self).context("Failed to serialize config")?;
+        let content = toml::to_string_pretty(self).context("Failed to serialize settings")?;
 
-        fs::write(&config_path, content).context("Failed to write config file")?;
+        fs::write(&settings_path, content).context("Failed to write settings file")?;
 
         Ok(())
     }
 
-    /// Get the path to the config file
-    pub fn config_path() -> Result<PathBuf> {
+    /// Get the path to the settings file
+    pub fn settings_path() -> Result<PathBuf> {
         let home = Self::lemma_home()?;
-        Ok(home.join("config.toml"))
+        Ok(home.join("settings.toml"))
+    }
+
+    /// Get the path to the config file (deprecated, use settings_path)
+    #[deprecated(note = "Use settings_path() instead")]
+    pub fn config_path() -> Result<PathBuf> {
+        Self::settings_path()
     }
 
     /// Get the Lemma home directory
@@ -260,6 +279,16 @@ impl Config {
     /// Get the toolchains directory
     pub fn toolchains_dir() -> Result<PathBuf> {
         Ok(Self::lemma_home()?.join("toolchains"))
+    }
+
+    /// Get the temporary directory for downloads and extractions
+    pub fn tmp_dir() -> Result<PathBuf> {
+        Ok(Self::lemma_home()?.join("tmp"))
+    }
+
+    /// Get the update hashes directory for tracking installed versions
+    pub fn update_hashes_dir() -> Result<PathBuf> {
+        Ok(Self::lemma_home()?.join("update-hashes"))
     }
 
     /// Get connect timeout as Duration
@@ -279,9 +308,7 @@ impl Config {
 
     /// Set a directory override
     pub fn set_override(&mut self, path: PathBuf, toolchain: String) -> Result<()> {
-        let canonical_path = path
-            .canonicalize()
-            .context("Failed to canonicalize path")?;
+        let canonical_path = path.canonicalize().context("Failed to canonicalize path")?;
         self.overrides
             .insert(canonical_path.display().to_string(), toolchain);
         Ok(())
@@ -289,10 +316,11 @@ impl Config {
 
     /// Remove a directory override
     pub fn remove_override(&mut self, path: &PathBuf) -> Result<bool> {
-        let canonical_path = path
-            .canonicalize()
-            .context("Failed to canonicalize path")?;
-        Ok(self.overrides.remove(&canonical_path.display().to_string()).is_some())
+        let canonical_path = path.canonicalize().context("Failed to canonicalize path")?;
+        Ok(self
+            .overrides
+            .remove(&canonical_path.display().to_string())
+            .is_some())
     }
 
     /// Find override for a directory by walking up the tree
@@ -314,6 +342,122 @@ impl Config {
         }
 
         None
+    }
+
+    /// Save the update hash for a toolchain
+    pub fn save_update_hash(toolchain_name: &str, version_hash: &str) -> Result<()> {
+        let update_hashes_dir = Self::update_hashes_dir()?;
+        fs::create_dir_all(&update_hashes_dir)
+            .context("Failed to create update-hashes directory")?;
+
+        let hash_file = update_hashes_dir.join(toolchain_name);
+        fs::write(&hash_file, version_hash).context("Failed to write update hash")?;
+
+        Ok(())
+    }
+
+    /// Get the update hash for a toolchain
+    pub fn get_update_hash(toolchain_name: &str) -> Result<Option<String>> {
+        let update_hashes_dir = Self::update_hashes_dir()?;
+        let hash_file = update_hashes_dir.join(toolchain_name);
+
+        if hash_file.exists() {
+            let content = fs::read_to_string(&hash_file).context("Failed to read update hash")?;
+            Ok(Some(content.trim().to_string()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Ensure lemma is properly set up (directories, proxy binaries, etc.)
+    /// This is called automatically on first use
+    pub fn ensure_setup() -> Result<()> {
+        // Create all required directories
+        let lemma_home = Self::lemma_home()?;
+        let bin_dir = lemma_home.join("bin");
+        let toolchains_dir = Self::toolchains_dir()?;
+        let tmp_dir = Self::tmp_dir()?;
+        let update_hashes_dir = Self::update_hashes_dir()?;
+
+        fs::create_dir_all(&bin_dir).context("Failed to create bin directory")?;
+        fs::create_dir_all(&toolchains_dir).context("Failed to create toolchains directory")?;
+        fs::create_dir_all(&tmp_dir).context("Failed to create tmp directory")?;
+        fs::create_dir_all(&update_hashes_dir)
+            .context("Failed to create update-hashes directory")?;
+
+        // Install proxy binaries if they don't exist
+        Self::ensure_proxy_binaries(&bin_dir)?;
+
+        // Load or create settings
+        let mut config = Self::load().unwrap_or_default();
+
+        // Show PATH setup message once
+        if !config.path_setup_shown {
+            use colored::Colorize;
+            println!();
+            println!(
+                "{} Lemma is setting up for the first time...",
+                "=>".green().bold()
+            );
+            println!();
+            println!(
+                "{} Add the following to your shell profile (~/.bashrc, ~/.zshrc, etc.):",
+                "Note:".yellow().bold()
+            );
+            println!("   export PATH=\"{}:$PATH\"", bin_dir.display());
+            println!();
+
+            config.path_setup_shown = true;
+            config.save()?;
+        }
+
+        Ok(())
+    }
+
+    /// Ensure proxy binaries are installed
+    fn ensure_proxy_binaries(bin_dir: &PathBuf) -> Result<()> {
+        // List of tools to proxy
+        const PROXY_TOOLS: &[&str] = &[
+            "lean",
+            "lake",
+            "leanpkg",
+            "leanchecker",
+            "leanc",
+            "leanmake",
+        ];
+
+        // Get the path to the current lemma executable
+        let lemma_exe =
+            std::env::current_exe().context("Failed to determine lemma executable path")?;
+
+        for tool in PROXY_TOOLS {
+            let tool_path = bin_dir.join(tool);
+
+            // Skip if already exists and is valid
+            if tool_path.exists() || tool_path.symlink_metadata().is_ok() {
+                continue;
+            }
+
+            // Try to create symlink first (preferred), fall back to hardlink
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::symlink;
+                if symlink(&lemma_exe, &tool_path).is_err() {
+                    // Symlink failed, try hardlink
+                    fs::hard_link(&lemma_exe, &tool_path)
+                        .with_context(|| format!("Failed to create link for '{}'", tool))?;
+                }
+            }
+
+            #[cfg(not(unix))]
+            {
+                // On non-Unix systems (Windows), try hardlink
+                fs::hard_link(&lemma_exe, &tool_path)
+                    .with_context(|| format!("Failed to create link for '{}'", tool))?;
+            }
+        }
+
+        Ok(())
     }
 }
 

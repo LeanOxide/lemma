@@ -210,9 +210,12 @@ impl Installer {
             fs::create_dir_all(parent).context("Failed to create toolchains directory")?;
         }
 
-        // Create temp directory NEXT to the final installation path (same filesystem)
-        // This ensures fs::rename() will work atomically
-        let temp_install = install_path.with_extension("tmp");
+        // Use dedicated tmp directory (like elan/rustup)
+        let tmp_dir = Config::tmp_dir()?;
+        fs::create_dir_all(&tmp_dir).context("Failed to create tmp directory")?;
+
+        // Create unique temp directory for this installation
+        let temp_install = tmp_dir.join(format!("{}-{}", descriptor.name(), std::process::id()));
 
         // Clean up any existing temp directory from previous failed installation
         if temp_install.exists() {
@@ -250,7 +253,8 @@ impl Installer {
             fs::remove_dir_all(&install_path).context("Failed to remove existing installation")?;
         }
 
-        // Atomic rename from temp to final location (same filesystem, so this works!)
+        // Atomic rename from temp to final location
+        // Both tmp/ and toolchains/ are under ~/.lemma/, so same filesystem
         fs::rename(&extract_temp, &install_path).context("Failed to install toolchain")?;
 
         // Clean up temp directory
@@ -273,6 +277,13 @@ impl Installer {
                 "Note:".yellow()
             );
         }
+
+        // Save update hash for tracking (use asset URL as version identifier)
+        let version_hash = match &descriptor {
+            ToolchainDescriptor::Release { tag, .. } => tag.clone(),
+            ToolchainDescriptor::DirectUrl { url, .. } => url.clone(),
+        };
+        let _ = Config::save_update_hash(descriptor.name(), &version_hash); // Best effort
 
         Ok(())
     }

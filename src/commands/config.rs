@@ -6,17 +6,17 @@ use colored::Colorize;
 use crate::config::Config;
 
 pub fn execute(show_path: bool, edit: bool) -> Result<()> {
-    let config_path = Config::config_path()?;
+    let settings_path = Config::settings_path()?;
 
     if show_path {
-        println!("{}", config_path.display());
+        println!("{}", settings_path.display());
         return Ok(());
     }
 
     if edit {
         let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
         std::process::Command::new(editor)
-            .arg(&config_path)
+            .arg(&settings_path)
             .status()?;
         return Ok(());
     }
