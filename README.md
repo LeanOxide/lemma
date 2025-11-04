@@ -6,35 +6,9 @@
 
 After analyzing the elan codebase, we identified several critical issues that make it difficult to use in enterprise and restricted network environments:
 
-### Critical Issues with Elan
-
-1. **❌ NO Proxy Support** - The default curl backend has zero proxy configuration
-   - No `HTTP_PROXY`, `HTTPS_PROXY`, or `SOCKS_PROXY` support
-   - Completely unusable behind corporate firewalls
-   - Proxy support only available in disabled `reqwest-backend` feature
-
-2. **❌ Hardcoded URLs** - Cannot use mirrors or custom registries
-   - `https://release.lean-lang.org` and `https://github.com` are hardcoded
-   - No way to configure alternative download sources
-   - Users in restricted regions cannot use mirrors
-
-3. **❌ Fragile GitHub HTML Scraping** - Instead of proper API
-   - Uses regex to parse GitHub HTML pages
-   - Breaks whenever GitHub changes their layout (v1.4.2, v4.1.0)
-   - Platform detection relies on substring matching: `informal_target.clone() + "."`
-
-4. **❌ Poor Network Resilience**
-   - Hardcoded 30-second timeout with no configuration
-   - No retry logic for transient failures
-   - No download resumption - restarts from scratch
-
-5. **❌ Inflexible Configuration**
-   - No network options (proxy, timeout, mirrors)
-   - No bandwidth limits, offline mode, or SSL options
-
 ## Key Features
 
-### ✅ Full Proxy Support
+### Full Proxy Support
 - **HTTP, HTTPS, and SOCKS5 proxies** with authentication
 - Standard environment variables: `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
 - Configuration file support for persistent settings
@@ -50,7 +24,7 @@ export HTTP_PROXY=http://proxy.company.com:8080
 export HTTPS_PROXY=https://proxy.company.com:8080
 ```
 
-### ✅ Custom Sources and Mirrors
+### Custom Sources and Mirrors
 - Configure custom registry URLs
 - Multiple fallback mirrors
 - Custom GitHub Enterprise API support
@@ -67,13 +41,13 @@ github_api = "https://github.company.com/api/v3"
 github_token = "ghp_xxxxxxxxxxxxx"
 ```
 
-### ✅ Proper GitHub REST API
+### Proper GitHub REST API
 - Uses official GitHub API v3 instead of HTML scraping
 - Personal access token support for rate limits
 - Robust platform asset detection
 - Cached release metadata
 
-### ✅ Network Resilience
+### Network Resilience
 - **Automatic retry** with exponential backoff
 - **Download resumption** for interrupted transfers
 - **Configurable timeouts** and retry policies
@@ -89,7 +63,7 @@ max_download_speed = 0    # bytes/sec, 0 = unlimited
 resume_downloads = true   # resume partial downloads
 ```
 
-### ✅ Better Error Messages
+### Better Error Messages
 - Specific error types for different failure modes
 - Network diagnostic information
 - Actionable suggestions for users
@@ -246,30 +220,9 @@ Lemma is built with a modern, modular architecture:
   - Built with `clap` for robust argument parsing
   - Subcommands for all operations
 
-## Comparison with Elan
-
-| Feature | Elan | Lemma |
-|---------|------|-------|
-| Proxy Support | ❌ None (except disabled feature) | ✅ HTTP, HTTPS, SOCKS5 |
-| Custom Sources | ❌ Hardcoded URLs | ✅ Configurable registries + mirrors |
-| GitHub Integration | ❌ HTML scraping with regex | ✅ Proper REST API v3 |
-| Network Resilience | ❌ No retry, no resumption | ✅ Retry + resumption + backoff |
-| Configuration | ❌ Limited options | ✅ Comprehensive network config |
-| Error Messages | ❌ Generic errors | ✅ Specific errors with diagnostics |
-| Timeouts | ❌ Hardcoded 30s | ✅ Configurable |
-| Bandwidth Limiting | ❌ None | ✅ Configurable |
-
 ## Development Status
 
 **Current Status:** Early Development / Proof of Concept
-
-### ✅ Completed
-- Core architecture design
-- Configuration system with full proxy support
-- Download client with retry and resumption
-- GitHub REST API client
-- CLI interface and commands
-- Proxy configuration commands
 
 ### 🚧 In Progress
 - Toolchain installation logic
@@ -295,14 +248,12 @@ Contributions are welcome! Key areas that need work:
 
 ## License
 
-[To be determined - likely same as elan: MIT or Apache 2.0]
+[MIT]
 
 ## Acknowledgments
 
 - **Elan** - The original Lean toolchain manager that inspired this project
 - **Rustup** - Design inspiration for toolchain management
-- The Lean community for their feedback on elan's pain points
-
 ---
 
 **Note:** Lemma is in early development. While the core infrastructure is in place, toolchain installation is not yet fully implemented. Use at your own risk.
