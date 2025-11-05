@@ -104,8 +104,9 @@ impl ToolchainDescriptor {
 impl Installer {
     /// Create a new installer
     pub fn new() -> Result<Self> {
+        let config = Config::load()?;
         let download_client = DownloadClient::new()?;
-        let release_client = ReleaseServerClient::new(download_client.clone());
+        let release_client = ReleaseServerClient::new(download_client.clone(), config.release_url);
 
         Ok(Self {
             download_client,

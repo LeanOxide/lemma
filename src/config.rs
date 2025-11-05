@@ -1,6 +1,5 @@
 //! Configuration management for Lemma
 //!
-//! Like elan and rustup, lemma keeps a minimal settings file containing:
 //! - Default toolchain
 //! - Directory overrides
 //! - Internal flags (e.g., PATH setup tracking)
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-/// Main configuration structure (matches elan/rustup simplicity)
+/// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// Settings file version for future migrations
@@ -27,6 +26,10 @@ pub struct Config {
     /// Whether PATH setup message has been shown
     #[serde(default)]
     pub path_setup_shown: bool,
+
+    /// Lean release server URL (can be overridden for mirrors)
+    #[serde(default = "default_release_url")]
+    pub release_url: String,
 }
 
 impl Default for Config {
@@ -36,6 +39,7 @@ impl Default for Config {
             default_toolchain: None,
             overrides: std::collections::HashMap::new(),
             path_setup_shown: false,
+            release_url: default_release_url(),
         }
     }
 }
@@ -44,18 +48,27 @@ fn default_version() -> String {
     "1".to_string()
 }
 
+fn default_release_url() -> String {
+    "https://release.lean-lang.org".to_string()
+}
+
 impl Config {
     /// Load configuration from file
     pub fn load() -> Result<Self> {
         let settings_path = Self::settings_path()?;
 
-        let config = if settings_path.exists() {
+        let mut config = if settings_path.exists() {
             let content =
                 fs::read_to_string(&settings_path).context("Failed to read settings file")?;
             toml::from_str(&content).context("Failed to parse settings file")?
         } else {
             Self::default()
         };
+
+        // Apply environment variable overrides
+        if let Ok(url) = std::env::var("LEMMA_RELEASE_URL") {
+            config.release_url = url;
+        }
 
         Ok(config)
     }
@@ -274,6 +287,7 @@ mod tests {
         assert_eq!(config.default_toolchain, None);
         assert_eq!(config.overrides.len(), 0);
         assert_eq!(config.path_setup_shown, false);
+        assert_eq!(config.release_url, "https://release.lean-lang.org");
     }
 
     #[test]
@@ -282,5 +296,6 @@ mod tests {
         let toml_str = toml::to_string_pretty(&config).unwrap();
         assert!(toml_str.contains("version"));
         assert!(toml_str.contains("path_setup_shown"));
+        assert!(toml_str.contains("release_url"));
     }
 }

@@ -18,8 +18,6 @@ pub fn execute(toolchain: Option<&str>) -> Result<()> {
 }
 
 fn update_toolchain(name: &str) -> Result<()> {
-    // Like rustup, `update <toolchain>` is the same as `toolchain install <toolchain>`
-    // This will install if not present, or reinstall/update if already installed
     let installer = Installer::new()?;
     installer.install(name, true)?;
 

@@ -74,7 +74,6 @@ impl DownloadClient {
 
     /// Try to download with resume support
     fn try_download(&self, url: &Url, dest: &Path, _attempt: u32) -> Result<()> {
-        // Check if we can resume (always enabled, like elan/rustup)
         let (resume_from, mut file) = if dest.exists() {
             let file = OpenOptions::new()
                 .read(true)

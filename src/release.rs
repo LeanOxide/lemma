@@ -35,25 +35,23 @@ pub struct Asset {
     pub browser_download_url: String,
 }
 
-/// Default Lean release server URL
-const LEAN_RELEASE_URL: &str = "https://release.lean-lang.org";
-
 /// Client for fetching from release.lean-lang.org
 pub struct ReleaseServerClient {
     client: DownloadClient,
+    base_url: String,
 }
 
 impl ReleaseServerClient {
     /// Create a new release server client
-    pub fn new(client: DownloadClient) -> Self {
-        Self { client }
+    pub fn new(client: DownloadClient, base_url: String) -> Self {
+        Self { client, base_url }
     }
 
     /// Fetch the release index
     pub fn fetch_index(&self) -> Result<ReleaseIndex> {
         self.client
-            .download_json(LEAN_RELEASE_URL)
-            .with_context(|| format!("Failed to fetch release index from {}", LEAN_RELEASE_URL))
+            .download_json(&self.base_url)
+            .with_context(|| format!("Failed to fetch release index from {}", self.base_url))
     }
 
     /// Find a release by name in the index
