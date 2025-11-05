@@ -103,22 +103,6 @@ jobs:
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-artifacts/ \;
           ls -lh release-artifacts/
 
-      - name: Create version manifest
-        run: |
-          # Extract version from tag (remove 'v' prefix if present)
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-
-          # Create stable.toml manifest
-          cat > release-artifacts/stable.toml << EOF
-          # Lemma version manifest
-          # This file is used by 'lemma self update' to check for new versions
-          version = "${VERSION}"
-          EOF
-
-          echo "Created stable.toml with version: ${VERSION}"
-          cat release-artifacts/stable.toml
-
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
@@ -126,7 +110,6 @@ jobs:
           files: release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Upload to Cloudflare R2 (versioned)
         uses: ryand56/r2-upload-action@latest
@@ -143,12 +126,22 @@ jobs:
           multipart-concurrent: true
           keep-file-fresh: false
 
-      - name: Upload version manifest to R2 root
+      - name: Create version manifest
         run: |
-          # Upload stable.toml to releases/ root for version checking
-          # This requires aws-cli or rclone - using a simple approach with the R2 action
           mkdir -p manifest-only
-          cp release-artifacts/stable.toml manifest-only/
+          # Extract version from tag (remove 'v' prefix if present)
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+
+          # Create stable.toml manifest
+          cat > manifest-only/stable.toml << EOF
+          # Lemma version manifest
+          # This file is used by 'lemma self update' to check for new versions
+          version = "${VERSION}"
+          EOF
+
+          echo "Created stable.toml with version: ${VERSION}"
+          cat manifest-only/stable.toml
 
       - name: Upload manifest to Cloudflare R2 (root)
         uses: ryand56/r2-upload-action@latest
