@@ -21,6 +21,22 @@ release_url = "https://release.custom.org"
 
 ## Installation
 
+### Quick Install (Recommended)
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
+```
+
+Or download and inspect the script first:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSfL https://lemma.puqing.work/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+```
+
+### From Source
+
 ```bash
 # Build from source
 cargo build --release
@@ -28,6 +44,16 @@ cargo build --release
 # Install
 cargo install --path .
 ```
+
+### Self-Update
+
+Once installed, you can update lemma itself:
+
+```bash
+lemma self update
+```
+
+This will check for the latest version and download it automatically if a newer version is available.
 
 ## Usage
 
@@ -50,6 +76,10 @@ lemma update
 
 # Show information
 lemma info
+
+# Self-management
+lemma self update              # Update lemma itself
+lemma self uninstall           # Uninstall lemma and all toolchains
 ```
 
 ## Configuration File
