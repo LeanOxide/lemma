@@ -23,25 +23,16 @@ struct VersionManifest {
 /// Fetch the latest available version from the server
 fn get_available_version() -> Result<String> {
     let download_client = DownloadClient::new()?;
-    let temp_dir = Config::tmp_dir()?;
-    fs::create_dir_all(&temp_dir).context("Failed to create temp directory")?;
 
-    // Download the version manifest
+    // Download the version manifest (using download_to_string to avoid progress bar)
     let manifest_url = format!("{}/manifests/stable.toml", RELEASE_BASE_URL);
-    let manifest_path = temp_dir.join("lemma-version.toml");
-
-    download_client
-        .download_file(&manifest_url, &manifest_path)
+    let manifest_content = download_client
+        .download_to_string(&manifest_url)
         .context("Failed to download version manifest")?;
 
     // Parse the manifest
-    let manifest_content =
-        fs::read_to_string(&manifest_path).context("Failed to read version manifest")?;
     let manifest: VersionManifest =
         toml::from_str(&manifest_content).context("Failed to parse version manifest")?;
-
-    // Clean up
-    let _ = fs::remove_file(&manifest_path);
 
     Ok(manifest.version)
 }

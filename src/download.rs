@@ -160,7 +160,7 @@ impl DownloadClient {
         Duration::from_secs(BASE_DELAY_SECS * exponential)
     }
 
-    /// Download to memory (for small files like manifests)
+    /// Download to memory
     pub fn download_to_string(&self, url: &str) -> Result<String> {
         let parsed_url = Url::parse(url).context("Invalid URL")?;
 
