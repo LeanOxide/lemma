@@ -27,7 +27,7 @@ fn get_available_version() -> Result<String> {
     fs::create_dir_all(&temp_dir).context("Failed to create temp directory")?;
 
     // Download the version manifest
-    let manifest_url = format!("{}/releases/stable.toml", RELEASE_BASE_URL);
+    let manifest_url = format!("{}/manifests/stable.toml", RELEASE_BASE_URL);
     let manifest_path = temp_dir.join("lemma-version.toml");
 
     download_client
