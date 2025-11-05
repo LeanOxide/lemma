@@ -23,6 +23,8 @@ release_url = "https://release.custom.org"
 
 ### Quick Install (Recommended)
 
+**Linux / macOS:**
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
 ```
@@ -33,6 +35,19 @@ Or download and inspect the script first:
 curl --proto '=https' --tlsv1.2 -sSfL https://lemma.puqing.work/install.sh -o install.sh
 chmod +x install.sh
 ./install.sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://lemma.puqing.work/install.ps1 | iex
+```
+
+Or download and inspect the script first:
+
+```powershell
+Invoke-WebRequest -Uri https://lemma.puqing.work/install.ps1 -OutFile install.ps1
+.\install.ps1
 ```
 
 ### From Source

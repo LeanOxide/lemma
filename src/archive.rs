@@ -13,6 +13,7 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use tar::Archive;
+use zip::ZipArchive;
 use zstd::stream::read::Decoder as ZstdDecoder;
 
 /// Supported compression formats
@@ -22,6 +23,8 @@ pub enum CompressionFormat {
     Gzip,
     /// Zstandard (.tar.zst)
     Zstd,
+    /// Zip (.zip)
+    Zip,
 }
 
 impl CompressionFormat {
@@ -33,9 +36,11 @@ impl CompressionFormat {
             Ok(Self::Gzip)
         } else if path_str.ends_with(".tar.zst") || path_str.ends_with(".tar.zstd") {
             Ok(Self::Zstd)
+        } else if path_str.ends_with(".zip") {
+            Ok(Self::Zip)
         } else {
             anyhow::bail!(
-                "Unsupported archive format: {}\n\nSupported formats:\n- .tar.gz (gzip compressed tar)\n- .tar.zst (zstd compressed tar)",
+                "Unsupported archive format: {}\n\nSupported formats:\n- .tar.gz (gzip compressed tar)\n- .tar.zst (zstd compressed tar)\n- .zip (zip archive)",
                 path.display()
             )
         }
@@ -55,6 +60,7 @@ pub fn extract_archive(archive_path: &Path, dest: &Path) -> Result<()> {
     match format {
         CompressionFormat::Gzip => extract_tar_gz(file, dest),
         CompressionFormat::Zstd => extract_tar_zst(file, dest),
+        CompressionFormat::Zip => extract_zip(file, dest),
     }
 }
 
@@ -106,6 +112,52 @@ fn extract_tar_with_strip<R: Read>(reader: R, dest: &Path) -> Result<()> {
         entry
             .unpack(&dest_path)
             .with_context(|| format!("Failed to extract: {}", stripped_path.display()))?;
+    }
+
+    Ok(())
+}
+
+/// Extract .zip archive (used for Windows self-update)
+fn extract_zip<R: Read + std::io::Seek>(reader: R, dest: &Path) -> Result<()> {
+    let mut archive = ZipArchive::new(reader).context("Failed to open zip archive")?;
+
+    // Ensure destination exists
+    fs::create_dir_all(dest)
+        .with_context(|| format!("Failed to create destination: {}", dest.display()))?;
+
+    // Extract all files directly to destination (no directory stripping needed)
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).context("Failed to read zip entry")?;
+        let outpath = dest.join(file.name());
+
+        if file.is_dir() {
+            fs::create_dir_all(&outpath)
+                .with_context(|| format!("Failed to create directory: {}", outpath.display()))?;
+        } else {
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).with_context(|| {
+                    format!("Failed to create parent directory: {}", parent.display())
+                })?;
+            }
+
+            let mut outfile = File::create(&outpath)
+                .with_context(|| format!("Failed to create file: {}", outpath.display()))?;
+
+            std::io::copy(&mut file, &mut outfile)
+                .with_context(|| format!("Failed to extract file: {}", outpath.display()))?;
+
+            // Set permissions on Unix
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Some(mode) = file.unix_mode() {
+                    let permissions = std::fs::Permissions::from_mode(mode);
+                    std::fs::set_permissions(&outpath, permissions).with_context(|| {
+                        format!("Failed to set permissions for: {}", outpath.display())
+                    })?;
+                }
+            }
+        }
     }
 
     Ok(())

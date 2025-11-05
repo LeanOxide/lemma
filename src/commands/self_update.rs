@@ -87,7 +87,13 @@ pub fn update() -> Result<()> {
     let temp_dir = Config::tmp_dir()?;
     fs::create_dir_all(&temp_dir).context("Failed to create temp directory")?;
 
-    let archive_name = format!("lemma-{}.tar.gz", target);
+    // Determine archive extension based on platform
+    #[cfg(windows)]
+    let archive_ext = "zip";
+    #[cfg(not(windows))]
+    let archive_ext = "tar.gz";
+
+    let archive_name = format!("lemma-{}.{}", target, archive_ext);
     let download_path = temp_dir.join(&archive_name);
 
     // Construct download URL using versioned release
