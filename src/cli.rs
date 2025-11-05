@@ -71,9 +71,28 @@ pub enum Commands {
     #[command(after_long_help = help::INFO_HELP)]
     Info,
 
-    /// Self-update lemma
+    /// Modify the lemma installation
+    #[command(after_long_help = help::SELF_HELP)]
+    #[command(name = "self")]
+    Self_ {
+        #[command(subcommand)]
+        command: SelfCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SelfCommands {
+    /// Update lemma to the latest version
     #[command(after_long_help = help::SELF_UPDATE_HELP)]
-    SelfUpdate,
+    Update,
+
+    /// Uninstall lemma and all installed toolchains
+    #[command(after_long_help = help::SELF_UNINSTALL_HELP)]
+    Uninstall {
+        /// Skip confirmation prompt
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]

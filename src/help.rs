@@ -224,7 +224,38 @@ pub static INFO_HELP: &str = r"DISCUSSION:
     Shows information about the lemma installation, including version
     and installation paths.";
 
+pub static SELF_HELP: &str = r"DISCUSSION:
+    The `self` command is used to manipulate the lemma installation.
+    It can update lemma to newer versions, or uninstall lemma entirely.";
+
 pub static SELF_UPDATE_HELP: &str = r"DISCUSSION:
     Updates lemma itself to the latest version. This command will
     download and install the latest release of lemma from the
-    official repository.";
+    configured distribution server.
+
+    The update downloads the appropriate binary for your platform,
+    extracts it, and replaces the current lemma installation.
+
+    Supported platforms:
+    - x86_64-unknown-linux-gnu (Linux x64 GNU)
+    - x86_64-unknown-linux-musl (Linux x64 musl)
+    - x86_64-apple-darwin (macOS Intel)
+    - aarch64-apple-darwin (macOS Apple Silicon)
+    - x86_64-pc-windows-gnu (Windows x64)
+
+    Example:
+
+        $ lemma self update";
+
+pub static SELF_UNINSTALL_HELP: &str = r"DISCUSSION:
+    Uninstalls lemma and all installed toolchains. This will remove:
+    - All installed Lean toolchains
+    - All lemma proxy binaries
+    - The entire ~/.lemma directory
+
+    This operation is irreversible. Use with caution.
+
+    Example:
+
+        $ lemma self uninstall
+        $ lemma self uninstall -y  # Skip confirmation";

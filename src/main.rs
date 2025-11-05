@@ -16,6 +16,9 @@ use cli::Cli;
 use commands::proxy_mode;
 
 fn main() {
+    // Clean up old self-update backup files
+    let _ = commands::self_update::cleanup_old_backups();
+
     if let Err(e) = run() {
         eprintln!("{} {:#}", "error:".red().bold(), e);
         std::process::exit(1);

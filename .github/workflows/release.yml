@@ -19,6 +19,9 @@ jobs:
           - target: x86_64-pc-windows-gnu
             os: ubuntu-latest
             archive: zip
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             archive: tar.gz
@@ -100,6 +103,22 @@ jobs:
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release-artifacts/ \;
           ls -lh release-artifacts/
 
+      - name: Create version manifest
+        run: |
+          # Extract version from tag (remove 'v' prefix if present)
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+
+          # Create stable.toml manifest
+          cat > release-artifacts/stable.toml << EOF
+          # Lemma version manifest
+          # This file is used by 'lemma self update' to check for new versions
+          version = "${VERSION}"
+          EOF
+
+          echo "Created stable.toml with version: ${VERSION}"
+          cat release-artifacts/stable.toml
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
@@ -137,4 +156,23 @@ jobs:
           multipart-size: 100
           max-retries: 5
           multipart-concurrent: true
+          keep-file-fresh: true
+
+      - name: Upload version manifest to R2 root
+        run: |
+          # Upload stable.toml to releases/ root for version checking
+          # This requires aws-cli or rclone - using a simple approach with the R2 action
+          mkdir -p manifest-only
+          cp release-artifacts/stable.toml manifest-only/
+
+      - name: Upload manifest to Cloudflare R2 (root)
+        uses: ryand56/r2-upload-action@latest
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.R2_BUCKET }}
+          source-dir: manifest-only
+          destination-dir: releases
+          output-file-url: false
           keep-file-fresh: true

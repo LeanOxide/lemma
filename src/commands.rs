@@ -19,7 +19,7 @@ pub mod which;
 
 use anyhow::Result;
 
-use crate::cli::{Commands, ToolchainCommands};
+use crate::cli::{Commands, SelfCommands, ToolchainCommands};
 
 use crate::config::Config;
 
@@ -50,7 +50,15 @@ pub fn handle_command(command: Commands) -> Result<()> {
 
         Commands::Info => info::execute(),
 
-        Commands::SelfUpdate => self_update::execute(),
+        Commands::Self_ { command } => handle_self_command(command),
+    }
+}
+
+/// Handle self subcommands
+fn handle_self_command(command: SelfCommands) -> Result<()> {
+    match command {
+        SelfCommands::Update => self_update::update(),
+        SelfCommands::Uninstall { yes } => self_update::uninstall(yes),
     }
 }
 
