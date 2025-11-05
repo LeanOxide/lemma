@@ -16,28 +16,22 @@ use std::path::{Path, PathBuf};
 use crate::archive::extract_archive;
 use crate::config::Config;
 use crate::download::DownloadClient;
-use crate::github::GitHubClient;
 use crate::release::{Release, ReleaseServerClient};
 
 /// Toolchain installer
 pub struct Installer {
     config: Config,
     download_client: DownloadClient,
-    github_client: GitHubClient,
     release_client: ReleaseServerClient,
 }
 
 /// Toolchain descriptor
 #[derive(Debug, Clone)]
 pub enum ToolchainDescriptor {
-    /// Official or GitHub-based release
-    Release {
+    /// Official Lean release (from release.lean-lang.org)
+    OfficialRelease {
         /// Name of the toolchain (e.g., "stable", "v4.5.0")
         name: String,
-        /// GitHub owner (defaults to "leanprover")
-        owner: String,
-        /// GitHub repository (defaults to "lean4")
-        repo: String,
         /// Release tag (or "latest" for stable)
         tag: String,
     },
@@ -54,9 +48,8 @@ impl ToolchainDescriptor {
     /// Parse a toolchain name into a descriptor
     ///
     /// Supported formats:
-    /// - "stable" -> leanprover/lean4:latest
-    /// - "v4.5.0" -> leanprover/lean4:v4.5.0
-    /// - "owner/repo:tag" -> owner/repo:tag
+    /// - "stable" -> official latest release
+    /// - "v4.5.0" -> official version tag
     /// - "https://..." -> direct URL download
     pub fn parse(input: &str) -> Result<Self> {
         // Check if it's a URL
@@ -70,31 +63,15 @@ impl ToolchainDescriptor {
 
         // Handle special names
         if input == "stable" || input == "latest" {
-            return Ok(Self::Release {
+            return Ok(Self::OfficialRelease {
                 name: "stable".to_string(),
-                owner: "leanprover".to_string(),
-                repo: "lean4".to_string(),
                 tag: "latest".to_string(),
             });
         }
 
-        // Check for owner/repo:tag format
-        if let Some((repo_part, tag)) = input.split_once(':') {
-            if let Some((owner, repo)) = repo_part.split_once('/') {
-                return Ok(Self::Release {
-                    name: input.to_string(),
-                    owner: owner.to_string(),
-                    repo: repo.to_string(),
-                    tag: tag.to_string(),
-                });
-            }
-        }
-
-        // Assume it's a version tag for leanprover/lean4
-        Ok(Self::Release {
+        // Assume it's a version tag for official Lean release
+        Ok(Self::OfficialRelease {
             name: input.to_string(),
-            owner: "leanprover".to_string(),
-            repo: "lean4".to_string(),
             tag: input.to_string(),
         })
     }
@@ -116,15 +93,10 @@ impl ToolchainDescriptor {
             .to_string()
     }
 
-    /// Check if this is an official Lean release (uses release.lean-lang.org)
-    pub fn is_official_lean(&self) -> bool {
-        matches!(self, Self::Release { owner, repo, .. } if owner == "leanprover" && repo == "lean4")
-    }
-
     /// Get the display name for this toolchain
     pub fn name(&self) -> &str {
         match self {
-            Self::Release { name, .. } => name,
+            Self::OfficialRelease { name, .. } => name,
             Self::DirectUrl { name, .. } => name,
         }
     }
@@ -134,14 +106,12 @@ impl Installer {
     /// Create a new installer
     pub fn new(config: Config) -> Result<Self> {
         let download_client = DownloadClient::new(config.clone())?;
-        let github_client = GitHubClient::new(config.clone())?;
         let release_client =
             ReleaseServerClient::new(download_client.clone(), config.sources.release_url.clone());
 
         Ok(Self {
             config,
             download_client,
-            github_client,
             release_client,
         })
     }
@@ -178,28 +148,19 @@ impl Installer {
                 let filename = url.split('/').last().unwrap_or("archive.tar.zst");
                 (filename.to_string(), url.clone())
             }
-            ToolchainDescriptor::Release { .. } => {
-                // Fetch release information
-                println!("{} Fetching release information...", "=>".cyan().bold());
+            ToolchainDescriptor::OfficialRelease { .. } => {
+                // Fetch release information from release.lean-lang.org
+                println!("{} Fetching release information...", "=>".blue().bold());
                 let release = self.fetch_release(&descriptor)?;
 
-                println!("   Found release: {}", release.name);
+                println!("   Found release: {}", release.name.bold());
 
                 // Find the right asset for our platform
-                if descriptor.is_official_lean() {
-                    let asset = self
-                        .release_client
-                        .find_platform_asset(&release)
-                        .context("No compatible asset found for your platform")?;
-                    (asset.name.clone(), asset.browser_download_url.clone())
-                } else {
-                    let github_release = self.github_release_to_github(&release);
-                    let asset = self
-                        .github_client
-                        .find_platform_asset(&github_release)
-                        .context("No compatible asset found for your platform")?;
-                    (asset.name.clone(), asset.browser_download_url.clone())
-                }
+                let asset = self
+                    .release_client
+                    .find_platform_asset(&release)
+                    .context("No compatible asset found for your platform")?;
+                (asset.name.clone(), asset.browser_download_url.clone())
             }
         };
 
@@ -280,7 +241,7 @@ impl Installer {
 
         // Save update hash for tracking (use asset URL as version identifier)
         let version_hash = match &descriptor {
-            ToolchainDescriptor::Release { tag, .. } => tag.clone(),
+            ToolchainDescriptor::OfficialRelease { tag, .. } => tag.clone(),
             ToolchainDescriptor::DirectUrl { url, .. } => url.clone(),
         };
         let _ = Config::save_update_hash(descriptor.name(), &version_hash); // Best effort
@@ -288,71 +249,19 @@ impl Installer {
         Ok(())
     }
 
-    /// Fetch release information (only for Release variant)
+    /// Fetch release information from release.lean-lang.org
     fn fetch_release(&self, descriptor: &ToolchainDescriptor) -> Result<Release> {
         match descriptor {
-            ToolchainDescriptor::Release {
-                owner, repo, tag, ..
-            } => {
-                // Use release.lean-lang.org for official Lean releases
-                if descriptor.is_official_lean() {
-                    if tag == "latest" {
-                        self.release_client.get_latest_stable()
-                    } else {
-                        self.release_client.find_release(tag)
-                    }
+            ToolchainDescriptor::OfficialRelease { tag, .. } => {
+                if tag == "latest" {
+                    self.release_client.get_latest_stable()
                 } else {
-                    // Use GitHub API for custom repositories
-                    let github_release = if tag == "latest" {
-                        self.github_client.get_latest_release(owner, repo)?
-                    } else {
-                        self.github_client.get_release(owner, repo, tag)?
-                    };
-
-                    // Convert GitHub release to our Release type
-                    Ok(self.github_release_to_release(&github_release))
+                    self.release_client.find_release(tag)
                 }
             }
             ToolchainDescriptor::DirectUrl { .. } => {
                 unreachable!("fetch_release should not be called for DirectUrl")
             }
-        }
-    }
-
-    /// Convert GitHub release to our release type
-    fn github_release_to_release(&self, github_release: &crate::github::Release) -> Release {
-        Release {
-            name: github_release.tag_name.clone(),
-            created_at: String::new(), // GitHub API provides different format
-            assets: github_release
-                .assets
-                .iter()
-                .map(|a| crate::release::Asset {
-                    name: a.name.clone(),
-                    browser_download_url: a.browser_download_url.clone(),
-                })
-                .collect(),
-        }
-    }
-
-    /// Helper to get GitHub release from our Release type (for platform asset finding)
-    fn github_release_to_github(&self, release: &Release) -> crate::github::Release {
-        crate::github::Release {
-            tag_name: release.name.clone(),
-            name: release.name.clone(),
-            body: String::new(),
-            draft: false,
-            prerelease: false,
-            assets: release
-                .assets
-                .iter()
-                .map(|a| crate::github::Asset {
-                    name: a.name.clone(),
-                    browser_download_url: a.browser_download_url.clone(),
-                    size: 0,
-                    content_type: String::new(),
-                })
-                .collect(),
         }
     }
 
@@ -385,20 +294,6 @@ impl Installer {
     }
 }
 
-/// Format bytes in human-readable format
-fn format_bytes(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
-    let mut size = bytes as f64;
-    let mut unit_idx = 0;
-
-    while size >= 1024.0 && unit_idx < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_idx += 1;
-    }
-
-    format!("{:.2} {}", size, UNITS[unit_idx])
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,14 +302,10 @@ mod tests {
     fn test_parse_toolchain_stable() {
         let desc = ToolchainDescriptor::parse("stable").unwrap();
         match desc {
-            ToolchainDescriptor::Release {
-                owner, repo, tag, ..
-            } => {
-                assert_eq!(owner, "leanprover");
-                assert_eq!(repo, "lean4");
+            ToolchainDescriptor::OfficialRelease { tag, .. } => {
                 assert_eq!(tag, "latest");
             }
-            _ => panic!("Expected Release variant"),
+            _ => panic!("Expected OfficialRelease variant"),
         }
     }
 
@@ -422,29 +313,10 @@ mod tests {
     fn test_parse_toolchain_version() {
         let desc = ToolchainDescriptor::parse("v4.5.0").unwrap();
         match desc {
-            ToolchainDescriptor::Release {
-                owner, repo, tag, ..
-            } => {
-                assert_eq!(owner, "leanprover");
-                assert_eq!(repo, "lean4");
+            ToolchainDescriptor::OfficialRelease { tag, .. } => {
                 assert_eq!(tag, "v4.5.0");
             }
-            _ => panic!("Expected Release variant"),
-        }
-    }
-
-    #[test]
-    fn test_parse_toolchain_custom() {
-        let desc = ToolchainDescriptor::parse("myorg/myrepo:v1.0.0").unwrap();
-        match desc {
-            ToolchainDescriptor::Release {
-                owner, repo, tag, ..
-            } => {
-                assert_eq!(owner, "myorg");
-                assert_eq!(repo, "myrepo");
-                assert_eq!(tag, "v1.0.0");
-            }
-            _ => panic!("Expected Release variant"),
+            _ => panic!("Expected OfficialRelease variant"),
         }
     }
 
@@ -477,14 +349,5 @@ mod tests {
             ToolchainDescriptor::extract_name_from_url("http://example.com/archive.zip"),
             "archive"
         );
-    }
-
-    #[test]
-    fn test_format_bytes() {
-        assert_eq!(format_bytes(512), "512.00 B");
-        assert_eq!(format_bytes(1024), "1.00 KB");
-        assert_eq!(format_bytes(1536), "1.50 KB");
-        assert_eq!(format_bytes(1048576), "1.00 MB");
-        assert_eq!(format_bytes(1073741824), "1.00 GB");
     }
 }

@@ -1,7 +1,6 @@
 //! Which command - Display the path to a binary in the active toolchain
 
 use anyhow::{Context, Result};
-use colored::Colorize;
 use std::env;
 use std::path::{Path, PathBuf};
 

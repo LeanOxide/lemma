@@ -4,7 +4,6 @@ mod commands;
 mod config;
 mod download;
 mod errors;
-mod github;
 mod install;
 mod release;
 
