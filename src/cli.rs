@@ -61,12 +61,6 @@ pub enum Commands {
         edit: bool,
     },
 
-    /// Configure proxy settings
-    Proxy {
-        #[command(subcommand)]
-        command: ProxyCommands,
-    },
-
     /// Show information about lemma
     Info,
 
@@ -107,43 +101,6 @@ pub enum ToolchainCommands {
         /// Path to the toolchain directory
         path: String,
     },
-}
-
-#[derive(Subcommand)]
-pub enum ProxyCommands {
-    /// Set HTTP proxy
-    SetHttp {
-        /// Proxy URL (e.g., http://proxy.example.com:8080)
-        url: String,
-    },
-
-    /// Set HTTPS proxy
-    SetHttps {
-        /// Proxy URL
-        url: String,
-    },
-
-    /// Set SOCKS5 proxy
-    SetSocks {
-        /// Proxy URL (e.g., socks5://127.0.0.1:1080)
-        url: String,
-    },
-
-    /// Set proxy authentication
-    SetAuth {
-        /// Username
-        username: String,
-
-        /// Password
-        #[arg(short, long)]
-        password: Option<String>,
-    },
-
-    /// Clear proxy settings
-    Clear,
-
-    /// Show current proxy settings
-    Show,
 }
 
 #[derive(Subcommand)]

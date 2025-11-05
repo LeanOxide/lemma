@@ -10,7 +10,6 @@ pub mod install;
 pub mod link;
 pub mod list;
 pub mod r#override;
-pub mod proxy;
 pub mod proxy_mode;
 pub mod self_update;
 pub mod show;
@@ -48,8 +47,6 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
 
         Commands::Config { path, edit } => config::execute(path, edit),
-
-        Commands::Proxy { command } => proxy::execute(command),
 
         Commands::Info => info::execute(),
 
