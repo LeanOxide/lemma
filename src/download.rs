@@ -1,17 +1,15 @@
-//! Download client with full proxy support and retry logic
+//! Download client with retry logic and progress reporting
 //!
-//! Unlike elan's curl backend which has NO proxy support, this module provides:
-//! - HTTP, HTTPS, and SOCKS5 proxy support
+//! Like elan and rustup, this module:
+//! - Uses environment variables for proxy (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)
 //! - Automatic retry with exponential backoff
 //! - Download resumption for partial downloads
-//! - Bandwidth limiting
 //! - Progress reporting
-//! - Detailed error messages with network diagnostics
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::blocking::Client;
-use reqwest::{Proxy, StatusCode};
+use reqwest::StatusCode;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -19,85 +17,33 @@ use std::thread;
 use std::time::Duration;
 use url::Url;
 
-use crate::config::Config;
 use crate::errors::DownloadError;
 
-/// Download client with retry logic and proxy support
+/// Network timeouts and retry settings (hardcoded like elan/rustup)
+const CONNECT_TIMEOUT_SECS: u64 = 30;
+const READ_TIMEOUT_SECS: u64 = 30;
+const MAX_RETRIES: u32 = 3;
+
+/// Download client with retry logic
+/// Proxy configuration is handled automatically via HTTP_PROXY/HTTPS_PROXY env vars
 #[derive(Clone)]
 pub struct DownloadClient {
     client: Client,
-    config: Config,
 }
 
 impl DownloadClient {
-    /// Create a new download client from configuration
-    pub fn new(config: Config) -> Result<Self> {
-        let mut client_builder = Client::builder()
-            .connect_timeout(config.connect_timeout())
-            .timeout(config.read_timeout())
+    /// Create a new download client
+    /// Proxy configuration is automatically read from HTTP_PROXY/HTTPS_PROXY env vars
+    pub fn new() -> Result<Self> {
+        let client = Client::builder()
+            .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS))
+            .timeout(Duration::from_secs(READ_TIMEOUT_SECS))
             .user_agent(format!("lemma/{}", env!("CARGO_PKG_VERSION")))
-            .redirect(reqwest::redirect::Policy::limited(10));
-
-        // Configure HTTP proxy
-        if let Some(ref proxy_url) = config.network.http_proxy {
-            let proxy = Proxy::http(proxy_url).context("Invalid HTTP proxy URL")?;
-
-            // Add proxy authentication if configured
-            let proxy = if let Some(ref auth) = config.network.proxy_auth {
-                Self::add_proxy_auth(proxy, auth)?
-            } else {
-                proxy
-            };
-
-            client_builder = client_builder.proxy(proxy);
-        }
-
-        // Configure HTTPS proxy
-        if let Some(ref proxy_url) = config.network.https_proxy {
-            let proxy = Proxy::https(proxy_url).context("Invalid HTTPS proxy URL")?;
-
-            let proxy = if let Some(ref auth) = config.network.proxy_auth {
-                Self::add_proxy_auth(proxy, auth)?
-            } else {
-                proxy
-            };
-
-            client_builder = client_builder.proxy(proxy);
-        }
-
-        // Configure SOCKS proxy
-        if let Some(ref proxy_url) = config.network.socks_proxy {
-            let proxy = Proxy::all(proxy_url).context("Invalid SOCKS proxy URL")?;
-
-            client_builder = client_builder.proxy(proxy);
-        }
-
-        // Configure NO_PROXY
-        if let Some(ref _no_proxy) = config.network.no_proxy {
-            client_builder = client_builder.no_proxy();
-            // Note: reqwest handles NO_PROXY env var automatically
-        }
-
-        // Danger zone: skip SSL verification (only for testing)
-        if config.network.insecure {
-            eprintln!("WARNING: SSL certificate verification is disabled!");
-            client_builder = client_builder.danger_accept_invalid_certs(true);
-        }
-
-        let client = client_builder
+            .redirect(reqwest::redirect::Policy::limited(10))
             .build()
             .context("Failed to create HTTP client")?;
 
-        Ok(Self { client, config })
-    }
-
-    /// Add proxy authentication to a Proxy
-    fn add_proxy_auth(proxy: Proxy, auth: &str) -> Result<Proxy> {
-        let parts: Vec<&str> = auth.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            anyhow::bail!("Proxy auth must be in format 'username:password'");
-        }
-        Ok(proxy.basic_auth(parts[0], parts[1]))
+        Ok(Self { client })
     }
 
     /// Download a file with retry logic and progress reporting
@@ -106,10 +52,10 @@ impl DownloadClient {
         let parsed_url = Url::parse(url).context("Invalid download URL")?;
 
         // Attempt download with retries
-        for attempt in 0..=self.config.network.max_retries {
+        for attempt in 0..=MAX_RETRIES {
             match self.try_download(&parsed_url, dest, attempt) {
                 Ok(()) => return Ok(()),
-                Err(e) if attempt < self.config.network.max_retries => {
+                Err(e) if attempt < MAX_RETRIES => {
                     let delay = self.calculate_backoff(attempt);
                     eprintln!(
                         "Download attempt {} failed: {}. Retrying in {:?}...",
@@ -122,7 +68,7 @@ impl DownloadClient {
                 Err(e) => {
                     return Err(e).context(format!(
                         "Failed to download after {} attempts",
-                        self.config.network.max_retries + 1
+                        MAX_RETRIES + 1
                     ));
                 }
             }
@@ -133,8 +79,8 @@ impl DownloadClient {
 
     /// Try to download with resume support
     fn try_download(&self, url: &Url, dest: &Path, _attempt: u32) -> Result<()> {
-        // Check if we can resume
-        let (resume_from, mut file) = if self.config.network.resume_downloads && dest.exists() {
+        // Check if we can resume (always enabled, like elan/rustup)
+        let (resume_from, mut file) = if dest.exists() {
             let file = OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -201,15 +147,6 @@ impl DownloadClient {
                         .context("Failed to write to file")?;
                     downloaded += n as u64;
                     progress.set_position(downloaded);
-
-                    // Apply bandwidth limit if configured
-                    if self.config.network.max_download_speed > 0 {
-                        let delay =
-                            (n as f64 / self.config.network.max_download_speed as f64) * 1000.0;
-                        if delay > 0.0 {
-                            thread::sleep(Duration::from_millis(delay as u64));
-                        }
-                    }
                 }
                 Err(e) => {
                     return Err(DownloadError::NetworkError {
@@ -229,19 +166,19 @@ impl DownloadClient {
 
     /// Calculate exponential backoff delay
     fn calculate_backoff(&self, attempt: u32) -> Duration {
-        let base_delay_secs = self.config.network.retry_delay;
+        const BASE_DELAY_SECS: u64 = 2;
         let exponential = 2_u64.pow(attempt);
-        Duration::from_secs(base_delay_secs * exponential)
+        Duration::from_secs(BASE_DELAY_SECS * exponential)
     }
 
     /// Download to memory (for small files like manifests)
     pub fn download_to_string(&self, url: &str) -> Result<String> {
         let parsed_url = Url::parse(url).context("Invalid URL")?;
 
-        for attempt in 0..=self.config.network.max_retries {
+        for attempt in 0..=MAX_RETRIES {
             match self.try_download_string(&parsed_url) {
                 Ok(content) => return Ok(content),
-                Err(e) if attempt < self.config.network.max_retries => {
+                Err(e) if attempt < MAX_RETRIES => {
                     let delay = self.calculate_backoff(attempt);
                     eprintln!(
                         "Request attempt {} failed: {}. Retrying in {:?}...",
@@ -292,15 +229,13 @@ mod tests {
 
     #[test]
     fn test_client_creation() {
-        let config = Config::default();
-        let client = DownloadClient::new(config);
+        let client = DownloadClient::new();
         assert!(client.is_ok());
     }
 
     #[test]
     fn test_backoff_calculation() {
-        let config = Config::default();
-        let client = DownloadClient::new(config).unwrap();
+        let client = DownloadClient::new().unwrap();
 
         assert_eq!(client.calculate_backoff(0), Duration::from_secs(2));
         assert_eq!(client.calculate_backoff(1), Duration::from_secs(4));

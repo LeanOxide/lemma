@@ -20,7 +20,6 @@ use crate::release::{Release, ReleaseServerClient};
 
 /// Toolchain installer
 pub struct Installer {
-    config: Config,
     download_client: DownloadClient,
     release_client: ReleaseServerClient,
 }
@@ -104,13 +103,11 @@ impl ToolchainDescriptor {
 
 impl Installer {
     /// Create a new installer
-    pub fn new(config: Config) -> Result<Self> {
-        let download_client = DownloadClient::new(config.clone())?;
-        let release_client =
-            ReleaseServerClient::new(download_client.clone(), config.sources.release_url.clone());
+    pub fn new() -> Result<Self> {
+        let download_client = DownloadClient::new()?;
+        let release_client = ReleaseServerClient::new(download_client.clone());
 
         Ok(Self {
-            config,
             download_client,
             release_client,
         })

@@ -20,9 +20,7 @@ pub fn execute(toolchain: Option<&str>) -> Result<()> {
 fn update_toolchain(name: &str) -> Result<()> {
     // Like rustup, `update <toolchain>` is the same as `toolchain install <toolchain>`
     // This will install if not present, or reinstall/update if already installed
-    let config = Config::load()?;
-    let installer = Installer::new(config)?;
-
+    let installer = Installer::new()?;
     installer.install(name, true)?;
 
     Ok(())
@@ -74,8 +72,7 @@ fn update_all_toolchains() -> Result<()> {
 
             // Update this toolchain
             println!("   Updating {}...", name.bold());
-            let config = Config::load()?;
-            let installer = Installer::new(config)?;
+            let installer = Installer::new()?;
 
             match installer.install(name, true) {
                 Ok(_) => {
