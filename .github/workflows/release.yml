@@ -143,21 +143,6 @@ jobs:
           multipart-concurrent: true
           keep-file-fresh: false
 
-      - name: Upload to Cloudflare R2 (latest)
-        uses: ryand56/r2-upload-action@latest
-        with:
-          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
-          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          r2-bucket: ${{ secrets.R2_BUCKET }}
-          source-dir: release-artifacts
-          destination-dir: releases/latest
-          output-file-url: false
-          multipart-size: 100
-          max-retries: 5
-          multipart-concurrent: true
-          keep-file-fresh: true
-
       - name: Upload version manifest to R2 root
         run: |
           # Upload stable.toml to releases/ root for version checking
