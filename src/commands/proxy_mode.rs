@@ -5,9 +5,11 @@
 
 use anyhow::{Context, Result};
 use std::env;
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
 use crate::config::Config;
 
@@ -56,17 +58,38 @@ pub fn execute(tool_name: &str) -> Result<()> {
     }
 
     // Prepend ~/.lemma/bin to PATH for recursive tool calls
+    // This ensures that when tools call each other (e.g., lake calling lean),
+    // they go through lemma's proxy and use the same toolchain.
     if let Ok(lemma_home) = Config::lemma_home() {
         let lemma_bin = lemma_home.join("bin");
-        if let Ok(current_path) = env::var("PATH") {
-            let new_path = format!("{}:{}", lemma_bin.display(), current_path);
-            cmd.env("PATH", new_path);
+        if let Some(current_path) = env::var_os("PATH") {
+            let mut paths = vec![lemma_bin];
+            paths.extend(env::split_paths(&current_path));
+
+            if let Ok(new_path) = env::join_paths(paths) {
+                cmd.env("PATH", new_path);
+            }
         }
     }
 
-    // Use Unix exec to replace current process with the tool
-    // This will not return if successful
-    Err(cmd.exec().into())
+    // On Unix: Use exec to replace current process with the tool
+    // On Windows: Spawn and wait, then exit with the same code
+    #[cfg(unix)]
+    {
+        // This will not return if successful
+        Err(cmd.exec().into())
+    }
+
+    #[cfg(not(unix))]
+    {
+        let mut child = cmd.spawn().context("Failed to execute tool")?;
+
+        let status = child
+            .wait()
+            .context("Failed to wait for tool to complete")?;
+
+        std::process::exit(status.code().unwrap_or(1));
+    }
 }
 
 /// Resolve which toolchain to use based on priority:
