@@ -16,6 +16,8 @@ pub struct ReleaseIndex {
     #[serde(default)]
     pub stable: Vec<Release>,
     #[serde(default)]
+    pub beta: Vec<Release>,
+    #[serde(default)]
     pub nightly: Vec<Release>,
 }
 
