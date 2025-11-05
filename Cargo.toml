@@ -8,7 +8,13 @@ description = "A modern Lean4 toolchain manager with proper proxy and custom sou
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
-reqwest = { version = "0.12", features = ["blocking", "json", "stream", "socks"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "stream",
+    "socks",
+    "rustls-tls",
+] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
