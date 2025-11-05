@@ -50,17 +50,6 @@ pub enum Commands {
         toolchain: Option<String>,
     },
 
-    /// Show lemma configuration
-    Config {
-        /// Show configuration file path
-        #[arg(long)]
-        path: bool,
-
-        /// Edit configuration file
-        #[arg(short, long)]
-        edit: bool,
-    },
-
     /// Show information about lemma
     Info,
 

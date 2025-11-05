@@ -45,16 +45,9 @@ fn default_version() -> String {
 }
 
 impl Config {
-    /// Load configuration from file, with environment variable overrides
+    /// Load configuration from file
     pub fn load() -> Result<Self> {
         let settings_path = Self::settings_path()?;
-
-        // Migration: check for old config.toml and rename it
-        let old_config_path = Self::lemma_home()?.join("config.toml");
-        if old_config_path.exists() && !settings_path.exists() {
-            fs::rename(&old_config_path, &settings_path)
-                .context("Failed to migrate config.toml to settings.toml")?;
-        }
 
         let config = if settings_path.exists() {
             let content =
@@ -87,12 +80,6 @@ impl Config {
     pub fn settings_path() -> Result<PathBuf> {
         let home = Self::lemma_home()?;
         Ok(home.join("settings.toml"))
-    }
-
-    /// Get the path to the config file (deprecated, use settings_path)
-    #[deprecated(note = "Use settings_path() instead")]
-    pub fn config_path() -> Result<PathBuf> {
-        Self::settings_path()
     }
 
     /// Get the Lemma home directory

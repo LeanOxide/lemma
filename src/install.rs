@@ -5,7 +5,7 @@
 //! - Downloads to temporary location
 //! - Verifies SHA-256 checksum (if available)
 //! - Extracts to temporary directory
-//! - Atomically moves to final location (like elan)
+//! - Atomically moves to final location
 //! - Cleanup on failure
 
 use anyhow::{Context, Result};
@@ -168,7 +168,6 @@ impl Installer {
             fs::create_dir_all(parent).context("Failed to create toolchains directory")?;
         }
 
-        // Use dedicated tmp directory (like elan/rustup)
         let tmp_dir = Config::tmp_dir()?;
         fs::create_dir_all(&tmp_dir).context("Failed to create tmp directory")?;
 

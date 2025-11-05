@@ -35,7 +35,7 @@ pub struct Asset {
     pub browser_download_url: String,
 }
 
-/// Default Lean release server URL (hardcoded like elan/rustup)
+/// Default Lean release server URL
 const LEAN_RELEASE_URL: &str = "https://release.lean-lang.org";
 
 /// Client for fetching from release.lean-lang.org

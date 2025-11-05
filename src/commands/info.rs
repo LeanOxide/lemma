@@ -13,9 +13,9 @@ pub fn execute() -> Result<()> {
     let lemma_home = Config::lemma_home()?;
     println!("  {}", lemma_home.display());
     println!();
-    println!("{}", "Configuration File:".bold());
-    let config_path = Config::config_path()?;
-    println!("  {}", config_path.display());
+    println!("{}", "Settings File:".bold());
+    let settings_path = Config::settings_path()?;
+    println!("  {}", settings_path.display());
 
     Ok(())
 }

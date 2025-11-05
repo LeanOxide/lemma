@@ -3,7 +3,6 @@
 //! This module contains all command implementations, organized into
 //! separate files for better maintainability.
 
-pub mod config;
 pub mod default;
 pub mod info;
 pub mod install;
@@ -45,8 +44,6 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Which { binary } => which::execute(&binary),
 
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
-
-        Commands::Config { path, edit } => config::execute(path, edit),
 
         Commands::Info => info::execute(),
 

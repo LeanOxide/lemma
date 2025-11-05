@@ -3,7 +3,7 @@
 //! This module provides efficient archive extraction:
 //! - Streaming decompression (no intermediate files)
 //! - Support for .tar.gz and .tar.zst formats
-//! - Strips first directory component (like elan)
+//! - Strips first directory component
 //! - Progress tracking
 //! - Permission preservation on Unix
 

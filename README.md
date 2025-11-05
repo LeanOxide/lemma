@@ -231,7 +231,6 @@ Lemma is built with a modern, modular architecture:
 - Self-update functionality
 
 ### 📋 Planned
-- Toolchain binary proxying (like elan's symlink system)
 - Telemetry (opt-in)
 - Migration tool from elan
 - Comprehensive test suite

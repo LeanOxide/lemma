@@ -1,6 +1,5 @@
 //! Download client with retry logic and progress reporting
 //!
-//! Like elan and rustup, this module:
 //! - Uses environment variables for proxy (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)
 //! - Automatic retry with exponential backoff
 //! - Download resumption for partial downloads
@@ -19,21 +18,17 @@ use url::Url;
 
 use crate::errors::DownloadError;
 
-/// Network timeouts and retry settings (hardcoded like elan/rustup)
+/// Network timeouts and retry settings
 const CONNECT_TIMEOUT_SECS: u64 = 30;
 const READ_TIMEOUT_SECS: u64 = 30;
 const MAX_RETRIES: u32 = 3;
 
-/// Download client with retry logic
-/// Proxy configuration is handled automatically via HTTP_PROXY/HTTPS_PROXY env vars
 #[derive(Clone)]
 pub struct DownloadClient {
     client: Client,
 }
 
 impl DownloadClient {
-    /// Create a new download client
-    /// Proxy configuration is automatically read from HTTP_PROXY/HTTPS_PROXY env vars
     pub fn new() -> Result<Self> {
         let client = Client::builder()
             .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS))
