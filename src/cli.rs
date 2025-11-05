@@ -1,6 +1,7 @@
 //! Command-line interface for Lemma
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(name = "lemma")]
@@ -48,6 +49,12 @@ pub enum Commands {
     Update {
         /// Specific toolchain to update (updates all if not specified)
         toolchain: Option<String>,
+    },
+
+    /// Generate tab-completion scripts for your shell
+    Completions {
+        /// Shell type
+        shell: Shell,
     },
 
     /// Show information about lemma
