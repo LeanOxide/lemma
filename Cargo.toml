@@ -3,8 +3,9 @@ name = "lemma-rs"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-authors = ["Lemma Contributors"]
-description = "A modern Lean4 toolchain manager with proper proxy and custom source support"
+authors = ["PuQing <me@puqing.work>"]
+repository = "https://github.com/AndPuQing/lemma.git"
+description = "A modern Lean4 toolchain manager"
 
 [[bin]]
 name = "lemma"
