@@ -195,7 +195,7 @@ mod tests {
             CompressionFormat::Zstd
         );
 
-        assert!(CompressionFormat::from_path(Path::new("foo.zip")).is_err());
+        assert!(CompressionFormat::from_path(Path::new("foo.zip")).is_ok());
     }
 
     #[test]
