@@ -1,9 +1,13 @@
 [package]
-name = "lemma"
+name = "lemma-rs"
 version = "0.1.0"
 edition = "2021"
 authors = ["Lemma Contributors"]
 description = "A modern Lean4 toolchain manager with proper proxy and custom source support"
+
+[[bin]]
+name = "lemma"
+path = "src/main.rs"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
