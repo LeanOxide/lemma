@@ -113,10 +113,11 @@ fn extract_toml_string_value(line: &str) -> Option<String> {
     // Get the value part and trim whitespace
     let value = parts[1].trim();
 
-    // Remove surrounding quotes
-    if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
-        Some(value[1..value.len() - 1].to_string())
-    } else if value.starts_with('\'') && value.ends_with('\'') && value.len() >= 2 {
+    // Remove surrounding quotes (both double and single quotes)
+    if (value.starts_with('"') && value.ends_with('"')
+        || value.starts_with('\'') && value.ends_with('\''))
+        && value.len() >= 2
+    {
         Some(value[1..value.len() - 1].to_string())
     } else {
         None

@@ -15,8 +15,6 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 use zstd::stream::read::Decoder as ZstdDecoder;
 
-use crate::errors::ArchiveError;
-
 /// Supported compression formats
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionFormat {
@@ -36,10 +34,10 @@ impl CompressionFormat {
         } else if path_str.ends_with(".tar.zst") || path_str.ends_with(".tar.zstd") {
             Ok(Self::Zstd)
         } else {
-            Err(ArchiveError::UnsupportedFormat {
-                path: path.to_path_buf(),
-            }
-            .into())
+            anyhow::bail!(
+                "Unsupported archive format: {}\n\nSupported formats:\n- .tar.gz (gzip compressed tar)\n- .tar.zst (zstd compressed tar)",
+                path.display()
+            )
         }
     }
 }
@@ -127,48 +125,6 @@ fn strip_first_component(path: &Path) -> Result<PathBuf> {
 
     // Collect remaining components
     Ok(components.as_path().to_path_buf())
-}
-
-/// Calculate SHA-256 hash of a file
-pub fn calculate_sha256(path: &Path) -> Result<String> {
-    use sha2::{Digest, Sha256};
-
-    let mut file = File::open(path)
-        .with_context(|| format!("Failed to open file for hashing: {}", path.display()))?;
-
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0u8; 8192];
-
-    loop {
-        let n = file
-            .read(&mut buffer)
-            .context("Failed to read file for hashing")?;
-
-        if n == 0 {
-            break;
-        }
-
-        hasher.update(&buffer[..n]);
-    }
-
-    let result = hasher.finalize();
-    Ok(format!("{:x}", result))
-}
-
-/// Verify SHA-256 hash of a file
-pub fn verify_sha256(path: &Path, expected_hash: &str) -> Result<()> {
-    let actual_hash = calculate_sha256(path)?;
-
-    if actual_hash.to_lowercase() != expected_hash.to_lowercase() {
-        return Err(ArchiveError::ChecksumMismatch {
-            expected: expected_hash.to_string(),
-            actual: actual_hash,
-            path: path.to_path_buf(),
-        }
-        .into());
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

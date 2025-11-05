@@ -45,7 +45,7 @@ pub fn execute() -> Result<()> {
 
         // Show toolchain path if it exists
         let toolchains_dir = Config::toolchains_dir()?;
-        let toolchain_path = toolchains_dir.join(&toolchain);
+        let toolchain_path = toolchains_dir.join(toolchain);
         if toolchain_path.exists() {
             println!("  Path: {}", toolchain_path.display());
 
@@ -99,7 +99,7 @@ pub fn execute() -> Result<()> {
                     if is_active {
                         println!("  {} {}", "•".cyan(), name);
                     } else {
-                        println!("  {} {}", " ", name);
+                        println!("    {}", name);
                     }
                 }
             }
@@ -199,9 +199,11 @@ fn extract_toml_string_value(line: &str) -> Option<String> {
 
     let value = parts[1].trim();
 
-    if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
-        Some(value[1..value.len() - 1].to_string())
-    } else if value.starts_with('\'') && value.ends_with('\'') && value.len() >= 2 {
+    // Remove surrounding quotes (both double and single quotes)
+    if (value.starts_with('"') && value.ends_with('"')
+        || value.starts_with('\'') && value.ends_with('\''))
+        && value.len() >= 2
+    {
         Some(value[1..value.len() - 1].to_string())
     } else {
         None

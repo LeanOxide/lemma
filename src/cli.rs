@@ -1,6 +1,6 @@
 //! Command-line interface for Lemma
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 
 #[derive(Parser)]

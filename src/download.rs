@@ -16,8 +16,6 @@ use std::thread;
 use std::time::Duration;
 use url::Url;
 
-use crate::errors::DownloadError;
-
 /// Network timeouts and retry settings
 const CONNECT_TIMEOUT_SECS: u64 = 30;
 const READ_TIMEOUT_SECS: u64 = 30;
@@ -109,12 +107,13 @@ impl DownloadClient {
         // Check status
         let status = response.status();
         if !status.is_success() && status != StatusCode::PARTIAL_CONTENT {
-            return Err(DownloadError::HttpError {
-                status: status.as_u16(),
-                url: url.to_string(),
-                message: response.text().unwrap_or_default(),
-            }
-            .into());
+            let message = response.text().unwrap_or_default();
+            anyhow::bail!(
+                "HTTP error {} while downloading {}: {}",
+                status.as_u16(),
+                url,
+                message
+            );
         }
 
         // Get total size for progress bar
@@ -143,11 +142,7 @@ impl DownloadClient {
                     progress.set_position(downloaded);
                 }
                 Err(e) => {
-                    return Err(DownloadError::NetworkError {
-                        url: url.to_string(),
-                        error: e.to_string(),
-                    }
-                    .into());
+                    anyhow::bail!("Network error while downloading {}: {}", url, e);
                 }
             }
         }
@@ -199,12 +194,13 @@ impl DownloadClient {
 
         let status = response.status();
         if !status.is_success() {
-            return Err(DownloadError::HttpError {
-                status: status.as_u16(),
-                url: url.to_string(),
-                message: response.text().unwrap_or_default(),
-            }
-            .into());
+            let message = response.text().unwrap_or_default();
+            anyhow::bail!(
+                "HTTP error {} while fetching {}: {}",
+                status.as_u16(),
+                url,
+                message
+            );
         }
 
         response.text().context("Failed to read response body")

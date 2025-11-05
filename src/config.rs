@@ -7,7 +7,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,7 +130,7 @@ impl Config {
     }
 
     /// Remove a directory override
-    pub fn remove_override(&mut self, path: &PathBuf) -> Result<bool> {
+    pub fn remove_override(&mut self, path: &Path) -> Result<bool> {
         let canonical_path = path.canonicalize().context("Failed to canonicalize path")?;
         Ok(self
             .overrides
@@ -139,8 +139,8 @@ impl Config {
     }
 
     /// Find override for a directory by walking up the tree
-    pub fn find_override(&self, start_path: &PathBuf) -> Option<(String, String)> {
-        let mut current = start_path.as_path();
+    pub fn find_override(&self, start_path: &Path) -> Option<(String, String)> {
+        let mut current = start_path;
 
         loop {
             if let Ok(canonical) = current.canonicalize() {
@@ -169,19 +169,6 @@ impl Config {
         fs::write(&hash_file, version_hash).context("Failed to write update hash")?;
 
         Ok(())
-    }
-
-    /// Get the update hash for a toolchain
-    pub fn get_update_hash(toolchain_name: &str) -> Result<Option<String>> {
-        let update_hashes_dir = Self::update_hashes_dir()?;
-        let hash_file = update_hashes_dir.join(toolchain_name);
-
-        if hash_file.exists() {
-            let content = fs::read_to_string(&hash_file).context("Failed to read update hash")?;
-            Ok(Some(content.trim().to_string()))
-        } else {
-            Ok(None)
-        }
     }
 
     /// Ensure lemma is properly set up (directories, proxy binaries, etc.)
@@ -230,7 +217,7 @@ impl Config {
     }
 
     /// Ensure proxy binaries are installed
-    fn ensure_proxy_binaries(bin_dir: &PathBuf) -> Result<()> {
+    fn ensure_proxy_binaries(bin_dir: &Path) -> Result<()> {
         // List of tools to proxy
         const PROXY_TOOLS: &[&str] = &[
             "lean",
@@ -286,7 +273,7 @@ mod tests {
         assert_eq!(config.version, "1");
         assert_eq!(config.default_toolchain, None);
         assert_eq!(config.overrides.len(), 0);
-        assert_eq!(config.path_setup_shown, false);
+        assert!(!config.path_setup_shown);
         assert_eq!(config.release_url, "https://release.lean-lang.org");
     }
 

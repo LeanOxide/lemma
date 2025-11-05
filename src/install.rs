@@ -81,7 +81,7 @@ impl ToolchainDescriptor {
     ///   https://example.com/path/to/custom.tar.gz -> custom
     fn extract_name_from_url(url: &str) -> String {
         // Get the last path segment
-        let path = url.split('/').last().unwrap_or("direct-download");
+        let path = url.split('/').next_back().unwrap_or("direct-download");
 
         // Remove common archive extensions
         path.trim_end_matches(".tar.zst")
@@ -143,7 +143,7 @@ impl Installer {
                 println!("   URL: {}", url);
 
                 // Extract filename from URL for asset name
-                let filename = url.split('/').last().unwrap_or("archive.tar.zst");
+                let filename = url.split('/').next_back().unwrap_or("archive.tar.zst");
                 (filename.to_string(), url.clone())
             }
             ToolchainDescriptor::OfficialRelease { .. } => {
