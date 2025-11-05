@@ -59,7 +59,7 @@ fn set_override(toolchain: &str, path: Option<String>) -> Result<()> {
         "✓".green().bold(),
         canonical_path.display()
     );
-    println!("   Toolchain: {}", toolchain.bright_white());
+    println!("   Toolchain: {}", toolchain);
 
     Ok(())
 }
@@ -124,7 +124,7 @@ fn list_overrides() -> Result<()> {
 
     for (path, toolchain) in overrides {
         println!("  {} {}", "→".cyan(), path);
-        println!("    Toolchain: {}", toolchain.bright_white());
+        println!("    Toolchain: {}", toolchain);
         println!();
     }
 

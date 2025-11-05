@@ -172,7 +172,7 @@ impl Installer {
         let (asset_name, asset_url) = match &descriptor {
             ToolchainDescriptor::DirectUrl { url, .. } => {
                 println!("{} Downloading from URL...", "=>".cyan().bold());
-                println!("   URL: {}", url.bright_white());
+                println!("   URL: {}", url);
 
                 // Extract filename from URL for asset name
                 let filename = url.split('/').last().unwrap_or("archive.tar.zst");
@@ -183,7 +183,7 @@ impl Installer {
                 println!("{} Fetching release information...", "=>".cyan().bold());
                 let release = self.fetch_release(&descriptor)?;
 
-                println!("   Found release: {}", release.name.bright_white());
+                println!("   Found release: {}", release.name);
 
                 // Find the right asset for our platform
                 if descriptor.is_official_lean() {
@@ -203,7 +203,7 @@ impl Installer {
             }
         };
 
-        println!("   Asset: {}", asset_name.bright_white());
+        println!("   Asset: {}", asset_name);
 
         // Ensure parent directory exists first
         if let Some(parent) = install_path.parent() {
@@ -263,7 +263,7 @@ impl Installer {
         println!(
             "{} Successfully installed {} to {}",
             "✓".green().bold(),
-            descriptor.name().bright_white(),
+            descriptor.name(),
             install_path.display()
         );
 

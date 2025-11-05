@@ -70,7 +70,7 @@ pub fn execute(name: &str, path: &str) -> Result<()> {
     println!(
         "{} Successfully linked toolchain '{}' to {}",
         "✓".green().bold(),
-        name.bright_white(),
+        name,
         path
     );
 

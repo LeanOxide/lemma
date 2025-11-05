@@ -30,7 +30,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
         println!(
             "{} Warning: '{}' is currently the default toolchain",
             "⚠".yellow().bold(),
-            toolchain.bright_white()
+            toolchain
         );
     }
 
@@ -71,7 +71,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
         println!(
             "{} Removed linked toolchain '{}'",
             "✓".green().bold(),
-            toolchain.bright_white()
+            toolchain
         );
         println!("   (The original directory was not deleted)");
     } else {
@@ -86,7 +86,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
         println!(
             "{} Successfully uninstalled toolchain '{}'",
             "✓".green().bold(),
-            toolchain.bright_white()
+            toolchain
         );
     }
 

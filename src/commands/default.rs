@@ -27,7 +27,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
             println!(
                 "{} '{}' is already the default toolchain",
                 "=>".cyan().bold(),
-                toolchain.bright_white()
+                toolchain
             );
             return Ok(());
         }
@@ -46,13 +46,13 @@ pub fn execute(toolchain: &str) -> Result<()> {
             "{} Default toolchain changed from '{}' to '{}'",
             "✓".green().bold(),
             old.dimmed(),
-            toolchain.bright_white()
+            toolchain
         );
     } else {
         println!(
             "{} Default toolchain set to '{}'",
             "✓".green().bold(),
-            toolchain.bright_white()
+            toolchain
         );
     }
 

@@ -67,7 +67,7 @@ pub fn execute(verbose: bool) -> Result<()> {
             let size = calculate_dir_size(&path)?;
             let modified = metadata.modified()?;
 
-            println!("  {} {}", "•".cyan(), name.bright_white().bold());
+            println!("  {} {}", "•".cyan(), name.bold());
             println!("    Path: {}", path.display().to_string().dimmed());
             println!("    Size: {}", format_size(size).dimmed());
 
@@ -83,7 +83,7 @@ pub fn execute(verbose: bool) -> Result<()> {
             println!();
         } else {
             // Simple list
-            println!("  {} {}", "•".cyan(), name.bright_white());
+            println!("  {} {}", "•".cyan(), name);
         }
     }
 

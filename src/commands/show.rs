@@ -39,7 +39,7 @@ pub fn execute() -> Result<()> {
         println!("{}", "Active toolchain".green().bold());
         println!("----------------");
         println!();
-        println!("  {}", toolchain.bright_white());
+        println!("  {}", toolchain);
         println!("  ({})", src.to_string().dimmed());
         println!();
 
@@ -68,7 +68,7 @@ pub fn execute() -> Result<()> {
     if let Some(ref default) = config.default_toolchain {
         println!("{}", "Default toolchain".green().bold());
         println!("-----------------");
-        println!("  {}", default.bright_white());
+        println!("  {}", default);
         println!();
     }
 
@@ -97,7 +97,7 @@ pub fn execute() -> Result<()> {
                         .unwrap_or(false);
 
                     if is_active {
-                        println!("  {} {}", "•".cyan(), name.bright_white());
+                        println!("  {} {}", "•".cyan(), name);
                     } else {
                         println!("  {} {}", " ", name);
                     }
