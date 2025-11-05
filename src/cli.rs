@@ -3,10 +3,13 @@
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 
+use crate::help;
+
 #[derive(Parser)]
 #[command(name = "lemma")]
 #[command(about = "A modern Lean4 toolchain manager", long_about = None)]
 #[command(version)]
+#[command(after_long_help = help::LEMMA_HELP)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -19,56 +22,66 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Manage toolchains
+    #[command(after_long_help = help::TOOLCHAIN_HELP)]
     Toolchain {
         #[command(subcommand)]
         command: ToolchainCommands,
     },
 
     /// Modify directory toolchain overrides
+    #[command(after_long_help = help::OVERRIDE_HELP)]
     Override {
         #[command(subcommand)]
         command: OverrideCommands,
     },
 
     /// Set the default toolchain
+    #[command(after_long_help = help::DEFAULT_HELP)]
     Default {
         /// Toolchain to set as default
         toolchain: String,
     },
 
     /// Show the active toolchain and installed toolchains
+    #[command(after_long_help = help::SHOW_HELP)]
     Show,
 
     /// Display the path to a binary in the active toolchain
+    #[command(after_long_help = help::WHICH_HELP)]
     Which {
         /// Name of the binary (e.g., lean, lake, leanc)
         binary: String,
     },
 
     /// Update installed toolchains
+    #[command(after_long_help = help::UPDATE_HELP)]
     Update {
         /// Specific toolchain to update (updates all if not specified)
         toolchain: Option<String>,
     },
 
     /// Generate tab-completion scripts for your shell
+    #[command(after_long_help = help::COMPLETIONS_HELP)]
     Completions {
         /// Shell type
         shell: Shell,
     },
 
     /// Show information about lemma
+    #[command(after_long_help = help::INFO_HELP)]
     Info,
 
     /// Self-update lemma
+    #[command(after_long_help = help::SELF_UPDATE_HELP)]
     SelfUpdate,
 }
 
 #[derive(Subcommand)]
 pub enum ToolchainCommands {
     /// Install a toolchain
+    #[command(after_long_help = help::TOOLCHAIN_INSTALL_HELP)]
     Install {
-        /// Toolchain to install (e.g., stable, v4.24.0, owner/repo:tag, https://...)
+        /// Toolchain to install (e.g., stable, v4.24.0, https://...)
         toolchain: String,
 
         /// Force reinstall if already installed
@@ -77,12 +90,14 @@ pub enum ToolchainCommands {
     },
 
     /// Uninstall a toolchain
+    #[command(after_long_help = help::TOOLCHAIN_UNINSTALL_HELP)]
     Uninstall {
         /// Toolchain to uninstall
         toolchain: String,
     },
 
     /// List installed toolchains
+    #[command(after_long_help = help::TOOLCHAIN_LIST_HELP)]
     List {
         /// Show verbose information
         #[arg(short, long)]
@@ -90,6 +105,7 @@ pub enum ToolchainCommands {
     },
 
     /// Link a custom toolchain
+    #[command(after_long_help = help::TOOLCHAIN_LINK_HELP)]
     Link {
         /// Name for the toolchain
         name: String,
@@ -102,6 +118,7 @@ pub enum ToolchainCommands {
 #[derive(Subcommand)]
 pub enum OverrideCommands {
     /// Set directory override for a toolchain
+    #[command(after_long_help = help::OVERRIDE_SET_HELP)]
     Set {
         /// Toolchain to use in this directory
         toolchain: String,
@@ -112,6 +129,7 @@ pub enum OverrideCommands {
     },
 
     /// Remove directory override
+    #[command(after_long_help = help::OVERRIDE_UNSET_HELP)]
     Unset {
         /// Directory to remove override from (defaults to current directory)
         #[arg(long)]
@@ -119,5 +137,6 @@ pub enum OverrideCommands {
     },
 
     /// List all directory overrides
+    #[command(after_long_help = help::OVERRIDE_LIST_HELP)]
     List,
 }

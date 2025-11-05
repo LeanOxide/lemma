@@ -3,6 +3,7 @@ mod cli;
 mod commands;
 mod config;
 mod download;
+mod help;
 mod install;
 mod release;
 
