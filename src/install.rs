@@ -3,7 +3,6 @@
 //! This module implements atomic toolchain installation inspired by both
 //! rustup and elan:
 //! - Downloads to temporary location
-//! - Verifies SHA-256 checksum (if available)
 //! - Extracts to temporary directory
 //! - Atomically moves to final location
 //! - Cleanup on failure

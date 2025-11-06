@@ -97,25 +97,43 @@ fn update_all_toolchains() -> Result<()> {
 
 /// Check if a toolchain name is a specific version (not a channel)
 fn is_specific_version(name: &str) -> bool {
-    // If it starts with 'v' and has dots, it's likely a version
-    // Examples: v4.24.0, v4.15.0-rc1
-    if name.starts_with('v') && name.contains('.') {
-        return true;
-    }
+    // Use toolchain descriptor parsing for accurate detection
+    if let Ok(descriptor) = crate::install::ToolchainDescriptor::parse(name) {
+        match descriptor {
+            crate::install::ToolchainDescriptor::OfficialRelease {
+                name: desc_name, ..
+            } => {
+                // Only stable, beta, and nightly channels should auto-update
+                // Return true if it's NOT a channel (i.e., should skip updates)
+                !matches!(desc_name.as_str(), "stable" | "beta" | "nightly")
+            }
+            crate::install::ToolchainDescriptor::DirectUrl { .. } => {
+                // Direct URLs should not auto-update
+                true
+            }
+        }
+    } else {
+        // Fallback to heuristic detection for edge cases
+        // If it starts with 'v' and has dots, it's likely a version
+        // Examples: v4.24.0, v4.15.0-rc1
+        if name.starts_with('v') && name.contains('.') {
+            return true;
+        }
 
-    // Check for version pattern like "X.Y.Z" in the name
-    // Examples: lean-4.24.0-linux, custom-1.2.3
-    if contains_version_pattern(name) {
-        return true;
-    }
+        // Check for version pattern like "X.Y.Z" in the name
+        // Examples: lean-4.24.0-linux, custom-1.2.3
+        if contains_version_pattern(name) {
+            return true;
+        }
 
-    // If it contains a full URL, it's from DirectUrl
-    if name.contains("http") {
-        return true;
-    }
+        // If it contains a full URL, it's from DirectUrl
+        if name.contains("http") {
+            return true;
+        }
 
-    // Channels that should update: stable, latest, nightly (if supported)
-    false
+        // If parsing failed and doesn't look like a channel, treat as specific version
+        !matches!(name, "stable" | "beta" | "nightly" | "latest")
+    }
 }
 
 /// Check if a name contains a semantic version pattern (X.Y.Z)
@@ -140,4 +158,44 @@ fn contains_version_pattern(name: &str) -> bool {
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_specific_version_channels() {
+        // Channels should NOT be treated as specific versions (they should update)
+        assert!(!is_specific_version("stable"));
+        assert!(!is_specific_version("beta"));
+        assert!(!is_specific_version("nightly"));
+        assert!(!is_specific_version("latest"));
+    }
+
+    #[test]
+    fn test_is_specific_version_versions() {
+        // Version tags should be treated as specific versions (they should NOT update)
+        assert!(is_specific_version("v4.24.0"));
+        assert!(is_specific_version("v4.15.0-rc1"));
+        assert!(is_specific_version("lean-4.24.0-linux"));
+        assert!(is_specific_version("custom-1.2.3"));
+    }
+
+    #[test]
+    fn test_is_specific_version_urls() {
+        // URLs should be treated as specific versions (they should NOT update)
+        assert!(is_specific_version(
+            "https://example.com/lean-4.24.0-linux.tar.zst"
+        ));
+        assert!(is_specific_version("http://mirror.org/custom.tar.gz"));
+    }
+
+    #[test]
+    fn test_is_specific_version_edge_cases() {
+        // Edge cases should be handled correctly
+        assert!(is_specific_version("some-v4.24.0-package"));
+        // Unknown channel names should be treated as specific versions (conservative approach)
+        assert!(is_specific_version("unknown-channel-name"));
+    }
 }
