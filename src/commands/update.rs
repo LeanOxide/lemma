@@ -111,10 +111,49 @@ fn update_all_toolchains() -> Result<()> {
                 continue;
             }
 
-            // Update this toolchain
-            println!("   Updating {}...", name.bold());
+            // Check if update is needed
+            println!("   Checking {}...", name.bold());
             let installer = Installer::new()?;
 
+            // Parse the toolchain descriptor
+            let descriptor = match ToolchainDesc::parse(name) {
+                Ok(d) => d,
+                Err(e) => {
+                    println!("   {} Failed to parse {}: {}", "✗".red(), name, e);
+                    continue;
+                }
+            };
+
+            // Fetch the latest release information
+            let release = match installer.fetch_release(&descriptor) {
+                Ok(r) => r,
+                Err(e) => {
+                    println!(
+                        "   {} Failed to fetch release for {}: {}",
+                        "✗".red(),
+                        name,
+                        e
+                    );
+                    continue;
+                }
+            };
+
+            // Load the current installed version hash
+            let current_hash = Config::load_update_hash(name)?;
+
+            // Compare versions
+            if let Some(current) = current_hash {
+                if current == release.name {
+                    println!("   {} Already up to date ({})", "✓".green(), release.name);
+                    skipped_count += 1;
+                    continue;
+                }
+                println!("   Current: {} → Latest: {}", current, release.name);
+            } else {
+                println!("   Latest: {}", release.name);
+            }
+
+            // Perform the update
             match installer.install(name, true) {
                 Ok(_) => {
                     updated_count += 1;

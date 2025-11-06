@@ -62,18 +62,18 @@ pub fn execute(verbose: bool) -> Result<()> {
             // Show detailed information
             let size = calculate_dir_size(&path)?;
 
-            println!("  {} {}", "•".cyan(), name.bold());
-            println!("    Path: {}", path.display().to_string().dimmed());
-            println!("    Size: {}", format_size(size).dimmed());
+            println!("{} {}", "•".cyan(), name.bold());
+            println!("  Path: {}", path.display().to_string().dimmed());
+            println!("  Size: {}", format_size(size).dimmed());
 
             // Try to find lean binary and get version
             if let Ok(version) = get_lean_version(&path) {
-                println!("    Version: {}", version.dimmed());
+                println!("  Version: {}", version.dimmed());
             }
             println!();
         } else {
             // Simple list
-            println!("  {} {}", "•".cyan(), name);
+            println!("{} {}", "•".cyan(), name);
         }
     }
 
