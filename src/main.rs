@@ -6,6 +6,7 @@ mod download;
 mod help;
 mod install;
 mod release;
+mod toolchain;
 
 use anyhow::Result;
 use clap::Parser;

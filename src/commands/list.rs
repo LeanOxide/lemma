@@ -5,8 +5,15 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
+use crate::toolchain;
 
 pub fn execute(verbose: bool) -> Result<()> {
+    // Load config to get default toolchain
+    let config = Config::load().unwrap_or_default();
+
+    // Get active toolchain (from environment, override, project file, or default)
+    let active_toolchain = toolchain::resolve_toolchain(None)?;
+
     let toolchains_dir = Config::toolchains_dir()?;
 
     // Check if toolchains directory exists
@@ -58,11 +65,23 @@ pub fn execute(verbose: bool) -> Result<()> {
     }
 
     for (name, path) in toolchains {
+        // Check if this toolchain is active and/or default
+        let is_active = active_toolchain.as_ref() == Some(&name);
+        let is_default = config.default_toolchain.as_ref() == Some(&name);
+
+        // Build status string
+        let status = match (is_active, is_default) {
+            (true, true) => " (active, default)".green(),
+            (true, false) => " (active)".green(),
+            (false, true) => " (default)".dimmed(),
+            (false, false) => "".normal(),
+        };
+
         if verbose {
             // Show detailed information
             let size = calculate_dir_size(&path)?;
 
-            println!("{} {}", "•".cyan(), name.bold());
+            println!("{} {}{}", "•".cyan(), name.bold(), status);
             println!("  Path: {}", path.display().to_string().dimmed());
             println!("  Size: {}", format_size(size).dimmed());
 
@@ -73,7 +92,7 @@ pub fn execute(verbose: bool) -> Result<()> {
             println!();
         } else {
             // Simple list
-            println!("{} {}", "•".cyan(), name);
+            println!("{} {}{}", "•".cyan(), name, status);
         }
     }
 

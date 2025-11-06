@@ -2,37 +2,17 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
-use std::env;
 use std::fs;
 use std::path::Path;
 
 use crate::config::Config;
-
-/// Source of the active toolchain
-#[derive(Debug)]
-enum ToolchainSource {
-    Environment,
-    Override(String),
-    ProjectFile(String),
-    Default,
-}
-
-impl std::fmt::Display for ToolchainSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Environment => write!(f, "environment variable LEMMA_TOOLCHAIN"),
-            Self::Override(path) => write!(f, "directory override at {}", path),
-            Self::ProjectFile(path) => write!(f, "project file at {}", path),
-            Self::Default => write!(f, "default setting"),
-        }
-    }
-}
+use crate::toolchain;
 
 pub fn execute() -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
 
     // Determine the active toolchain
-    let active_toolchain = resolve_active_toolchain()?;
+    let active_toolchain = toolchain::resolve_toolchain_with_source(None)?;
 
     // Display active toolchain
     if let Some((toolchain, src)) = &active_toolchain {
@@ -111,103 +91,6 @@ pub fn execute() -> Result<()> {
     println!();
 
     Ok(())
-}
-
-/// Resolve the active toolchain based on priority
-fn resolve_active_toolchain() -> Result<Option<(String, ToolchainSource)>> {
-    // 1. Environment variable override
-    if let Ok(toolchain) = env::var("LEMMA_TOOLCHAIN") {
-        return Ok(Some((toolchain, ToolchainSource::Environment)));
-    }
-
-    // Load config once for both override and default checks
-    let config = Config::load().context("Failed to load configuration")?;
-
-    // 2. Directory override (walks up from current directory)
-    if let Ok(current_dir) = env::current_dir() {
-        if let Some((path, toolchain)) = config.find_override(&current_dir) {
-            return Ok(Some((toolchain, ToolchainSource::Override(path))));
-        }
-    }
-
-    // 3. Project-specific configuration files
-    if let Ok(current_dir) = env::current_dir() {
-        if let Some((toolchain, path)) = find_project_toolchain(&current_dir)? {
-            return Ok(Some((toolchain, ToolchainSource::ProjectFile(path))));
-        }
-    }
-
-    // 4. Default toolchain from config
-    if let Some(default) = config.default_toolchain {
-        return Ok(Some((default, ToolchainSource::Default)));
-    }
-
-    Ok(None)
-}
-
-/// Find project-specific toolchain configuration by walking up the directory tree
-fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String)>> {
-    let mut current = start_dir;
-
-    loop {
-        // Check for lean-toolchain file
-        let toolchain_file = current.join("lean-toolchain");
-        if toolchain_file.exists() {
-            if let Ok(contents) = fs::read_to_string(&toolchain_file) {
-                let toolchain = contents.trim();
-                if !toolchain.is_empty() {
-                    return Ok(Some((
-                        toolchain.to_string(),
-                        toolchain_file.display().to_string(),
-                    )));
-                }
-            }
-        }
-
-        // Check for leanpkg.toml with lean_version
-        let leanpkg_file = current.join("leanpkg.toml");
-        if leanpkg_file.exists() {
-            if let Ok(contents) = fs::read_to_string(&leanpkg_file) {
-                // Simple parsing for lean_version = "..."
-                for line in contents.lines() {
-                    let line = line.trim();
-                    if line.starts_with("lean_version") {
-                        if let Some(version) = extract_toml_string_value(line) {
-                            return Ok(Some((version, leanpkg_file.display().to_string())));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Move up to parent directory
-        match current.parent() {
-            Some(parent) => current = parent,
-            None => break,
-        }
-    }
-
-    Ok(None)
-}
-
-/// Extract a string value from a TOML line like: key = "value"
-fn extract_toml_string_value(line: &str) -> Option<String> {
-    let parts: Vec<&str> = line.splitn(2, '=').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-
-    let value = parts[1].trim();
-
-    // Remove surrounding quotes (both double and single quotes)
-    if (value.starts_with('"') && value.ends_with('"')
-        || value.starts_with('\'') && value.ends_with('\''))
-        && value.len() >= 2
-    {
-        Some(value[1..value.len() - 1].to_string())
-    } else {
-        None
-    }
 }
 
 /// Get the Lean version from a toolchain
