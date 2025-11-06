@@ -57,15 +57,10 @@ pub fn execute(verbose: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Installed toolchains:", "=>".green().bold());
-    println!();
-
     for (name, path) in toolchains {
         if verbose {
             // Show detailed information
-            let metadata = fs::metadata(&path)?;
             let size = calculate_dir_size(&path)?;
-            let modified = metadata.modified()?;
 
             println!("  {} {}", "•".cyan(), name.bold());
             println!("    Path: {}", path.display().to_string().dimmed());
@@ -74,11 +69,6 @@ pub fn execute(verbose: bool) -> Result<()> {
             // Try to find lean binary and get version
             if let Ok(version) = get_lean_version(&path) {
                 println!("    Version: {}", version.dimmed());
-            }
-
-            // Show modification time
-            if let Ok(duration) = modified.elapsed() {
-                println!("    Installed: {}", format_duration(duration).dimmed());
             }
             println!();
         } else {
@@ -130,21 +120,6 @@ fn format_size(bytes: u64) -> String {
     }
 
     format!("{:.2} {}", size, UNITS[unit_idx])
-}
-
-/// Format duration in human-readable format
-fn format_duration(duration: std::time::Duration) -> String {
-    let secs = duration.as_secs();
-
-    if secs < 60 {
-        format!("{} seconds ago", secs)
-    } else if secs < 3600 {
-        format!("{} minutes ago", secs / 60)
-    } else if secs < 86400 {
-        format!("{} hours ago", secs / 3600)
-    } else {
-        format!("{} days ago", secs / 86400)
-    }
 }
 
 /// Get Lean version from installation
