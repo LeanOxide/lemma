@@ -222,10 +222,6 @@ pub static COMPLETIONS_HELP: &str = r"DISCUSSION:
 
         PS C:\> lemma completions powershell >> %USERPROFILE%\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1";
 
-pub static INFO_HELP: &str = r"DISCUSSION:
-    Shows information about the lemma installation, including version
-    and installation paths.";
-
 pub static SELF_HELP: &str = r"DISCUSSION:
     The `self` command is used to manipulate the lemma installation.
     It can update lemma to newer versions, or uninstall lemma entirely.";

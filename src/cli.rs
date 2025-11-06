@@ -67,10 +67,6 @@ pub enum Commands {
         shell: Shell,
     },
 
-    /// Show information about lemma
-    #[command(after_long_help = help::INFO_HELP)]
-    Info,
-
     /// Modify the lemma installation
     #[command(after_long_help = help::SELF_HELP)]
     #[command(name = "self")]

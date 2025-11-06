@@ -5,7 +5,6 @@
 
 pub mod completions;
 pub mod default;
-pub mod info;
 pub mod install;
 pub mod link;
 pub mod list;
@@ -47,8 +46,6 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
 
         Commands::Completions { shell } => completions::execute(shell),
-
-        Commands::Info => info::execute(),
 
         Commands::Self_ { command } => handle_self_command(command),
     }
