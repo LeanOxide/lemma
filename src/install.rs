@@ -23,94 +23,96 @@ pub struct Installer {
     release_client: ReleaseServerClient,
 }
 
-/// Toolchain descriptor
-#[derive(Debug, Clone)]
-pub enum ToolchainDescriptor {
-    /// Official Lean release (from release.lean-lang.org)
-    OfficialRelease {
-        /// Name of the toolchain (e.g., "stable", "v4.5.0")
-        name: String,
-        /// Release tag (or "latest" for stable)
-        tag: String,
-    },
-    /// Direct URL download
-    DirectUrl {
-        /// The direct download URL
-        url: String,
-        /// Extracted name from URL or user-provided name
-        name: String,
-    },
+/// Channel represents the different release channels for Lean
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Channel {
+    /// Stable channel
+    Stable,
+    /// Beta channel
+    Beta,
+    /// Nightly channel
+    Nightly,
+    /// Specific version (e.g., "v4.24.0", "v4.15.0-rc1")
+    Version(String),
 }
 
-impl ToolchainDescriptor {
-    /// Parse a toolchain name into a descriptor
+impl Channel {
+    /// Parse a channel from a string
+    pub fn parse(s: &str) -> Result<Self> {
+        match s {
+            "stable" | "latest" => Ok(Channel::Stable),
+            "beta" => Ok(Channel::Beta),
+            "nightly" => Ok(Channel::Nightly),
+            _ => {
+                // Validate that it looks like a version
+                if s.is_empty() {
+                    anyhow::bail!("Empty channel name");
+                }
+                Ok(Channel::Version(s.to_string()))
+            }
+        }
+    }
+
+    /// Get the display name for this channel
+    pub fn name(&self) -> String {
+        match self {
+            Channel::Stable => "stable".to_string(),
+            Channel::Beta => "beta".to_string(),
+            Channel::Nightly => "nightly".to_string(),
+            Channel::Version(v) => v.clone(),
+        }
+    }
+
+    /// Returns true if this is a channel that should auto-update
+    pub fn is_tracking_channel(&self) -> bool {
+        matches!(self, Channel::Stable | Channel::Beta | Channel::Nightly)
+    }
+}
+
+/// Toolchain descriptor - describes an official Lean toolchain
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolchainDesc {
+    /// The release channel
+    pub channel: Channel,
+    /// Optional date for dated releases (e.g., "2024-01-15")
+    /// Currently not used for Lean, but reserved for future compatibility
+    pub date: Option<String>,
+}
+
+impl ToolchainDesc {
+    /// Parse a toolchain specification into a descriptor
     ///
     /// Supported formats:
-    /// - "stable" -> official latest release
-    /// - "v4.5.0" -> official version tag
-    /// - "https://..." -> direct URL download
+    /// - "stable" -> stable channel
+    /// - "beta" -> beta channel
+    /// - "nightly" -> nightly channel
+    /// - "v4.24.0" -> specific version
+    /// - "lean-4.24.0" -> specific version (strips "lean-" prefix)
     pub fn parse(input: &str) -> Result<Self> {
-        // Check if it's a URL
-        if input.starts_with("http://") || input.starts_with("https://") {
-            let name = Self::extract_name_from_url(input);
-            return Ok(Self::DirectUrl {
-                url: input.to_string(),
-                name,
-            });
+        if input.is_empty() {
+            anyhow::bail!("Empty toolchain specification");
         }
 
-        // Handle special channel names
-        if input == "stable" || input == "latest" {
-            return Ok(Self::OfficialRelease {
-                name: "stable".to_string(),
-                tag: "latest".to_string(),
-            });
-        }
+        // Strip common "lean-" prefix if present
+        let input = input.strip_prefix("lean-").unwrap_or(input);
 
-        if input == "beta" {
-            return Ok(Self::OfficialRelease {
-                name: "beta".to_string(),
-                tag: "latest-beta".to_string(),
-            });
-        }
+        // For now, we don't support dated releases, so date is always None
+        let channel = Channel::parse(input)?;
 
-        if input == "nightly" {
-            return Ok(Self::OfficialRelease {
-                name: "nightly".to_string(),
-                tag: "latest-nightly".to_string(),
-            });
-        }
-
-        // Assume it's a version tag for official Lean release
-        Ok(Self::OfficialRelease {
-            name: input.to_string(),
-            tag: input.to_string(),
+        Ok(ToolchainDesc {
+            channel,
+            date: None,
         })
     }
 
-    /// Extract a meaningful name from a URL
-    /// Examples:
-    ///   https://example.com/lean-4.24.0-linux.tar.zst -> lean-4.24.0-linux
-    ///   https://example.com/path/to/custom.tar.gz -> custom
-    fn extract_name_from_url(url: &str) -> String {
-        // Get the last path segment
-        let path = url.split('/').next_back().unwrap_or("direct-download");
-
-        // Remove common archive extensions
-        path.trim_end_matches(".tar.zst")
-            .trim_end_matches(".tar.gz")
-            .trim_end_matches(".tar.xz")
-            .trim_end_matches(".tgz")
-            .trim_end_matches(".zip")
-            .to_string()
+    /// Get the display name for this toolchain
+    pub fn name(&self) -> String {
+        self.channel.name()
     }
 
-    /// Get the display name for this toolchain
-    pub fn name(&self) -> &str {
-        match self {
-            Self::OfficialRelease { name, .. } => name,
-            Self::DirectUrl { name, .. } => name,
-        }
+    /// Returns true if this toolchain should auto-update
+    pub fn is_tracking(&self) -> bool {
+        self.channel.is_tracking_channel()
     }
 }
 
@@ -129,7 +131,7 @@ impl Installer {
 
     /// Install a toolchain
     pub fn install(&self, toolchain: &str, force: bool) -> Result<()> {
-        let descriptor = ToolchainDescriptor::parse(toolchain)?;
+        let descriptor = ToolchainDesc::parse(toolchain)?;
 
         println!(
             "{} Installing toolchain: {}",
@@ -138,7 +140,7 @@ impl Installer {
         );
 
         // Check if already installed
-        let install_path = self.toolchain_path(descriptor.name())?;
+        let install_path = self.toolchain_path(&descriptor.name())?;
         if install_path.exists() && !force {
             println!(
                 "{} Toolchain already installed at: {}",
@@ -149,31 +151,20 @@ impl Installer {
             return Ok(());
         }
 
-        // Get download URL and asset name based on descriptor type
-        let (asset_name, asset_url) = match &descriptor {
-            ToolchainDescriptor::DirectUrl { url, .. } => {
-                println!("{} Downloading from URL...", "=>".cyan().bold());
-                println!("   URL: {}", url);
+        // Fetch release information from release.lean-lang.org
+        println!("{} Fetching release information...", "=>".blue().bold());
+        let release = self.fetch_release(&descriptor)?;
 
-                // Extract filename from URL for asset name
-                let filename = url.split('/').next_back().unwrap_or("archive.tar.zst");
-                (filename.to_string(), url.clone())
-            }
-            ToolchainDescriptor::OfficialRelease { .. } => {
-                // Fetch release information from release.lean-lang.org
-                println!("{} Fetching release information...", "=>".blue().bold());
-                let release = self.fetch_release(&descriptor)?;
+        println!("   Found release: {}", release.name.bold());
 
-                println!("   Found release: {}", release.name.bold());
+        // Find the right asset for our platform
+        let asset = self
+            .release_client
+            .find_platform_asset(&release)
+            .context("No compatible asset found for your platform")?;
 
-                // Find the right asset for our platform
-                let asset = self
-                    .release_client
-                    .find_platform_asset(&release)
-                    .context("No compatible asset found for your platform")?;
-                (asset.name.clone(), asset.browser_download_url.clone())
-            }
-        };
+        let asset_name = asset.name.clone();
+        let asset_url = asset.browser_download_url.clone();
 
         println!("   Asset: {}", asset_name);
 
@@ -185,14 +176,11 @@ impl Installer {
         let tmp_dir = Config::tmp_dir()?;
         fs::create_dir_all(&tmp_dir).context("Failed to create tmp directory")?;
 
-        // Create unique temp directory for this installation
-        let temp_install = tmp_dir.join(format!("{}-{}", descriptor.name(), std::process::id()));
+        // Create temp directory for this installation
+        // NOTE: We don't include process ID so that resuming after Ctrl-C works
+        let temp_install = tmp_dir.join(descriptor.name());
 
-        // Clean up any existing temp directory from previous failed installation
-        if temp_install.exists() {
-            fs::remove_dir_all(&temp_install).context("Failed to clean up old temp directory")?;
-        }
-
+        // Create temp directory if it doesn't exist
         fs::create_dir_all(&temp_install).context("Failed to create temp directory")?;
 
         // Download the asset to temp directory
@@ -238,40 +226,31 @@ impl Installer {
             install_path.display()
         );
 
-        // Verify installation by checking for lean binary (skip for direct URLs as they might not be Lean)
-        if !matches!(descriptor, ToolchainDescriptor::DirectUrl { .. }) {
-            let lean_bin = self.find_lean_binary(&install_path)?;
-            println!("   Lean binary: {}", lean_bin.display());
-        } else {
-            println!(
-                "   {} Installed from direct URL - skipping binary verification",
-                "Note:".yellow()
-            );
-        }
+        // Verify installation by checking for lean binary
+        let lean_bin = self.find_lean_binary(&install_path)?;
+        println!("   Lean binary: {}", lean_bin.display());
 
-        // Save update hash for tracking (use asset URL as version identifier)
-        let version_hash = match &descriptor {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => tag.clone(),
-            ToolchainDescriptor::DirectUrl { url, .. } => url.clone(),
-        };
-        let _ = Config::save_update_hash(descriptor.name(), &version_hash); // Best effort
+        // Save update hash for tracking
+        let version_hash = release.name.as_str();
+        let _ = Config::save_update_hash(&descriptor.name(), version_hash); // Best effort
 
         Ok(())
     }
 
     /// Fetch release information from release.lean-lang.org
-    fn fetch_release(&self, descriptor: &ToolchainDescriptor) -> Result<Release> {
-        match descriptor {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => match tag.as_str() {
-                "latest" => self.release_client.get_latest_stable(),
-                "latest-beta" => self.release_client.get_latest_beta(),
-                "latest-nightly" => self.release_client.get_latest_nightly(),
-                _ => self.release_client.find_release(tag),
-            },
-            ToolchainDescriptor::DirectUrl { .. } => {
-                unreachable!("fetch_release should not be called for DirectUrl")
-            }
+    pub fn fetch_release(&self, descriptor: &ToolchainDesc) -> Result<Release> {
+        match &descriptor.channel {
+            Channel::Stable => self.release_client.get_latest_stable(),
+            Channel::Beta => self.release_client.get_latest_beta(),
+            Channel::Nightly => self.release_client.get_latest_nightly(),
+            Channel::Version(tag) => self.release_client.find_release(tag),
         }
+    }
+
+    /// Check if a toolchain is installed
+    pub fn is_installed(&self, toolchain_name: &str) -> Result<bool> {
+        let install_path = self.toolchain_path(toolchain_name)?;
+        Ok(install_path.exists())
     }
 
     /// Get the installation path for a toolchain
@@ -308,77 +287,84 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_channel_stable() {
+        let channel = Channel::parse("stable").unwrap();
+        assert_eq!(channel, Channel::Stable);
+        assert_eq!(channel.name(), "stable");
+        assert!(channel.is_tracking_channel());
+    }
+
+    #[test]
+    fn test_parse_channel_beta() {
+        let channel = Channel::parse("beta").unwrap();
+        assert_eq!(channel, Channel::Beta);
+        assert_eq!(channel.name(), "beta");
+        assert!(channel.is_tracking_channel());
+    }
+
+    #[test]
+    fn test_parse_channel_nightly() {
+        let channel = Channel::parse("nightly").unwrap();
+        assert_eq!(channel, Channel::Nightly);
+        assert_eq!(channel.name(), "nightly");
+        assert!(channel.is_tracking_channel());
+    }
+
+    #[test]
+    fn test_parse_channel_version() {
+        let channel = Channel::parse("v4.24.0").unwrap();
+        assert_eq!(channel, Channel::Version("v4.24.0".to_string()));
+        assert_eq!(channel.name(), "v4.24.0");
+        assert!(!channel.is_tracking_channel());
+    }
+
+    #[test]
     fn test_parse_toolchain_stable() {
-        let desc = ToolchainDescriptor::parse("stable").unwrap();
-        match desc {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => {
-                assert_eq!(tag, "latest");
-            }
-            _ => panic!("Expected OfficialRelease variant"),
-        }
+        let desc = ToolchainDesc::parse("stable").unwrap();
+        assert_eq!(desc.channel, Channel::Stable);
+        assert_eq!(desc.name(), "stable");
+        assert!(desc.is_tracking());
     }
 
     #[test]
     fn test_parse_toolchain_beta() {
-        let desc = ToolchainDescriptor::parse("beta").unwrap();
-        match desc {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => {
-                assert_eq!(tag, "latest-beta");
-            }
-            _ => panic!("Expected OfficialRelease variant"),
-        }
+        let desc = ToolchainDesc::parse("beta").unwrap();
+        assert_eq!(desc.channel, Channel::Beta);
+        assert_eq!(desc.name(), "beta");
+        assert!(desc.is_tracking());
     }
 
     #[test]
     fn test_parse_toolchain_nightly() {
-        let desc = ToolchainDescriptor::parse("nightly").unwrap();
-        match desc {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => {
-                assert_eq!(tag, "latest-nightly");
-            }
-            _ => panic!("Expected OfficialRelease variant"),
-        }
+        let desc = ToolchainDesc::parse("nightly").unwrap();
+        assert_eq!(desc.channel, Channel::Nightly);
+        assert_eq!(desc.name(), "nightly");
+        assert!(desc.is_tracking());
     }
 
     #[test]
     fn test_parse_toolchain_version() {
-        let desc = ToolchainDescriptor::parse("v4.5.0").unwrap();
-        match desc {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => {
-                assert_eq!(tag, "v4.5.0");
-            }
-            _ => panic!("Expected OfficialRelease variant"),
-        }
+        let desc = ToolchainDesc::parse("v4.5.0").unwrap();
+        assert_eq!(desc.channel, Channel::Version("v4.5.0".to_string()));
+        assert_eq!(desc.name(), "v4.5.0");
+        assert!(!desc.is_tracking());
     }
 
     #[test]
-    fn test_parse_toolchain_url() {
-        let desc =
-            ToolchainDescriptor::parse("https://example.com/lean-4.24.0-linux.tar.zst").unwrap();
-        match desc {
-            ToolchainDescriptor::DirectUrl { url, name } => {
-                assert_eq!(url, "https://example.com/lean-4.24.0-linux.tar.zst");
-                assert_eq!(name, "lean-4.24.0-linux");
-            }
-            _ => panic!("Expected DirectUrl variant"),
-        }
+    fn test_parse_toolchain_with_lean_prefix() {
+        let desc = ToolchainDesc::parse("lean-4.24.0").unwrap();
+        assert_eq!(desc.channel, Channel::Version("4.24.0".to_string()));
+        assert_eq!(desc.name(), "4.24.0");
     }
 
     #[test]
-    fn test_extract_name_from_url() {
-        assert_eq!(
-            ToolchainDescriptor::extract_name_from_url(
-                "https://example.com/lean-4.24.0-linux.tar.zst"
-            ),
-            "lean-4.24.0-linux"
-        );
-        assert_eq!(
-            ToolchainDescriptor::extract_name_from_url("https://mirror.com/path/to/custom.tar.gz"),
-            "custom"
-        );
-        assert_eq!(
-            ToolchainDescriptor::extract_name_from_url("http://example.com/archive.zip"),
-            "archive"
-        );
+    fn test_parse_toolchain_latest_alias() {
+        let desc = ToolchainDesc::parse("latest").unwrap();
+        assert_eq!(desc.channel, Channel::Stable);
+    }
+
+    #[test]
+    fn test_parse_empty_toolchain() {
+        assert!(ToolchainDesc::parse("").is_err());
     }
 }

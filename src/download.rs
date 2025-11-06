@@ -21,6 +21,11 @@ const CONNECT_TIMEOUT_SECS: u64 = 30;
 const READ_TIMEOUT_SECS: u64 = 30;
 const MAX_RETRIES: u32 = 3;
 
+const TEMPLATE_PIP: & str =
+        "{bar:40.green/black} {bytes:>11.green}/{total_bytes:<11.green} {bytes_per_sec:>13.red} eta {eta:.blue}";
+
+const CHARS_LINE: &str = "━╾╴─";
+
 #[derive(Clone)]
 pub struct DownloadClient {
     client: Client,
@@ -116,19 +121,31 @@ impl DownloadClient {
             );
         }
 
-        // Get total size for progress bar
-        let total_size = response.content_length().or(resume_from).unwrap_or(0);
+        // Calculate total size for progress bar
+        // When resuming, content_length() returns remaining bytes, not total file size
+        let total_size = if let Some(resumed) = resume_from {
+            // We're resuming: total = already_downloaded + remaining
+            response
+                .content_length()
+                .map(|remaining| resumed + remaining)
+                .unwrap_or(resumed)
+        } else {
+            // Fresh download: use content_length directly
+            response.content_length().unwrap_or(0)
+        };
 
         // Setup progress bar
         let progress = ProgressBar::new(total_size);
         progress.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-                .unwrap()
+                .progress_chars(CHARS_LINE)
+                .template(TEMPLATE_PIP)
+                .unwrap(),
         );
 
-        // Download with progress
+        // Download with progress - start from where we left off
         let mut downloaded = resume_from.unwrap_or(0);
+        progress.set_position(downloaded);
         let mut buffer = vec![0u8; 8192];
         let mut response = response;
 

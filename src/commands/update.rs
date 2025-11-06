@@ -5,7 +5,7 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
-use crate::install::Installer;
+use crate::install::{Installer, ToolchainDesc};
 
 pub fn execute(toolchain: Option<&str>) -> Result<()> {
     if let Some(name) = toolchain {
@@ -19,6 +19,49 @@ pub fn execute(toolchain: Option<&str>) -> Result<()> {
 
 fn update_toolchain(name: &str) -> Result<()> {
     let installer = Installer::new()?;
+
+    // Check if toolchain is installed
+    if !installer.is_installed(name)? {
+        println!(
+            "{} Toolchain '{}' is not installed",
+            "=>".yellow().bold(),
+            name
+        );
+        println!("   Use 'lemma toolchain install {}' to install it", name);
+        return Ok(());
+    }
+
+    // Parse the toolchain descriptor
+    let descriptor = ToolchainDesc::parse(name)?;
+
+    println!("{} Checking for updates: {}", "=>".cyan().bold(), name);
+
+    // Fetch the latest release information
+    let release = installer.fetch_release(&descriptor)?;
+
+    // Load the current installed version hash
+    let current_hash = Config::load_update_hash(name)?;
+
+    // Compare versions
+    if let Some(current) = current_hash {
+        if current == release.name {
+            println!(
+                "{} Toolchain '{}' is already up to date ({})",
+                "✓".green().bold(),
+                name,
+                release.name
+            );
+            return Ok(());
+        }
+
+        println!("   Current: {}", current);
+        println!("   Latest:  {}", release.name);
+    } else {
+        println!("   Latest:  {}", release.name);
+    }
+
+    // Perform the update
+    println!("{} Updating toolchain...", "=>".cyan().bold());
     installer.install(name, true)?;
 
     Ok(())
@@ -98,20 +141,10 @@ fn update_all_toolchains() -> Result<()> {
 /// Check if a toolchain name is a specific version (not a channel)
 fn is_specific_version(name: &str) -> bool {
     // Use toolchain descriptor parsing for accurate detection
-    if let Ok(descriptor) = crate::install::ToolchainDescriptor::parse(name) {
-        match descriptor {
-            crate::install::ToolchainDescriptor::OfficialRelease {
-                name: desc_name, ..
-            } => {
-                // Only stable, beta, and nightly channels should auto-update
-                // Return true if it's NOT a channel (i.e., should skip updates)
-                !matches!(desc_name.as_str(), "stable" | "beta" | "nightly")
-            }
-            crate::install::ToolchainDescriptor::DirectUrl { .. } => {
-                // Direct URLs should not auto-update
-                true
-            }
-        }
+    if let Ok(descriptor) = crate::install::ToolchainDesc::parse(name) {
+        // Only tracking channels (stable, beta, nightly) should auto-update
+        // Return true if it's NOT a tracking channel (i.e., should skip updates)
+        !descriptor.is_tracking()
     } else {
         // Fallback to heuristic detection for edge cases
         // If it starts with 'v' and has dots, it's likely a version
@@ -123,11 +156,6 @@ fn is_specific_version(name: &str) -> bool {
         // Check for version pattern like "X.Y.Z" in the name
         // Examples: lean-4.24.0-linux, custom-1.2.3
         if contains_version_pattern(name) {
-            return true;
-        }
-
-        // If it contains a full URL, it's from DirectUrl
-        if name.contains("http") {
             return true;
         }
 
@@ -180,15 +208,6 @@ mod tests {
         assert!(is_specific_version("v4.15.0-rc1"));
         assert!(is_specific_version("lean-4.24.0-linux"));
         assert!(is_specific_version("custom-1.2.3"));
-    }
-
-    #[test]
-    fn test_is_specific_version_urls() {
-        // URLs should be treated as specific versions (they should NOT update)
-        assert!(is_specific_version(
-            "https://example.com/lean-4.24.0-linux.tar.zst"
-        ));
-        assert!(is_specific_version("http://mirror.org/custom.tar.gz"));
     }
 
     #[test]

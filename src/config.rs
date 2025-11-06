@@ -159,6 +159,22 @@ impl Config {
         None
     }
 
+    /// Load the update hash for a toolchain
+    pub fn load_update_hash(toolchain_name: &str) -> Result<Option<String>> {
+        let update_hashes_dir = Self::update_hashes_dir()?;
+        let hash_file = update_hashes_dir.join(toolchain_name);
+
+        if hash_file.exists() {
+            let hash = fs::read_to_string(&hash_file)
+                .context("Failed to read update hash")?
+                .trim()
+                .to_string();
+            Ok(Some(hash))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Save the update hash for a toolchain
     pub fn save_update_hash(toolchain_name: &str, version_hash: &str) -> Result<()> {
         let update_hashes_dir = Self::update_hashes_dir()?;
