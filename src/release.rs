@@ -65,6 +65,11 @@ impl ReleaseServerClient {
             return Ok(release.clone());
         }
 
+        // Check beta releases
+        if let Some(release) = index.beta.iter().find(|r| r.name == name) {
+            return Ok(release.clone());
+        }
+
         // Check nightly releases
         if let Some(release) = index.nightly.iter().find(|r| r.name == name) {
             return Ok(release.clone());
@@ -82,6 +87,28 @@ impl ReleaseServerClient {
             .first()
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("No stable releases found"))
+    }
+
+    /// Get the latest beta release
+    pub fn get_latest_beta(&self) -> Result<Release> {
+        let index = self.fetch_index()?;
+
+        index
+            .beta
+            .first()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No beta releases found"))
+    }
+
+    /// Get the latest nightly release
+    pub fn get_latest_nightly(&self) -> Result<Release> {
+        let index = self.fetch_index()?;
+
+        index
+            .nightly
+            .first()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No nightly releases found"))
     }
 
     /// Find the appropriate asset for the current platform

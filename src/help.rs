@@ -21,19 +21,19 @@ pub static TOOLCHAIN_HELP: &str = r"DISCUSSION:
     Many `lemma` commands deal with *toolchains*, a single
     installation of the Lean theorem prover. `lemma` supports multiple
     types of toolchains. The most basic track the official release
-    channels: 'stable', but `lemma` can also install toolchains from
+    channels: 'stable', 'beta', 'nightly', but `lemma` can also install toolchains from
     specific versions, direct URLs, and local builds.
 
     Standard release channel toolchain names have the following form:
 
         <channel> | <version> | <url>
 
-        <channel>       = stable
+        <channel>       = stable | beta | nightly
         <version>       = v4.x.x (e.g., v4.24.0)
         <url>           = https://... (direct download URL)
 
-    'channel' is a named release channel (currently 'stable' which tracks
-    the latest stable release). 'version' is an explicit version number,
+    'channel' is a named release channel (currently 'stable', 'beta', 'nightly' which track
+    the latest releases in their respective channels). 'version' is an explicit version number,
     such as 'v4.24.0'. 'url' is a direct download URL to a Lean toolchain
     archive.
 
@@ -46,6 +46,8 @@ pub static TOOLCHAIN_INSTALL_HELP: &str = r"DISCUSSION:
 
     The toolchain can be specified in several ways:
     - 'stable' for the latest stable release
+    - 'beta' for the latest beta release
+    - 'nightly' for the latest nightly release
     - 'v4.24.0' for a specific version
     - 'https://...' for a direct download URL";
 

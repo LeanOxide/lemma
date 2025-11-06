@@ -60,11 +60,25 @@ impl ToolchainDescriptor {
             });
         }
 
-        // Handle special names
+        // Handle special channel names
         if input == "stable" || input == "latest" {
             return Ok(Self::OfficialRelease {
                 name: "stable".to_string(),
                 tag: "latest".to_string(),
+            });
+        }
+
+        if input == "beta" {
+            return Ok(Self::OfficialRelease {
+                name: "beta".to_string(),
+                tag: "latest-beta".to_string(),
+            });
+        }
+
+        if input == "nightly" {
+            return Ok(Self::OfficialRelease {
+                name: "nightly".to_string(),
+                tag: "latest-nightly".to_string(),
             });
         }
 
@@ -249,13 +263,12 @@ impl Installer {
     /// Fetch release information from release.lean-lang.org
     fn fetch_release(&self, descriptor: &ToolchainDescriptor) -> Result<Release> {
         match descriptor {
-            ToolchainDescriptor::OfficialRelease { tag, .. } => {
-                if tag == "latest" {
-                    self.release_client.get_latest_stable()
-                } else {
-                    self.release_client.find_release(tag)
-                }
-            }
+            ToolchainDescriptor::OfficialRelease { tag, .. } => match tag.as_str() {
+                "latest" => self.release_client.get_latest_stable(),
+                "latest-beta" => self.release_client.get_latest_beta(),
+                "latest-nightly" => self.release_client.get_latest_nightly(),
+                _ => self.release_client.find_release(tag),
+            },
             ToolchainDescriptor::DirectUrl { .. } => {
                 unreachable!("fetch_release should not be called for DirectUrl")
             }
@@ -301,6 +314,28 @@ mod tests {
         match desc {
             ToolchainDescriptor::OfficialRelease { tag, .. } => {
                 assert_eq!(tag, "latest");
+            }
+            _ => panic!("Expected OfficialRelease variant"),
+        }
+    }
+
+    #[test]
+    fn test_parse_toolchain_beta() {
+        let desc = ToolchainDescriptor::parse("beta").unwrap();
+        match desc {
+            ToolchainDescriptor::OfficialRelease { tag, .. } => {
+                assert_eq!(tag, "latest-beta");
+            }
+            _ => panic!("Expected OfficialRelease variant"),
+        }
+    }
+
+    #[test]
+    fn test_parse_toolchain_nightly() {
+        let desc = ToolchainDescriptor::parse("nightly").unwrap();
+        match desc {
+            ToolchainDescriptor::OfficialRelease { tag, .. } => {
+                assert_eq!(tag, "latest-nightly");
             }
             _ => panic!("Expected OfficialRelease variant"),
         }
