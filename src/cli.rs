@@ -51,6 +51,10 @@ pub enum Commands {
     Which {
         /// Name of the binary (e.g., lean, lake, leanc)
         binary: String,
+
+        /// Toolchain to use (defaults to active toolchain)
+        #[arg(short, long)]
+        toolchain: Option<String>,
     },
 
     /// Update installed toolchains

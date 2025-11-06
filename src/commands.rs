@@ -41,7 +41,7 @@ pub fn handle_command(command: Commands) -> Result<()> {
 
         Commands::Show => show::execute(),
 
-        Commands::Which { binary } => which::execute(&binary),
+        Commands::Which { binary, toolchain } => which::execute(&binary, toolchain.as_deref()),
 
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
 

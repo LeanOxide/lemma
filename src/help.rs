@@ -115,10 +115,17 @@ pub static WHICH_HELP: &str = r"DISCUSSION:
     the specified command. This is useful for debugging which toolchain
     is being used.
 
+    By default, it uses the active toolchain (determined by environment,
+    overrides, project files, or default settings). You can specify a
+    different toolchain using the --toolchain option.
+
     For example:
 
         $ lemma which lean
-        ~/.lemma/toolchains/v4.24.0/bin/lean";
+        ~/.lemma/toolchains/v4.24.0/bin/lean
+
+        $ lemma which --toolchain stable lean
+        ~/.lemma/toolchains/stable/bin/lean";
 
 pub static UPDATE_HELP: &str = r"DISCUSSION:
     Updates installed toolchains to their latest versions. If a specific

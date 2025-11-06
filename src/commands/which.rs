@@ -4,9 +4,9 @@ use anyhow::Result;
 
 use crate::toolchain;
 
-pub fn execute(binary: &str) -> Result<()> {
+pub fn execute(binary: &str, explicit_toolchain: Option<&str>) -> Result<()> {
     // Resolve which toolchain to use
-    let toolchain_name = toolchain::resolve_toolchain_or_fail(None)?;
+    let toolchain_name = toolchain::resolve_toolchain_or_fail(explicit_toolchain)?;
 
     // Find the binary path
     let binary_path = toolchain::find_tool_binary(&toolchain_name, binary)?;
