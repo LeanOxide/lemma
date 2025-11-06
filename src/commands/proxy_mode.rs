@@ -5,7 +5,6 @@
 
 use anyhow::Result;
 use std::env;
-use std::path::PathBuf;
 use std::process::Command;
 
 #[cfg(unix)]
@@ -45,7 +44,7 @@ pub fn execute(tool_name: &str) -> Result<()> {
     let toolchain_name = toolchain::resolve_toolchain_or_fail(explicit_toolchain.as_deref())?;
 
     // Get the path to the actual tool binary
-    let tool_path = find_tool_binary(&toolchain_name, tool_name)?;
+    let tool_path = toolchain::find_tool_binary(&toolchain_name, tool_name)?;
 
     // Execute the tool, replacing the current process (Unix exec)
     // This ensures the tool runs with the correct PID and signal handling
@@ -91,48 +90,6 @@ pub fn execute(tool_name: &str) -> Result<()> {
 
         std::process::exit(status.code().unwrap_or(1));
     }
-}
-
-/// Find the path to a tool binary in the specified toolchain
-fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
-    let toolchains_dir = Config::toolchains_dir()?;
-    let toolchain_path = toolchains_dir.join(toolchain);
-
-    // Check if toolchain exists
-    if !toolchain_path.exists() {
-        anyhow::bail!(
-            "Toolchain '{}' is not installed.\n\n\
-             Install it with: lemma toolchain install {}",
-            toolchain,
-            toolchain
-        );
-    }
-
-    // Common locations for tool binaries
-    let bin_name = if cfg!(target_os = "windows") {
-        format!("{}.exe", tool_name)
-    } else {
-        tool_name.to_string()
-    };
-
-    let candidates = vec![
-        toolchain_path.join("bin").join(&bin_name),
-        toolchain_path.join(&bin_name),
-    ];
-
-    for candidate in candidates {
-        if candidate.exists() {
-            return Ok(candidate);
-        }
-    }
-
-    anyhow::bail!(
-        "Tool '{}' not found in toolchain '{}'.\n\
-         Expected location: {}",
-        tool_name,
-        toolchain,
-        toolchain_path.join("bin").join(&bin_name).display()
-    )
 }
 
 #[cfg(test)]

@@ -3,7 +3,6 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
-use std::path::Path;
 
 use crate::config::Config;
 use crate::toolchain;
@@ -30,7 +29,7 @@ pub fn execute() -> Result<()> {
             println!("  Path: {}", toolchain_path.display());
 
             // Try to get lean version
-            if let Ok(version) = get_lean_version(&toolchain_path) {
+            if let Ok(version) = toolchain::get_lean_version(&toolchain_path) {
                 println!("  Lean: {}", version.trim());
             }
         } else {
@@ -91,24 +90,4 @@ pub fn execute() -> Result<()> {
     println!();
 
     Ok(())
-}
-
-/// Get the Lean version from a toolchain
-fn get_lean_version(toolchain_path: &Path) -> Result<String> {
-    let lean_bin = toolchain_path.join("bin").join("lean");
-
-    if !lean_bin.exists() {
-        anyhow::bail!("lean binary not found");
-    }
-
-    let output = std::process::Command::new(&lean_bin)
-        .arg("--version")
-        .output()
-        .context("Failed to execute lean --version")?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        anyhow::bail!("lean --version failed")
-    }
 }

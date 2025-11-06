@@ -7,7 +7,7 @@
 use anyhow::{Context, Result};
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::config::Config;
 
@@ -144,6 +144,109 @@ pub fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String
     }
 
     Ok(None)
+}
+
+/// Find the path to a tool binary in the specified toolchain
+///
+/// This function looks for a tool (lean, lake, etc.) in the toolchain directory
+/// and returns its absolute path. It handles platform-specific executable naming
+/// (e.g., .exe on Windows).
+pub fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
+    let toolchains_dir = Config::toolchains_dir()?;
+    let toolchain_path = toolchains_dir.join(toolchain);
+
+    // Check if toolchain exists
+    if !toolchain_path.exists() {
+        anyhow::bail!(
+            "Toolchain '{}' is not installed.\n\n\
+             Install it with: lemma toolchain install {}",
+            toolchain,
+            toolchain
+        );
+    }
+
+    // Common locations for tool binaries
+    let bin_name = if cfg!(target_os = "windows") {
+        format!("{}.exe", tool_name)
+    } else {
+        tool_name.to_string()
+    };
+
+    let candidates = vec![
+        toolchain_path.join("bin").join(&bin_name),
+        toolchain_path.join(&bin_name),
+    ];
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    anyhow::bail!(
+        "Tool '{}' not found in toolchain '{}'.\n\
+         Expected location: {}",
+        tool_name,
+        toolchain,
+        toolchain_path.join("bin").join(&bin_name).display()
+    )
+}
+
+/// Get the Lean version from a toolchain installation
+///
+/// Runs `lean --version` and returns the version string.
+/// Returns an error if the lean binary is not found or the command fails.
+pub fn get_lean_version(toolchain_path: &Path) -> Result<String> {
+    let lean_bin = toolchain_path.join("bin").join("lean");
+
+    if !lean_bin.exists() {
+        anyhow::bail!("lean binary not found at {}", lean_bin.display());
+    }
+
+    let output = std::process::Command::new(&lean_bin)
+        .arg("--version")
+        .output()
+        .context("Failed to execute lean --version")?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        anyhow::bail!("lean --version failed")
+    }
+}
+
+/// Get the Lean version from a toolchain installation, with fallback
+///
+/// Similar to `get_lean_version`, but returns "unknown" instead of an error
+/// if the version cannot be determined. Useful for displaying toolchain info.
+pub fn get_lean_version_or_unknown(toolchain_path: &Path) -> String {
+    let lean_bin = toolchain_path.join("bin").join("lean");
+
+    if !lean_bin.exists() {
+        return "unknown".to_string();
+    }
+
+    let Ok(output) = std::process::Command::new(&lean_bin)
+        .arg("--version")
+        .output()
+    else {
+        return "unknown".to_string();
+    };
+
+    if !output.status.success() {
+        return "unknown".to_string();
+    }
+
+    let Ok(version) = String::from_utf8(output.stdout) else {
+        return "unknown".to_string();
+    };
+
+    // Parse version from output (usually "Lean (version 4.x.x, ...)")
+    if let Some(version) = version.split_whitespace().nth(2) {
+        version.trim_end_matches(',').to_string()
+    } else {
+        version.lines().next().unwrap_or("unknown").to_string()
+    }
 }
 
 #[cfg(test)]

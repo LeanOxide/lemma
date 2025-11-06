@@ -86,7 +86,8 @@ pub fn execute(verbose: bool) -> Result<()> {
             println!("  Size: {}", format_size(size).dimmed());
 
             // Try to find lean binary and get version
-            if let Ok(version) = get_lean_version(&path) {
+            let version = toolchain::get_lean_version_or_unknown(&path);
+            if version != "unknown" {
                 println!("  Version: {}", version.dimmed());
             }
             println!();
@@ -139,33 +140,4 @@ fn format_size(bytes: u64) -> String {
     }
 
     format!("{:.2} {}", size, UNITS[unit_idx])
-}
-
-/// Get Lean version from installation
-fn get_lean_version(install_path: &std::path::Path) -> Result<String> {
-    // Try to find lean binary
-    let lean_bin = install_path.join("bin").join("lean");
-
-    if !lean_bin.exists() {
-        return Ok("unknown".to_string());
-    }
-
-    // Try to run lean --version
-    let output = std::process::Command::new(&lean_bin)
-        .arg("--version")
-        .output();
-
-    if let Ok(output) = output {
-        if output.status.success() {
-            if let Ok(version) = String::from_utf8(output.stdout) {
-                // Parse version from output (usually "Lean (version 4.x.x, ...)")
-                if let Some(version) = version.split_whitespace().nth(2) {
-                    return Ok(version.trim_end_matches(',').to_string());
-                }
-                return Ok(version.lines().next().unwrap_or("unknown").to_string());
-            }
-        }
-    }
-
-    Ok("unknown".to_string())
 }
