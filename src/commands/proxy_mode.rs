@@ -85,7 +85,7 @@ pub fn execute(tool_name: &str) -> Result<()> {
 
     #[cfg(not(unix))]
     {
-        let mut child = cmd.spawn().with_context("Failed to execute tool")?;
+        let mut child = cmd.spawn().context("Failed to execute tool")?;
 
         let status = child
             .wait()
