@@ -28,9 +28,13 @@ pub fn execute(name: &str, path: &str) -> Result<()> {
         );
     }
 
+    // Parse the toolchain name to get the sanitized directory name
+    let toolchain_desc = crate::toolchain::ToolchainDesc::parse(name)?;
+    let dir_name = toolchain_desc.to_directory_name();
+
     // Get target path
     let toolchains_dir = Config::toolchains_dir()?;
-    let target_path = toolchains_dir.join(name);
+    let target_path = toolchains_dir.join(&dir_name);
 
     // Check if toolchain with this name already exists
     if target_path.exists() {

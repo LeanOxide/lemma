@@ -5,11 +5,129 @@
 //! files, and defaults).
 
 use anyhow::{Context, Result};
+use regex::Regex;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
+
+/// Default origin for Lean toolchains (GitHub repository path)
+pub const DEFAULT_ORIGIN: &str = "leanprover/lean4";
+
+/// Describes a toolchain, either local or remote
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ToolchainDesc {
+    /// A local/linked toolchain
+    Local { name: String },
+    /// A remote toolchain from a GitHub repository
+    Remote {
+        /// The GitHub repository (e.g., "leanprover/lean4")
+        origin: String,
+        /// The release tag or version (e.g., "v4.25.0-rc2", "stable")
+        release: String,
+    },
+}
+
+impl ToolchainDesc {
+    /// Parse a toolchain descriptor from a string
+    ///
+    /// Supports formats:
+    /// - Full: "leanprover/lean4:4.25.0-rc2"
+    /// - Short: "stable", "v4.24.0", "4.24.0"
+    /// - Local: any name for custom/linked toolchains
+    ///
+    /// The origin defaults to "leanprover/lean4" if not specified.
+    pub fn parse(name: &str) -> Result<Self> {
+        let pattern = r"^(?:([a-zA-Z0-9-_]+[/][a-zA-Z0-9-_]+)[:])?([a-zA-Z0-9-.]+)$";
+        let re = Regex::new(pattern).unwrap();
+
+        if let Some(captures) = re.captures(name) {
+            let origin = captures
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_else(|| DEFAULT_ORIGIN.to_string());
+
+            let mut release = captures.get(2).unwrap().as_str().to_string();
+
+            // Prepend 'v' to releases that start with a number
+            if release.starts_with(|c: char| c.is_numeric()) {
+                release = format!("v{}", release);
+            }
+
+            Ok(Self::Remote { origin, release })
+        } else {
+            // If it doesn't match the pattern, treat it as a local/custom toolchain
+            // This allows arbitrary names for linked toolchains
+            Ok(Self::Local {
+                name: name.to_string(),
+            })
+        }
+    }
+
+    /// Get the directory name for this toolchain
+    ///
+    /// For remote toolchains, sanitizes the name by replacing:
+    /// - '/' with '--'
+    /// - ':' with '---'
+    ///
+    /// For local toolchains, returns the name as-is
+    pub fn to_directory_name(&self) -> String {
+        match self {
+            Self::Local { name } => name.clone(),
+            Self::Remote { .. } => self.to_string().replace('/', "--").replace(':', "---"),
+        }
+    }
+
+    /// Parse from a directory name (reverse of to_directory_name)
+    pub fn from_directory_name(dir_name: &str) -> Result<Self> {
+        let name = dir_name.replace("---", ":").replace("--", "/");
+        Self::parse(&name)
+    }
+
+    /// Get the release version string
+    pub fn release(&self) -> &str {
+        match self {
+            Self::Local { name } => name,
+            Self::Remote { release, .. } => release,
+        }
+    }
+
+    /// Check if this is a local toolchain
+    #[allow(dead_code)]
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local { .. })
+    }
+
+    /// Check if this toolchain should auto-update (is a tracking channel)
+    pub fn is_tracking_channel(&self) -> bool {
+        match self {
+            Self::Local { .. } => false,
+            Self::Remote { release, .. } => {
+                matches!(release.as_str(), "stable" | "beta" | "nightly" | "latest")
+            }
+        }
+    }
+
+    /// Get the origin for a remote toolchain, or None for local
+    #[allow(dead_code)]
+    pub fn origin(&self) -> Option<&str> {
+        match self {
+            Self::Remote { origin, .. } => Some(origin),
+            Self::Local { .. } => None,
+        }
+    }
+}
+
+impl fmt::Display for ToolchainDesc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Local { name } => write!(f, "{}", name),
+            Self::Remote { origin, release } => write!(f, "{}:{}", origin, release),
+        }
+    }
+}
 
 /// Source of the active toolchain
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,10 +230,23 @@ pub fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String
             if let Ok(contents) = fs::read_to_string(&toolchain_file) {
                 let toolchain = contents.trim();
                 if !toolchain.is_empty() {
-                    return Ok(Some((
-                        toolchain.to_string(),
-                        toolchain_file.display().to_string(),
-                    )));
+                    // Parse and normalize the toolchain descriptor
+                    match ToolchainDesc::parse(toolchain) {
+                        Ok(desc) => {
+                            return Ok(Some((
+                                desc.to_string(),
+                                toolchain_file.display().to_string(),
+                            )));
+                        }
+                        Err(e) => {
+                            // Log the parse error but continue searching
+                            eprintln!(
+                                "Warning: Invalid toolchain format in {}: {}",
+                                toolchain_file.display(),
+                                e
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -127,10 +258,22 @@ pub fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String
                 // Parse TOML properly to extract lean_version
                 if let Ok(parsed) = toml::from_str::<toml::Value>(&contents) {
                     if let Some(version) = parsed.get("lean_version").and_then(|v| v.as_str()) {
-                        return Ok(Some((
-                            version.to_string(),
-                            leanpkg_file.display().to_string(),
-                        )));
+                        // Parse and normalize the version from leanpkg.toml
+                        match ToolchainDesc::parse(version) {
+                            Ok(desc) => {
+                                return Ok(Some((
+                                    desc.to_string(),
+                                    leanpkg_file.display().to_string(),
+                                )));
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "Warning: Invalid lean_version format in {}: {}",
+                                    leanpkg_file.display(),
+                                    e
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -153,7 +296,11 @@ pub fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String
 /// (e.g., .exe on Windows).
 pub fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
     let toolchains_dir = Config::toolchains_dir()?;
-    let toolchain_path = toolchains_dir.join(toolchain);
+
+    // Parse the toolchain to get the sanitized directory name
+    let toolchain_desc = ToolchainDesc::parse(toolchain)?;
+    let dir_name = toolchain_desc.to_directory_name();
+    let toolchain_path = toolchains_dir.join(&dir_name);
 
     // Check if toolchain exists
     if !toolchain_path.exists() {
@@ -289,7 +436,7 @@ mod tests {
         let result = find_project_toolchain(temp_path).unwrap();
         assert!(result.is_some());
         let (version, path) = result.unwrap();
-        assert_eq!(version, "v4.5.0");
+        assert_eq!(version, "leanprover/lean4:v4.5.0");
         assert!(path.contains("leanpkg.toml"));
     }
 
@@ -309,8 +456,71 @@ mod tests {
         let result = find_project_toolchain(temp_path).unwrap();
         assert!(result.is_some());
         let (version, path) = result.unwrap();
-        assert_eq!(version, "stable");
+        assert_eq!(version, "leanprover/lean4:stable");
         assert!(path.contains("lean-toolchain"));
+    }
+
+    #[test]
+    fn test_find_project_toolchain_with_origin() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path();
+
+        // Create a lean-toolchain file with full origin:release format
+        let toolchain_path = temp_path.join("lean-toolchain");
+        fs::write(&toolchain_path, "leanprover/lean4:4.25.0-rc2\n").unwrap();
+
+        // Should find and normalize the version
+        let result = find_project_toolchain(temp_path).unwrap();
+        assert!(result.is_some());
+        let (version, path) = result.unwrap();
+        assert_eq!(version, "leanprover/lean4:v4.25.0-rc2");
+        assert!(path.contains("lean-toolchain"));
+    }
+
+    #[test]
+    fn test_toolchain_desc_parse_full_format() {
+        let desc = ToolchainDesc::parse("leanprover/lean4:4.25.0").unwrap();
+        assert_eq!(desc.to_string(), "leanprover/lean4:v4.25.0");
+        assert_eq!(desc.release(), "v4.25.0");
+    }
+
+    #[test]
+    fn test_toolchain_desc_parse_short_format() {
+        let desc = ToolchainDesc::parse("stable").unwrap();
+        assert_eq!(desc.to_string(), "leanprover/lean4:stable");
+        assert_eq!(desc.release(), "stable");
+    }
+
+    #[test]
+    fn test_toolchain_desc_to_directory_name() {
+        let desc = ToolchainDesc::parse("leanprover/lean4:4.25.0").unwrap();
+        assert_eq!(desc.to_directory_name(), "leanprover--lean4---v4.25.0");
+    }
+
+    #[test]
+    fn test_toolchain_desc_from_directory_name() {
+        let desc = ToolchainDesc::from_directory_name("leanprover--lean4---v4.25.0").unwrap();
+        assert_eq!(desc.to_string(), "leanprover/lean4:v4.25.0");
+    }
+
+    #[test]
+    fn test_toolchain_desc_local() {
+        // Use a name with characters that don't match the regex pattern
+        let desc = ToolchainDesc::parse("my@custom#toolchain").unwrap();
+        assert!(desc.is_local());
+        assert_eq!(desc.to_string(), "my@custom#toolchain");
+        assert_eq!(desc.to_directory_name(), "my@custom#toolchain");
+    }
+
+    #[test]
+    fn test_toolchain_desc_simple_name() {
+        // Simple alphanumeric names are treated as Remote with default origin
+        let desc = ToolchainDesc::parse("my-custom-toolchain").unwrap();
+        assert!(!desc.is_local());
+        assert_eq!(desc.to_string(), "leanprover/lean4:my-custom-toolchain");
     }
 
     #[test]
@@ -331,6 +541,7 @@ mod tests {
         let result = find_project_toolchain(temp_path).unwrap();
         assert!(result.is_some());
         let (version, _) = result.unwrap();
+        // Note: The quotes don't match the regex, so it's treated as a Local toolchain
         assert_eq!(version, r#"v4.5.0-"beta""#);
     }
 }

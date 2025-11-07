@@ -5,7 +5,8 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
-use crate::install::{Installer, ToolchainDesc};
+use crate::install::Installer;
+use crate::toolchain::ToolchainDesc;
 
 pub fn execute(toolchain: Option<&str>) -> Result<()> {
     if let Some(name) = toolchain {
@@ -32,12 +33,12 @@ fn update_toolchain(name: &str) -> Result<()> {
     }
 
     // Parse the toolchain descriptor
-    let descriptor = ToolchainDesc::parse(name)?;
+    let toolchain_desc = ToolchainDesc::parse(name)?;
 
     println!("{} Checking for updates: {}", "=>".cyan().bold(), name);
 
     // Fetch the latest release information
-    let release = installer.fetch_release(&descriptor)?;
+    let release = installer.fetch_release(&toolchain_desc)?;
 
     // Load the current installed version hash
     let current_hash = Config::load_update_hash(name)?;
@@ -94,18 +95,24 @@ fn update_all_toolchains() -> Result<()> {
     let mut skipped_count = 0;
 
     for entry in entries {
-        if let Some(name) = entry.file_name().to_str() {
+        if let Some(dir_name) = entry.file_name().to_str() {
             let path = entry.path();
 
             // Skip symlinks (linked toolchains)
             if path.is_symlink() {
-                println!("   Skipping {} (linked toolchain)", name);
+                println!("   Skipping {} (linked toolchain)", dir_name);
                 skipped_count += 1;
                 continue;
             }
 
+            // Parse directory name to get the canonical toolchain name
+            let name = match crate::toolchain::ToolchainDesc::from_directory_name(dir_name) {
+                Ok(desc) => desc.to_string(),
+                Err(_) => dir_name.to_string(),
+            };
+
             // Skip specific versions
-            if is_specific_version(name) {
+            if is_specific_version(&name) {
                 println!("   Skipping {} (pinned version)", name);
                 skipped_count += 1;
                 continue;
@@ -116,7 +123,7 @@ fn update_all_toolchains() -> Result<()> {
             let installer = Installer::new()?;
 
             // Parse the toolchain descriptor
-            let descriptor = match ToolchainDesc::parse(name) {
+            let toolchain_desc = match ToolchainDesc::parse(&name) {
                 Ok(d) => d,
                 Err(e) => {
                     println!("   {} Failed to parse {}: {}", "✗".red(), name, e);
@@ -125,7 +132,7 @@ fn update_all_toolchains() -> Result<()> {
             };
 
             // Fetch the latest release information
-            let release = match installer.fetch_release(&descriptor) {
+            let release = match installer.fetch_release(&toolchain_desc) {
                 Ok(r) => r,
                 Err(e) => {
                     println!(
@@ -139,7 +146,7 @@ fn update_all_toolchains() -> Result<()> {
             };
 
             // Load the current installed version hash
-            let current_hash = Config::load_update_hash(name)?;
+            let current_hash = Config::load_update_hash(&name)?;
 
             // Compare versions
             if let Some(current) = current_hash {
@@ -154,7 +161,7 @@ fn update_all_toolchains() -> Result<()> {
             }
 
             // Perform the update
-            match installer.install(name, true) {
+            match installer.install(&name, true) {
                 Ok(_) => {
                     updated_count += 1;
                 }
@@ -180,10 +187,10 @@ fn update_all_toolchains() -> Result<()> {
 /// Check if a toolchain name is a specific version (not a channel)
 fn is_specific_version(name: &str) -> bool {
     // Use toolchain descriptor parsing for accurate detection
-    if let Ok(descriptor) = crate::install::ToolchainDesc::parse(name) {
+    if let Ok(desc) = ToolchainDesc::parse(name) {
         // Only tracking channels (stable, beta, nightly) should auto-update
         // Return true if it's NOT a tracking channel (i.e., should skip updates)
-        !descriptor.is_tracking()
+        !desc.is_tracking_channel()
     } else {
         // Fallback to heuristic detection for edge cases
         // If it starts with 'v' and has dots, it's likely a version

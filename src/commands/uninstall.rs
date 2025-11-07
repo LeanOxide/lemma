@@ -8,7 +8,11 @@ use crate::config::Config;
 
 pub fn execute(toolchain: &str) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
-    let toolchain_path = toolchains_dir.join(toolchain);
+
+    // Parse the toolchain to get the sanitized directory name
+    let toolchain_desc = crate::toolchain::ToolchainDesc::parse(toolchain)?;
+    let dir_name = toolchain_desc.to_directory_name();
+    let toolchain_path = toolchains_dir.join(&dir_name);
 
     // Check if toolchain exists
     if !toolchain_path.exists() {

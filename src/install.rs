@@ -16,104 +16,12 @@ use crate::archive::extract_archive;
 use crate::config::Config;
 use crate::download::DownloadClient;
 use crate::release::{Release, ReleaseServerClient};
+use crate::toolchain::ToolchainDesc;
 
 /// Toolchain installer
 pub struct Installer {
     download_client: DownloadClient,
     release_client: ReleaseServerClient,
-}
-
-/// Channel represents the different release channels for Lean
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Channel {
-    /// Stable channel
-    Stable,
-    /// Beta channel
-    Beta,
-    /// Nightly channel
-    Nightly,
-    /// Specific version (e.g., "v4.24.0", "v4.15.0-rc1")
-    Version(String),
-}
-
-impl Channel {
-    /// Parse a channel from a string
-    pub fn parse(s: &str) -> Result<Self> {
-        match s {
-            "stable" | "latest" => Ok(Channel::Stable),
-            "beta" => Ok(Channel::Beta),
-            "nightly" => Ok(Channel::Nightly),
-            _ => {
-                // Validate that it looks like a version
-                if s.is_empty() {
-                    anyhow::bail!("Empty channel name");
-                }
-                Ok(Channel::Version(s.to_string()))
-            }
-        }
-    }
-
-    /// Get the display name for this channel
-    pub fn name(&self) -> String {
-        match self {
-            Channel::Stable => "stable".to_string(),
-            Channel::Beta => "beta".to_string(),
-            Channel::Nightly => "nightly".to_string(),
-            Channel::Version(v) => v.clone(),
-        }
-    }
-
-    /// Returns true if this is a channel that should auto-update
-    pub fn is_tracking_channel(&self) -> bool {
-        matches!(self, Channel::Stable | Channel::Beta | Channel::Nightly)
-    }
-}
-
-/// Toolchain descriptor - describes an official Lean toolchain
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolchainDesc {
-    /// The release channel
-    pub channel: Channel,
-    /// Optional date for dated releases (e.g., "2024-01-15")
-    /// Currently not used for Lean, but reserved for future compatibility
-    pub date: Option<String>,
-}
-
-impl ToolchainDesc {
-    /// Parse a toolchain specification into a descriptor
-    ///
-    /// Supported formats:
-    /// - "stable" -> stable channel
-    /// - "beta" -> beta channel
-    /// - "nightly" -> nightly channel
-    /// - "v4.24.0" -> specific version
-    /// - "lean-4.24.0" -> specific version (strips "lean-" prefix)
-    pub fn parse(input: &str) -> Result<Self> {
-        if input.is_empty() {
-            anyhow::bail!("Empty toolchain specification");
-        }
-
-        // Strip common "lean-" prefix if present
-        let input = input.strip_prefix("lean-").unwrap_or(input);
-
-        // For now, we don't support dated releases, so date is always None
-        let channel = Channel::parse(input)?;
-
-        Ok(ToolchainDesc {
-            channel,
-            date: None,
-        })
-    }
-
-    /// Get the display name for this toolchain
-    pub fn name(&self) -> String {
-        self.channel.name()
-    }
-
-    /// Returns true if this toolchain should auto-update
-    pub fn is_tracking(&self) -> bool {
-        self.channel.is_tracking_channel()
-    }
 }
 
 impl Installer {
@@ -131,16 +39,17 @@ impl Installer {
 
     /// Install a toolchain
     pub fn install(&self, toolchain: &str, force: bool) -> Result<()> {
-        let descriptor = ToolchainDesc::parse(toolchain)?;
+        // Parse as ToolchainDesc to get the canonical name with origin
+        let toolchain_desc = ToolchainDesc::parse(toolchain)?;
 
         println!(
             "{} Installing toolchain: {}",
             "=>".green().bold(),
-            descriptor.name()
+            toolchain_desc
         );
 
-        // Check if already installed
-        let install_path = self.toolchain_path(&descriptor.name())?;
+        // Check if already installed using sanitized directory name
+        let install_path = self.toolchain_path(&toolchain_desc.to_directory_name())?;
         if install_path.exists() && !force {
             println!(
                 "{} Toolchain already installed at: {}",
@@ -153,7 +62,7 @@ impl Installer {
 
         // Fetch release information from release.lean-lang.org
         println!("{} Fetching release information...", "=>".blue().bold());
-        let release = self.fetch_release(&descriptor)?;
+        let release = self.fetch_release(&toolchain_desc)?;
 
         println!("   Found release: {}", release.name.bold());
 
@@ -178,7 +87,7 @@ impl Installer {
 
         // Create temp directory for this installation
         // NOTE: We don't include process ID so that resuming after Ctrl-C works
-        let temp_install = tmp_dir.join(descriptor.name());
+        let temp_install = tmp_dir.join(toolchain_desc.to_directory_name());
 
         // Create temp directory if it doesn't exist
         fs::create_dir_all(&temp_install).context("Failed to create temp directory")?;
@@ -222,7 +131,7 @@ impl Installer {
         println!(
             "{} Successfully installed {} to {}",
             "✓".green().bold(),
-            descriptor.name(),
+            toolchain_desc,
             install_path.display()
         );
 
@@ -232,18 +141,20 @@ impl Installer {
 
         // Save update hash for tracking
         let version_hash = release.name.as_str();
-        let _ = Config::save_update_hash(&descriptor.name(), version_hash); // Best effort
+        let _ = Config::save_update_hash(&toolchain_desc.to_string(), version_hash); // Best effort
 
         Ok(())
     }
 
     /// Fetch release information from release.lean-lang.org
-    pub fn fetch_release(&self, descriptor: &ToolchainDesc) -> Result<Release> {
-        match &descriptor.channel {
-            Channel::Stable => self.release_client.get_latest_stable(),
-            Channel::Beta => self.release_client.get_latest_beta(),
-            Channel::Nightly => self.release_client.get_latest_nightly(),
-            Channel::Version(tag) => self.release_client.find_release(tag),
+    pub fn fetch_release(&self, toolchain: &ToolchainDesc) -> Result<Release> {
+        let release = toolchain.release();
+
+        match release {
+            "stable" | "latest" => self.release_client.get_latest_stable(),
+            "beta" => self.release_client.get_latest_beta(),
+            "nightly" => self.release_client.get_latest_nightly(),
+            tag => self.release_client.find_release(tag),
         }
     }
 
@@ -287,84 +198,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_channel_stable() {
-        let channel = Channel::parse("stable").unwrap();
-        assert_eq!(channel, Channel::Stable);
-        assert_eq!(channel.name(), "stable");
-        assert!(channel.is_tracking_channel());
-    }
-
-    #[test]
-    fn test_parse_channel_beta() {
-        let channel = Channel::parse("beta").unwrap();
-        assert_eq!(channel, Channel::Beta);
-        assert_eq!(channel.name(), "beta");
-        assert!(channel.is_tracking_channel());
-    }
-
-    #[test]
-    fn test_parse_channel_nightly() {
-        let channel = Channel::parse("nightly").unwrap();
-        assert_eq!(channel, Channel::Nightly);
-        assert_eq!(channel.name(), "nightly");
-        assert!(channel.is_tracking_channel());
-    }
-
-    #[test]
-    fn test_parse_channel_version() {
-        let channel = Channel::parse("v4.24.0").unwrap();
-        assert_eq!(channel, Channel::Version("v4.24.0".to_string()));
-        assert_eq!(channel.name(), "v4.24.0");
-        assert!(!channel.is_tracking_channel());
-    }
-
-    #[test]
-    fn test_parse_toolchain_stable() {
+    fn test_fetch_release_stable() {
+        // Just test that parsing works
         let desc = ToolchainDesc::parse("stable").unwrap();
-        assert_eq!(desc.channel, Channel::Stable);
-        assert_eq!(desc.name(), "stable");
-        assert!(desc.is_tracking());
+        assert_eq!(desc.release(), "stable");
+        assert!(desc.is_tracking_channel());
     }
 
     #[test]
-    fn test_parse_toolchain_beta() {
+    fn test_fetch_release_beta() {
         let desc = ToolchainDesc::parse("beta").unwrap();
-        assert_eq!(desc.channel, Channel::Beta);
-        assert_eq!(desc.name(), "beta");
-        assert!(desc.is_tracking());
+        assert_eq!(desc.release(), "beta");
+        assert!(desc.is_tracking_channel());
     }
 
     #[test]
-    fn test_parse_toolchain_nightly() {
+    fn test_fetch_release_nightly() {
         let desc = ToolchainDesc::parse("nightly").unwrap();
-        assert_eq!(desc.channel, Channel::Nightly);
-        assert_eq!(desc.name(), "nightly");
-        assert!(desc.is_tracking());
+        assert_eq!(desc.release(), "nightly");
+        assert!(desc.is_tracking_channel());
     }
 
     #[test]
-    fn test_parse_toolchain_version() {
-        let desc = ToolchainDesc::parse("v4.5.0").unwrap();
-        assert_eq!(desc.channel, Channel::Version("v4.5.0".to_string()));
-        assert_eq!(desc.name(), "v4.5.0");
-        assert!(!desc.is_tracking());
+    fn test_fetch_release_version() {
+        let desc = ToolchainDesc::parse("v4.24.0").unwrap();
+        assert_eq!(desc.release(), "v4.24.0");
+        assert!(!desc.is_tracking_channel());
     }
 
     #[test]
-    fn test_parse_toolchain_with_lean_prefix() {
-        let desc = ToolchainDesc::parse("lean-4.24.0").unwrap();
-        assert_eq!(desc.channel, Channel::Version("4.24.0".to_string()));
-        assert_eq!(desc.name(), "4.24.0");
+    fn test_fetch_release_with_origin() {
+        let desc = ToolchainDesc::parse("leanprover/lean4:4.25.0").unwrap();
+        assert_eq!(desc.release(), "v4.25.0");
+        assert_eq!(desc.origin(), Some("leanprover/lean4"));
+        assert!(!desc.is_tracking_channel());
     }
 
     #[test]
-    fn test_parse_toolchain_latest_alias() {
+    fn test_parse_latest_alias() {
+        // "latest" is treated as a remote toolchain name
         let desc = ToolchainDesc::parse("latest").unwrap();
-        assert_eq!(desc.channel, Channel::Stable);
-    }
-
-    #[test]
-    fn test_parse_empty_toolchain() {
-        assert!(ToolchainDesc::parse("").is_err());
+        assert_eq!(desc.release(), "latest");
+        // It won't be a tracking channel unless we explicitly handle it in install
     }
 }

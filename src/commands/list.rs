@@ -41,16 +41,22 @@ pub fn execute(verbose: bool) -> Result<()> {
             continue;
         }
 
-        let name = path
+        let dir_name = path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("")
             .to_string();
 
         // Skip temp directories (ending with .tmp)
-        if name.ends_with(".tmp") {
+        if dir_name.ends_with(".tmp") {
             continue;
         }
+
+        // Parse the directory name to get the canonical toolchain name
+        let name = match crate::toolchain::ToolchainDesc::from_directory_name(&dir_name) {
+            Ok(desc) => desc.to_string(),
+            Err(_) => dir_name, // Fallback to directory name if parsing fails
+        };
 
         toolchains.push((name, path));
     }
