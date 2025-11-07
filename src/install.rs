@@ -1,7 +1,6 @@
 //! Toolchain installation with atomic operations
 //!
 //! This module implements atomic toolchain installation inspired by both
-//! rustup and elan:
 //! - Downloads to temporary location
 //! - Extracts to temporary directory
 //! - Atomically moves to final location

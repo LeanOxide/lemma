@@ -1,6 +1,5 @@
 #!/usr/bin/env pwsh
 # Lemma installer script for Windows
-# Based on rustup-init.ps1
 
 param(
     [string]$LemmaHome = "$env:USERPROFILE\.lemma"

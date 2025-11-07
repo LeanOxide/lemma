@@ -107,7 +107,7 @@ Example configuration:
 
 ```toml
 version = "1"
-default_toolchain = "stable"
+default_toolchain = "leanprover/lean4:stable"
 path_setup_shown = true
 release_url = "https://release.lean-lang.org"
 
@@ -142,7 +142,7 @@ Contributions are welcome! Key areas that need work:
 ## Acknowledgments
 
 - **Elan** - The original Lean toolchain manager that inspired this project
-- **Rustup** - Design inspiration for toolchain management
+
 ---
 
 **Note:** Lemma is in early development. While the core infrastructure is in place, toolchain installation is not yet fully implemented. Use at your own risk.

@@ -10,7 +10,7 @@ use crate::toolchain;
 pub fn execute() -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
 
-    // Show platform and lemma home (similar to rustup)
+    // Show platform and lemma home
     println!("{} {}", "Default host:".bold(), get_host_triple());
     if let Ok(lemma_home) = Config::lemma_home() {
         println!("{} {}", "lemma home:".bold(), lemma_home.display());
@@ -20,7 +20,7 @@ pub fn execute() -> Result<()> {
     // Determine the active toolchain
     let active_toolchain = toolchain::resolve_toolchain_with_source(None)?;
 
-    // List installed toolchains first (rustup style)
+    // List installed toolchains first
     println!("{}", "installed toolchains".bold());
     println!("{}", "--------------------".bold());
 
@@ -112,7 +112,7 @@ pub fn execute() -> Result<()> {
 
     println!();
 
-    // Show active toolchain details (rustup style)
+    // Show active toolchain details
     println!("{}", "active toolchain".bold());
     println!("{}", "----------------".bold());
 
