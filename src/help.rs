@@ -229,6 +229,21 @@ pub static COMPLETIONS_HELP: &str = r"DISCUSSION:
 
         PS C:\> lemma completions powershell >> %USERPROFILE%\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1";
 
+pub static RUN_HELP: &str = r"DISCUSSION:
+    Configures the environment to run a command with a specific toolchain.
+
+    This is useful for testing and one-off commands without changing your
+    default toolchain or the active toolchain for a directory.
+
+    The command is run with the specified toolchain's binaries in the PATH,
+    and the LEMMA_TOOLCHAIN environment variable set appropriately.
+
+    Examples:
+
+        $ lemma run stable lean --version
+        $ lemma run v4.23.0 lake build
+        $ lemma run nightly lean Main.lean";
+
 pub static SELF_HELP: &str = r"DISCUSSION:
     The `self` command is used to manipulate the lemma installation.
     It can update lemma to newer versions, or uninstall lemma entirely.";

@@ -64,6 +64,17 @@ pub enum Commands {
         toolchain: Option<String>,
     },
 
+    /// Run a command with a toolchain
+    #[command(after_long_help = help::RUN_HELP)]
+    Run {
+        /// Toolchain to use (e.g., stable, v4.24.0)
+        toolchain: String,
+
+        /// Command and arguments to run
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        command: Vec<String>,
+    },
+
     /// Generate tab-completion scripts for your shell
     #[command(after_long_help = help::COMPLETIONS_HELP)]
     Completions {

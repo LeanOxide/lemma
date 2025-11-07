@@ -10,6 +10,7 @@ pub mod link;
 pub mod list;
 pub mod r#override;
 pub mod proxy_mode;
+pub mod run;
 pub mod self_update;
 pub mod show;
 pub mod uninstall;
@@ -44,6 +45,8 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Which { binary, toolchain } => which::execute(&binary, toolchain.as_deref()),
 
         Commands::Update { toolchain } => update::execute(toolchain.as_deref()),
+
+        Commands::Run { toolchain, command } => run::execute(&toolchain, &command),
 
         Commands::Completions { shell } => completions::execute(shell),
 
