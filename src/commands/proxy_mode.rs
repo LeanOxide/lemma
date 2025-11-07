@@ -7,6 +7,9 @@ use anyhow::Result;
 use std::env;
 use std::process::Command;
 
+#[cfg(not(unix))]
+use anyhow::Context;
+
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
@@ -82,7 +85,7 @@ pub fn execute(tool_name: &str) -> Result<()> {
 
     #[cfg(not(unix))]
     {
-        let mut child = cmd.spawn().context("Failed to execute tool")?;
+        let mut child = cmd.spawn().with_context("Failed to execute tool")?;
 
         let status = child
             .wait()
