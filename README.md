@@ -137,7 +137,7 @@ Contributions are welcome! Key areas that need work:
 
 ## License
 
-[MIT]
+[MIT](LICENSE)
 
 ## Acknowledgments
 
