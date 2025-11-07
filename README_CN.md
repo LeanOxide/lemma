@@ -127,7 +127,7 @@ Lemma 遵循标准的代理环境变量：
 编辑 `~/.lemma/config.toml`，将 `release_url` 修改为：
 
 ```toml
-release_url = "https://lemma.puqing.work"
+release_url = "https://lemma.puqing.work/index.json"
 ```
 
 ## 贡献

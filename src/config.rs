@@ -161,8 +161,17 @@ impl Config {
 
     /// Load the update hash for a toolchain
     pub fn load_update_hash(toolchain_name: &str) -> Result<Option<String>> {
+        use crate::toolchain::ToolchainDesc;
+
         let update_hashes_dir = Self::update_hashes_dir()?;
-        let hash_file = update_hashes_dir.join(toolchain_name);
+
+        // Sanitize the toolchain name for use as a filename
+        let filename = match ToolchainDesc::parse(toolchain_name) {
+            Ok(desc) => desc.to_directory_name(),
+            Err(_) => toolchain_name.to_string(),
+        };
+
+        let hash_file = update_hashes_dir.join(filename);
 
         if hash_file.exists() {
             let hash = fs::read_to_string(&hash_file)
@@ -177,11 +186,19 @@ impl Config {
 
     /// Save the update hash for a toolchain
     pub fn save_update_hash(toolchain_name: &str, version_hash: &str) -> Result<()> {
+        use crate::toolchain::ToolchainDesc;
+
         let update_hashes_dir = Self::update_hashes_dir()?;
         fs::create_dir_all(&update_hashes_dir)
             .context("Failed to create update-hashes directory")?;
 
-        let hash_file = update_hashes_dir.join(toolchain_name);
+        // Sanitize the toolchain name for use as a filename
+        let filename = match ToolchainDesc::parse(toolchain_name) {
+            Ok(desc) => desc.to_directory_name(),
+            Err(_) => toolchain_name.to_string(),
+        };
+
+        let hash_file = update_hashes_dir.join(filename);
         fs::write(&hash_file, version_hash).context("Failed to write update hash")?;
 
         Ok(())

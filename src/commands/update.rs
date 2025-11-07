@@ -21,6 +21,10 @@ pub fn execute(toolchain: Option<&str>) -> Result<()> {
 fn update_toolchain(name: &str) -> Result<()> {
     let installer = Installer::new()?;
 
+    // Parse the toolchain descriptor first to get canonical name
+    let toolchain_desc = ToolchainDesc::parse(name)?;
+    let canonical_name = toolchain_desc.to_string();
+
     // Check if toolchain is installed
     if !installer.is_installed(name)? {
         println!(
@@ -32,16 +36,13 @@ fn update_toolchain(name: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Parse the toolchain descriptor
-    let toolchain_desc = ToolchainDesc::parse(name)?;
-
     println!("{} Checking for updates: {}", "=>".cyan().bold(), name);
 
     // Fetch the latest release information
     let release = installer.fetch_release(&toolchain_desc)?;
 
-    // Load the current installed version hash
-    let current_hash = Config::load_update_hash(name)?;
+    // Load the current installed version hash using canonical name
+    let current_hash = Config::load_update_hash(&canonical_name)?;
 
     // Compare versions
     if let Some(current) = current_hash {

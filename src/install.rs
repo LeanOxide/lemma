@@ -159,7 +159,12 @@ impl Installer {
 
     /// Check if a toolchain is installed
     pub fn is_installed(&self, toolchain_name: &str) -> Result<bool> {
-        let install_path = self.toolchain_path(toolchain_name)?;
+        // Parse the toolchain to get the sanitized directory name
+        let toolchain_desc = ToolchainDesc::parse(toolchain_name)?;
+        let dir_name = toolchain_desc.to_directory_name();
+
+        let toolchains_dir = Config::toolchains_dir()?;
+        let install_path = toolchains_dir.join(&dir_name);
         Ok(install_path.exists())
     }
 
