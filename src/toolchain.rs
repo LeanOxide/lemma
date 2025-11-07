@@ -289,6 +289,52 @@ pub fn find_project_toolchain(start_dir: &Path) -> Result<Option<(String, String
     Ok(None)
 }
 
+/// Find a tracking channel (stable/beta/nightly) that has the requested version
+///
+/// This allows using version-specific lean-toolchain files even when only
+/// channels are installed. For example, if `stable` is installed and points
+/// to v4.24.0, requesting v4.24.0 will find the stable installation.
+fn find_channel_with_version(
+    toolchains_dir: &Path,
+    requested: &ToolchainDesc,
+) -> Result<Option<PathBuf>> {
+    let channels = ["stable", "beta", "nightly", "latest"];
+
+    for channel in &channels {
+        let channel_desc = ToolchainDesc::parse(channel)?;
+        let channel_dir = toolchains_dir.join(channel_desc.to_directory_name());
+
+        if channel_dir.exists() {
+            // Check the version of the installed channel
+            if let Ok(version) = get_lean_version(&channel_dir) {
+                // Extract version number from output like "Lean (version 4.24.0, ...)"
+                if let Some(installed_version) = extract_version_from_lean_output(&version) {
+                    let requested_version = requested.release().trim_start_matches('v');
+
+                    if installed_version == requested_version {
+                        return Ok(Some(channel_dir));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+/// Extract version number from `lean --version` output
+fn extract_version_from_lean_output(output: &str) -> Option<String> {
+    // Output format: "Lean (version 4.24.0, commit ..., Release)"
+    // We want to extract "4.24.0"
+    if let Some(start) = output.find("version ") {
+        let version_part = &output[start + 8..];
+        if let Some(end) = version_part.find(',').or_else(|| version_part.find(')')) {
+            return Some(version_part[..end].trim().to_string());
+        }
+    }
+    None
+}
+
 /// Find the path to a tool binary in the specified toolchain
 ///
 /// This function looks for a tool (lean, lake, etc.) in the toolchain directory
@@ -300,16 +346,34 @@ pub fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
     // Parse the toolchain to get the sanitized directory name
     let toolchain_desc = ToolchainDesc::parse(toolchain)?;
     let dir_name = toolchain_desc.to_directory_name();
-    let toolchain_path = toolchains_dir.join(&dir_name);
+    let mut toolchain_path = toolchains_dir.join(&dir_name);
 
     // Check if toolchain exists
     if !toolchain_path.exists() {
-        anyhow::bail!(
-            "Toolchain '{}' is not installed.\n\n\
-             Install it with: lemma toolchain install {}",
-            toolchain,
-            toolchain
-        );
+        // Try fallback: if this is a version request, check if any tracking channel
+        // (stable/beta/nightly) is installed that might have this version
+        if !toolchain_desc.is_tracking_channel() {
+            if let Some(fallback_path) =
+                find_channel_with_version(&toolchains_dir, &toolchain_desc)?
+            {
+                toolchain_path = fallback_path;
+            } else {
+                anyhow::bail!(
+                    "Toolchain '{}' is not installed.\n\n\
+                     Install it with: lemma toolchain install {}\n\
+                     Or install a channel: lemma toolchain install stable",
+                    toolchain,
+                    toolchain
+                );
+            }
+        } else {
+            anyhow::bail!(
+                "Toolchain '{}' is not installed.\n\n\
+                 Install it with: lemma toolchain install {}",
+                toolchain,
+                toolchain
+            );
+        }
     }
 
     // Common locations for tool binaries
@@ -543,5 +607,23 @@ mod tests {
         let (version, _) = result.unwrap();
         // Note: The quotes don't match the regex, so it's treated as a Local toolchain
         assert_eq!(version, r#"v4.5.0-"beta""#);
+    }
+
+    #[test]
+    fn test_extract_version_from_lean_output() {
+        let output1 = "Lean (version 4.24.0, commit 6099ec08, Release)";
+        assert_eq!(
+            extract_version_from_lean_output(output1),
+            Some("4.24.0".to_string())
+        );
+
+        let output2 = "Lean (version 4.25.0-rc2, commit abc123, Release)";
+        assert_eq!(
+            extract_version_from_lean_output(output2),
+            Some("4.25.0-rc2".to_string())
+        );
+
+        let output3 = "invalid output";
+        assert_eq!(extract_version_from_lean_output(output3), None);
     }
 }

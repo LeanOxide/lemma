@@ -24,16 +24,27 @@ pub fn execute() -> Result<()> {
 
         // Show toolchain path if it exists
         let toolchains_dir = Config::toolchains_dir()?;
-        let toolchain_path = toolchains_dir.join(toolchain);
-        if toolchain_path.exists() {
-            println!("  Path: {}", toolchain_path.display());
 
-            // Try to get lean version
-            if let Ok(version) = toolchain::get_lean_version(&toolchain_path) {
-                println!("  Lean: {}", version.trim());
+        // Parse to get the sanitized directory name
+        if let Ok(desc) = crate::toolchain::ToolchainDesc::parse(toolchain) {
+            let dir_name = desc.to_directory_name();
+            let toolchain_path = toolchains_dir.join(&dir_name);
+
+            if toolchain_path.exists() {
+                println!("  Path: {}", toolchain_path.display());
+
+                // Try to get lean version
+                if let Ok(version) = toolchain::get_lean_version(&toolchain_path) {
+                    println!("  Lean: {}", version.trim());
+                }
+            } else {
+                println!("  {} Toolchain not installed", "Warning:".yellow().bold());
             }
         } else {
-            println!("  {} Toolchain not installed", "Warning:".yellow().bold());
+            println!(
+                "  {} Cannot resolve toolchain path",
+                "Warning:".yellow().bold()
+            );
         }
         println!();
     } else {
@@ -68,11 +79,18 @@ pub fn execute() -> Result<()> {
             println!("  {}", "No toolchains installed".dimmed());
         } else {
             for entry in entries {
-                if let Some(name) = entry.file_name().to_str() {
+                if let Some(dir_name) = entry.file_name().to_str() {
+                    // Parse directory name to get canonical toolchain name
+                    let name = match crate::toolchain::ToolchainDesc::from_directory_name(dir_name)
+                    {
+                        Ok(desc) => desc.to_string(),
+                        Err(_) => dir_name.to_string(),
+                    };
+
                     // Check if this is the active toolchain
                     let is_active = active_toolchain
                         .as_ref()
-                        .map(|(tc, _)| tc == name)
+                        .map(|(tc, _)| tc == &name)
                         .unwrap_or(false);
 
                     if is_active {

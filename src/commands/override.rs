@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use crate::cli::OverrideCommands;
 use crate::config::Config;
+use crate::toolchain::ToolchainDesc;
 
 pub fn execute(command: OverrideCommands) -> Result<()> {
     match command {
@@ -33,21 +34,26 @@ fn set_override(toolchain: &str, path: Option<String>) -> Result<()> {
         anyhow::bail!("Path is not a directory: {}", target_path.display());
     }
 
+    // Parse the toolchain to get canonical format and directory name
+    let toolchain_desc = ToolchainDesc::parse(toolchain)?;
+    let canonical_name = toolchain_desc.to_string();
+    let dir_name = toolchain_desc.to_directory_name();
+
     // Check if toolchain exists
     let toolchains_dir = Config::toolchains_dir()?;
-    let toolchain_path = toolchains_dir.join(toolchain);
+    let toolchain_path = toolchains_dir.join(&dir_name);
     if !toolchain_path.exists() {
         anyhow::bail!(
             "Toolchain '{}' is not installed.\n\n\
              Install it with: lemma toolchain install {}",
-            toolchain,
-            toolchain
+            canonical_name,
+            canonical_name
         );
     }
 
-    // Load config and set override
+    // Load config and set override (store in canonical format)
     let mut config = Config::load().unwrap_or_default();
-    config.set_override(target_path.clone(), toolchain.to_string())?;
+    config.set_override(target_path.clone(), canonical_name.clone())?;
     config.save()?;
 
     let canonical_path = target_path
@@ -59,7 +65,7 @@ fn set_override(toolchain: &str, path: Option<String>) -> Result<()> {
         "✓".green().bold(),
         canonical_path.display()
     );
-    println!("   Toolchain: {}", toolchain);
+    println!("   Toolchain: {}", canonical_name);
 
     Ok(())
 }
