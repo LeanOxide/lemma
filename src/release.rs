@@ -141,7 +141,7 @@ impl ReleaseServerClient {
     }
 }
 
-/// Get the current platform identifier (elan-style)
+/// Get the current platform identifier
 fn current_platform() -> String {
     let os = if cfg!(target_os = "linux") {
         "linux"
