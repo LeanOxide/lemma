@@ -1,5 +1,7 @@
 # Lemma - A Modern Lean4 Toolchain Manager
 
+[![codecov](https://codecov.io/github/andpuqing/lemma/graph/badge.svg?token=X0RRVLGQZQ)](https://codecov.io/github/andpuqing/lemma)
+
 [English](README.md) | [简体中文](README_CN.md)
 
 **Lemma** is a rewrite of [elan](https://github.com/leanprover/elan) that addresses critical usability issues, particularly around proxy support and custom toolchain sources.
