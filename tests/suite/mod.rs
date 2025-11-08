@@ -1,4 +1,10 @@
 mod cli_config;
+mod cli_edge_cases;
 mod cli_init;
+mod cli_link;
+mod cli_override;
+mod cli_project;
+mod cli_proxy;
 mod cli_toolchain;
+mod cli_uninstall;
 mod test_helpers;
