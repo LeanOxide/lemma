@@ -235,11 +235,51 @@ impl Config {
                 "=>".green().bold()
             );
             println!();
-            println!(
-                "{} Add the following to your shell profile (~/.bashrc, ~/.zshrc, etc.):",
-                "Note:".yellow().bold()
-            );
-            println!("   export PATH=\"{}:$PATH\"", bin_dir.display());
+
+            #[cfg(windows)]
+            {
+                println!(
+                    "{} Add Lemma to your PATH by running one of the following:",
+                    "Note:".yellow().bold()
+                );
+                println!();
+                println!(
+                    "   {} Run this command in PowerShell (as Administrator):",
+                    "PowerShell:".cyan()
+                );
+                println!(
+                    "   [System.Environment]::SetEnvironmentVariable('Path', $env:Path + ';{}', 'User')",
+                    bin_dir.display()
+                );
+                println!();
+                println!(
+                    "   {} Run this command in Command Prompt (as Administrator):",
+                    "CMD:".cyan()
+                );
+                println!("   setx PATH \"%PATH%;{}\"", bin_dir.display());
+                println!();
+                println!(
+                    "   {} Alternatively, add it manually via:",
+                    "Manual:".cyan()
+                );
+                println!("   System Properties > Environment Variables > User Variables > Path");
+                println!("   Add: {}", bin_dir.display());
+                println!();
+                println!(
+                    "{} After updating PATH, restart your terminal.",
+                    "Important:".yellow().bold()
+                );
+            }
+
+            #[cfg(not(windows))]
+            {
+                println!(
+                    "{} Add the following to your shell profile (~/.bashrc, ~/.zshrc, etc.):",
+                    "Note:".yellow().bold()
+                );
+                println!("   export PATH=\"{}:$PATH\"", bin_dir.display());
+            }
+
             println!();
 
             config.path_setup_shown = true;
