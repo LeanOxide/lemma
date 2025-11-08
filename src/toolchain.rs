@@ -10,11 +10,15 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use crate::config::Config;
 
 /// Default origin for Lean toolchains (GitHub repository path)
 pub const DEFAULT_ORIGIN: &str = "leanprover/lean4";
+
+/// Cached regex for parsing toolchain descriptors
+static TOOLCHAIN_REGEX: OnceLock<Regex> = OnceLock::new();
 
 /// Describes a toolchain, either local or remote
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,8 +44,16 @@ impl ToolchainDesc {
     ///
     /// The origin defaults to "leanprover/lean4" if not specified.
     pub fn parse(name: &str) -> Result<Self> {
-        let pattern = r"^(?:([a-zA-Z0-9-_]+[/][a-zA-Z0-9-_]+)[:])?([a-zA-Z0-9-.]+)$";
-        let re = Regex::new(pattern).unwrap();
+        let re = TOOLCHAIN_REGEX.get_or_init(|| {
+            // Pattern matches: [origin:]release
+            // origin format: owner/repo where:
+            // - Parts don't start/end with hyphens
+            // - No consecutive hyphens or special chars (conflicts with -- and --- separators)
+            // release: alphanumeric with single hyphens/periods allowed
+            // This prevents conflicts with directory name encoding
+            let pattern = r"^(?:([a-zA-Z0-9_]+(?:-[a-zA-Z0-9_]+)*/[a-zA-Z0-9_]+(?:-[a-zA-Z0-9_]+)*)[:])?([a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*)$";
+            Regex::new(pattern).unwrap()
+        });
 
         if let Some(captures) = re.captures(name) {
             let origin = captures
@@ -464,6 +476,88 @@ pub fn get_lean_version_or_unknown(toolchain_path: &Path) -> String {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    // Property-based tests using proptest
+    #[cfg(test)]
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        // Strategy for generating valid toolchain names
+        fn toolchain_name_strategy() -> impl Strategy<Value = String> {
+            prop_oneof![
+                // Tracking channels
+                Just("stable".to_string()),
+                Just("nightly".to_string()),
+                Just("beta".to_string()),
+                Just("latest".to_string()),
+                // Version numbers
+                "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}".prop_map(|s| s),
+                "v[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}".prop_map(|s| s),
+                // With origin: single hyphens/periods only, no consecutive special chars
+                "[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*:[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*".prop_map(|s| s),
+            ]
+        }
+
+        proptest! {
+            /// Property: Parsing and displaying should roundtrip for valid remote toolchains
+            #[test]
+            fn test_parse_display_roundtrip_remote(version in "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}") {
+                let input = format!("leanprover/lean4:{}", version);
+                let parsed = ToolchainDesc::parse(&input).unwrap();
+                let displayed = parsed.to_string();
+
+                // The displayed version might have 'v' prefix added
+                let expected = format!("leanprover/lean4:v{}", version);
+                prop_assert_eq!(displayed, expected);
+            }
+
+            /// Property: Directory name conversion should be reversible
+            #[test]
+            fn test_directory_name_roundtrip(
+                // Generate origins with single hyphens only, no consecutive hyphens
+                origin in "[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*",
+                // Release with single hyphens/periods, no consecutive special chars
+                release in "[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*"
+            ) {
+                let toolchain = format!("{}:{}", origin, release);
+                let desc = ToolchainDesc::parse(&toolchain).unwrap();
+                let dir_name = desc.to_directory_name();
+                let parsed_back = ToolchainDesc::from_directory_name(&dir_name).unwrap();
+
+                // The roundtrip should preserve the toolchain
+                prop_assert_eq!(desc.to_string(), parsed_back.to_string());
+            }
+
+            /// Property: Parsing should never panic on arbitrary strings
+            #[test]
+            fn test_parse_never_panics(input in "\\PC{0,100}") {
+                // This should never panic, even on invalid input
+                let _ = ToolchainDesc::parse(&input);
+            }
+
+            /// Property: Tracking channels should be recognized correctly
+            #[test]
+            fn test_tracking_channels(channel in "(stable|nightly|beta|latest)") {
+                let desc = ToolchainDesc::parse(&channel).unwrap();
+                prop_assert!(desc.is_tracking_channel());
+            }
+
+            /// Property: Version-specific toolchains should not be tracking channels
+            #[test]
+            fn test_version_not_tracking(version in "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}") {
+                let desc = ToolchainDesc::parse(&version).unwrap();
+                prop_assert!(!desc.is_tracking_channel());
+            }
+
+            /// Property: All valid toolchain names should parse successfully
+            #[test]
+            fn test_valid_names_parse(name in toolchain_name_strategy()) {
+                let result = ToolchainDesc::parse(&name);
+                prop_assert!(result.is_ok());
+            }
+        }
+    }
 
     #[test]
     fn test_toolchain_source_display() {

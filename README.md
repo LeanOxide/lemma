@@ -132,6 +132,110 @@ Lemma respects standard proxy environment variables:
 - `NO_PROXY` / `no_proxy` - Comma-separated list of domains to bypass proxy
 - `LEMMA_HOME` - Lemma installation directory (default: `~/.lemma`)
 - `LEMMA_RELEASE_URL` - Override default release server
+- `LEMMA_TOOLCHAIN` - Override active toolchain for current session
+
+## Advanced Usage
+
+### Project-specific Toolchains
+
+Lemma automatically detects project-specific toolchains from:
+
+1. **lean-toolchain file**: Create a `lean-toolchain` file in your project root:
+   ```
+   stable
+   ```
+   or with full specification:
+   ```
+   leanprover/lean4:v4.25.0
+   ```
+
+2. **leanpkg.toml**: Specify `lean_version` in your package configuration:
+   ```toml
+   lean_version = "v4.25.0"
+   ```
+
+### Directory Overrides
+
+Set a toolchain for a specific directory and all subdirectories:
+
+```bash
+cd my-project
+lemma override set stable
+```
+
+Remove the override:
+
+```bash
+lemma override unset
+```
+
+List all directory overrides:
+
+```bash
+lemma override list
+```
+
+### Custom Release Sources
+
+Configure a custom release server in `~/.lemma/config.toml`:
+
+```toml
+release_url = "https://mirror.example.com/lean-releases"
+```
+
+Or use environment variable:
+
+```bash
+export LEMMA_RELEASE_URL=https://mirror.example.com/lean-releases
+```
+
+## Toolchain Resolution
+
+Lemma resolves which toolchain to use in the following priority order:
+
+1. **Explicit override**: `+toolchain` syntax (e.g., `lean +nightly test.lean`)
+2. **Environment variable**: `LEMMA_TOOLCHAIN`
+3. **Directory override**: Set via `lemma override set`
+4. **Project file**: `lean-toolchain` or `leanpkg.toml` in current directory or parent directories
+5. **Default toolchain**: Configured via `lemma default <toolchain>`
+
+## Troubleshooting
+
+### Toolchain not found
+
+If you see "Toolchain not installed" errors:
+
+```bash
+# List installed toolchains
+lemma toolchain list
+
+# Install the required toolchain
+lemma toolchain install stable
+```
+
+### Proxy connection issues
+
+If downloads fail behind a proxy:
+
+```bash
+# Verify proxy settings
+echo $HTTPS_PROXY
+
+# Test with curl
+curl -v https://release.lean-lang.org
+
+# Set proxy for lemma
+export HTTPS_PROXY=http://your-proxy:port
+```
+
+### Permission denied errors
+
+On Linux/macOS, ensure lemma's bin directory is in your PATH and has execute permissions:
+
+```bash
+chmod +x ~/.lemma/bin/lemma
+export PATH="$HOME/.lemma/bin:$PATH"
+```
 
 ## Contributing
 
