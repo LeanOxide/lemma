@@ -1,5 +1,11 @@
 # Lemma - A Modern Lean4 Toolchain Manager
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/AndPuQing/lemma/ci.yml?style=flat-square&logo=github)
+![Crates.io Version](https://img.shields.io/crates/v/lemma-rs?style=flat-square&logo=rust)
+![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/lemma-rs?style=flat-square)
+[![dependency status](https://deps.rs/repo/github/AndPuQing/lemma-rs/status.svg?style=flat-square)](https://deps.rs/repo/github/AndPuQing/lemma-rs)
+![Crates.io License](https://img.shields.io/crates/l/lemma-rs?style=flat-square)
+![Crates.io Size](https://img.shields.io/crates/size/lemma-rs?style=flat-square)
 [![codecov](https://codecov.io/github/andpuqing/lemma/graph/badge.svg?token=X0RRVLGQZQ)](https://codecov.io/github/andpuqing/lemma)
 
 [English](README.md) | [简体中文](README_CN.md)
