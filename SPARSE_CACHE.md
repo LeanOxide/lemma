@@ -135,6 +135,47 @@ r2://sparse-cache/
 }
 ```
 
+## Index Generation Workflow
+
+### Local Index Generation
+Use the Python helper in `scripts/generate_sparse_index.py` to build an `index.json`
+file from a mathlib checkout that already has `.olean` artifacts:
+
+```bash
+python3 scripts/generate_sparse_index.py \
+  --mathlib-root /path/to/mathlib4 \
+  --olean-root /path/to/mathlib4/.lake/build/lib \
+  --output /tmp/linux-x86_64-index.json \
+  --platform linux-x86_64 \
+  --verbose
+```
+
+The script reads the Lean toolchain string, captures the mathlib commit, hashes every
+`.olean` file, and records each module's transitive dependencies by reusing the Lean
+imports. Missing `.olean` files fail the run by default; pass `--allow-missing` to drop
+them instead. The generated JSON matches the schema above, so it can be uploaded to R2
+as soon as it is produced.
+
+### Automated Index Updates (GitHub Actions)
+
+The workflow defined in `.github/workflows/sparse-index.yml` runs on a daily schedule
+and on manual dispatch. Each run:
+- Checks out Lemma for the generator script.
+- Clones the latest `mathlib4` commit and runs `lake exe cache get` to retrieve `.olean`
+  artifacts on the selected platform.
+- Invokes `scripts/generate_sparse_index.py` for each platform in the matrix and uploads
+  the resulting `index.json` files as artifacts.
+- Uses the same R2 upload action from `release.yml` to sync both the generated `index.json`
+  and all `.olean` objects under `Mathlib/` to the commit-specific prefix
+  (`mathlib/<commit>/<platform>/...`).
+- Also refreshes the `mathlib/latest/<platform>/index.json` alias for easy client access.
+- Optionally syncs artifacts to Cloudflare R2 when the credentials
+  (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `SPARSE_CACHE_BUCKET`)
+  are available in repository secrets. The upload step is skipped otherwise.
+
+Adjust the workflow matrix to add or remove platforms, or change the schedule to control
+how often new indexes are produced.
+
 ## Configuration
 
 ### Environment Variables

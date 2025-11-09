@@ -1,0 +1,95 @@
+name: Sparse Cache Index
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  generate-index:
+    name: Generate sparse index
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux-x86_64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Lean toolchain
+        run: curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
+      - name: Add Lean to PATH
+        run: |
+          echo "${{ github.workspace }}/.lemman/bin" >> $GITHUB_PATH
+          lemma toolchain install beta
+      - name: Verify Lean installation
+        run: lean --version
+
+      - name: Clone mathlib4
+        run: git clone --depth 1 https://github.com/leanprover-community/mathlib4 mathlib
+
+      - name: Determine mathlib versions
+        id: versions
+        run: |
+          cd mathlib
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "lean=$(tr -d '\n' < lean-toolchain)" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch mathlib cache
+        run: |
+          cd mathlib
+          lake exe cache get
+
+      - name: Generate sparse index
+        run: |
+          python3 scripts/generate_sparse_index.py \
+            --mathlib-root mathlib \
+            --olean-root mathlib/.lake/build/lib/lean \
+            --output artifacts/${{ matrix.platform }}/index.json \
+            --mathlib-commit ${{ steps.versions.outputs.commit }} \
+            --lean-version "${{ steps.versions.outputs.lean }}" \
+            --platform ${{ matrix.platform }} \
+            --verbose
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparse-index-${{ matrix.platform }}
+          path: artifacts/${{ matrix.platform }}/index.json
+
+      - name: Upload Mathlib .olean files to R2
+        if: ${{ secrets.R2_ACCOUNT_ID != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.SPARSE_CACHE_BUCKET != '' }}
+        uses: ryand56/r2-upload-action@latest
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
+          source-dir: mathlib/.lake/build/lib/lean/Mathlib
+          destination-dir: sparse-cache/mathlib/${{ steps.versions.outputs.commit }}/${{ matrix.platform }}/Mathlib
+          output-file-url: false
+          multipart-size: 128
+          max-retries: 5
+          multipart-concurrent: true
+          keep-file-fresh: false
+
+      - name: Upload index to R2 (latest alias)
+        if: ${{ secrets.R2_ACCOUNT_ID != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.SPARSE_CACHE_BUCKET != '' }}
+        uses: ryand56/r2-upload-action@latest
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
+          source-dir: artifacts/${{ matrix.platform }}
+          destination-dir: sparse-cache/mathlib/latest/${{ matrix.platform }}
+          output-file-url: false
+          keep-file-fresh: true

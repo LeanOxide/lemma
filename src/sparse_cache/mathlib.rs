@@ -290,3 +290,60 @@ fn format_bytes(bytes: u64) -> String {
         format!("{} bytes", bytes)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sparse_cache::r2_client::{DependencyIndex, ModuleInfo};
+    use std::collections::HashMap;
+
+    fn sample_index() -> DependencyIndex {
+        let mut modules = HashMap::new();
+        modules.insert(
+            "Mathlib.A".to_string(),
+            ModuleInfo {
+                path: "Mathlib/A.olean".into(),
+                size: 10,
+                sha256: "a".repeat(64),
+                dependencies: vec![String::from("Mathlib.B")],
+            },
+        );
+        modules.insert(
+            "Mathlib.B".to_string(),
+            ModuleInfo {
+                path: "Mathlib/B.olean".into(),
+                size: 20,
+                sha256: "b".repeat(64),
+                dependencies: vec![],
+            },
+        );
+
+        DependencyIndex {
+            version: 1,
+            lean_version: "leanprover/lean4:v0.0.0".into(),
+            mathlib_commit: "abc123".into(),
+            platform: "linux-x86_64".into(),
+            created_at: "2024-01-01T00:00:00Z".into(),
+            modules,
+        }
+    }
+
+    #[test]
+    fn build_dependency_graph_matches_index() {
+        let index = sample_index();
+        let graph = MathlibCacheFetcher::build_dependency_graph(&index);
+        assert_eq!(
+            graph.get("Mathlib.A").unwrap(),
+            &vec![String::from("Mathlib.B")]
+        );
+        assert!(graph.get("Mathlib.B").unwrap().is_empty());
+    }
+
+    #[test]
+    fn format_bytes_outputs_expected_suffixes() {
+        assert_eq!(format_bytes(500), "500 bytes");
+        assert_eq!(format_bytes(2048), "2.00 KB");
+        assert_eq!(format_bytes(3 * 1024 * 1024), "3.00 MB");
+        assert_eq!(format_bytes(5 * 1024 * 1024 * 1024), "5.00 GB");
+    }
+}

@@ -22,8 +22,12 @@ pub fn parse_imports(file_path: &Path) -> Result<Vec<String>> {
             if let Some(module) = captures.get(1) {
                 let mut module_name = module.as_str().to_string();
 
+                if module_name.starts_with("Init.") {
+                    continue;
+                }
+
                 // Auto-prepend Mathlib. if not present
-                if !module_name.starts_with("Mathlib.") && !module_name.starts_with("Init.") {
+                if !module_name.starts_with("Mathlib.") {
                     module_name = format!("Mathlib.{}", module_name);
                 }
 
@@ -140,6 +144,48 @@ mod tests {
         assert_eq!(imports.len(), 2);
         assert!(imports.contains(&"Mathlib.Algebra.Group.Basic".to_string()));
         assert!(imports.contains(&"Mathlib.Data.List.Pairwise".to_string()));
+    }
+
+    #[test]
+    fn test_parse_imports_skips_init_modules() {
+        use std::io::Write;
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("Example.lean");
+
+        let mut file = fs::File::create(&file_path).unwrap();
+        writeln!(file, "import Init.Meta").unwrap();
+        writeln!(file, "import Algebra.Group.Basic").unwrap();
+
+        let imports = parse_imports(&file_path).unwrap();
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&"Mathlib.Algebra.Group.Basic".to_string()));
+    }
+
+    #[test]
+    fn test_find_lean_files_skips_generated_directories() {
+        use std::io::Write;
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        let src_dir = root.join("src");
+        let lake_dir = root.join(".lake");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(&lake_dir).unwrap();
+
+        let valid_file = src_dir.join("Allowed.lean");
+        let ignored_file = lake_dir.join("Ignored.lean");
+        fs::File::create(&valid_file)
+            .unwrap()
+            .write_all(b"def foo := 1")
+            .unwrap();
+        fs::File::create(&ignored_file)
+            .unwrap()
+            .write_all(b"def bar := 2")
+            .unwrap();
+
+        let files = find_lean_files(root).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0], valid_file);
     }
 
     #[test]
