@@ -66,7 +66,6 @@ jobs:
           path: artifacts/${{ matrix.platform }}/index.json
 
       - name: Upload Mathlib .olean files to R2
-        if: ${{ secrets.R2_ACCOUNT_ID != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.SPARSE_CACHE_BUCKET != '' }}
         uses: ryand56/r2-upload-action@latest
         with:
           r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
@@ -82,7 +81,6 @@ jobs:
           keep-file-fresh: false
 
       - name: Upload index to R2 (latest alias)
-        if: ${{ secrets.R2_ACCOUNT_ID != '' && secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.SPARSE_CACHE_BUCKET != '' }}
         uses: ryand56/r2-upload-action@latest
         with:
           r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
