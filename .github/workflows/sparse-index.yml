@@ -35,8 +35,9 @@ jobs:
         run: |
           echo "${{ github.workspace }}/.lemma/bin" >> $GITHUB_PATH
           lemma toolchain install beta
+          lemma default beta
       - name: Verify Lean installation
-        run: lean --version
+        run: lake --version
 
       - name: Clone mathlib4
         run: git clone --depth 1 https://github.com/leanprover-community/mathlib4 mathlib
