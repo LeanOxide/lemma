@@ -82,6 +82,28 @@ pub enum Commands {
         shell: Shell,
     },
 
+    /// Fetch dependency caches (e.g., mathlib4)
+    Fetch {
+        /// Package to fetch (e.g., mathlib4)
+        package: String,
+
+        /// Specific modules to fetch (can be specified multiple times)
+        #[arg(short, long = "module", value_name = "MODULE")]
+        modules: Vec<String>,
+
+        /// Auto-detect modules from project imports
+        #[arg(short, long, conflicts_with = "modules")]
+        auto: bool,
+
+        /// Show what would be downloaded without actually downloading
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Project path to analyze (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
+    },
+
     /// Modify the lemma installation
     #[command(after_long_help = help::SELF_HELP)]
     #[command(name = "self")]

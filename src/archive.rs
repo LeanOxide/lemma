@@ -76,7 +76,7 @@ fn extract_tar_gz<R: Read>(reader: R, dest: &Path) -> Result<()> {
 }
 
 /// Extract .tar.zst archive with streaming decompression and multi-threading
-fn extract_tar_zst<R: Read>(reader: R, dest: &Path) -> Result<()> {
+pub fn extract_tar_zst<R: Read>(reader: R, dest: &Path) -> Result<()> {
     // Use buffered reader for better I/O performance
     let buffered = BufReader::with_capacity(128 * 1024, reader); // 128KB buffer
 

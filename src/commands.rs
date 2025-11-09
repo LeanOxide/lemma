@@ -5,6 +5,7 @@
 
 pub mod completions;
 pub mod default;
+pub mod fetch;
 pub mod install;
 pub mod link;
 pub mod list;
@@ -49,6 +50,14 @@ pub fn handle_command(command: Commands) -> Result<()> {
         Commands::Run { toolchain, command } => run::execute(&toolchain, &command),
 
         Commands::Completions { shell } => completions::execute(shell),
+
+        Commands::Fetch {
+            package,
+            modules,
+            auto,
+            dry_run,
+            path,
+        } => fetch::execute(&package, modules, auto, dry_run, path),
 
         Commands::Self_ { command } => handle_self_command(command),
     }

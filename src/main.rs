@@ -35,6 +35,7 @@ mod download;
 mod help;
 mod install;
 mod release;
+mod sparse_cache;
 mod toolchain;
 
 use anyhow::Result;
