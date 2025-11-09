@@ -37,6 +37,7 @@ url = "2.5"
 indicatif = "0.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rayon = "1.10"
 
 [dev-dependencies]
 tempfile = "3.10"
@@ -44,7 +45,7 @@ proptest = "1.6"
 
 [profile.release]
 strip = true
-opt-level = "z"
+opt-level = 3
 lto = true
 codegen-units = 1
 panic = "abort"

@@ -146,7 +146,7 @@ impl DownloadClient {
         // Download with progress - start from where we left off
         let mut downloaded = resume_from.unwrap_or(0);
         progress.set_position(downloaded);
-        let mut buffer = vec![0u8; 8192];
+        let mut buffer = vec![0u8; 65536]; // 64KB buffer for better I/O performance
         let mut response = response;
 
         loop {
