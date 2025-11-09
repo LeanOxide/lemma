@@ -25,7 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Lean toolchain
-        run: curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
+        run: curl --proto '=https' --tlsv1.2 -sSf https://github.com/AndPuQing/lemma/blob/main/install.sh | sh
       - name: Add Lean to PATH
         run: |
           echo "${{ github.workspace }}/.lemma/bin" >> $GITHUB_PATH
