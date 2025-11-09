@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,7 +28,8 @@ jobs:
 
       - name: Install Lean toolchain
         run: |
-          bash ./install.sh
+          cargo install --path .
+
       - name: Add Lean to PATH
         run: |
           echo "${{ github.workspace }}/.lemma/bin" >> $GITHUB_PATH
