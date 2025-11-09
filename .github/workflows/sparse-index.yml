@@ -33,7 +33,7 @@ jobs:
 
       - name: Add Lean to PATH
         run: |
-          echo "${{ github.workspace }}/.lemma/bin" >> $GITHUB_PATH
+          echo "~/.lemma/bin" >> $GITHUB_PATH
           lemma toolchain install beta
           lemma default beta
       - name: Verify Lean installation
