@@ -48,6 +48,10 @@ rayon = "1.10"
 atty = "0.2"
 fs-err = "2.11"
 
+# Dev dependencies
+tempfile = "3.10"
+proptest = "1.6"
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused = "warn"

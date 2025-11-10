@@ -43,5 +43,5 @@ toml.workspace = true
 fs-err.workspace = true
 
 [dev-dependencies]
-tempfile = "3.10"
-proptest = "1.6"
+tempfile.workspace = true
+proptest.workspace = true
