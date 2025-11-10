@@ -3,7 +3,7 @@
 //! This module converts CLI arguments into resolved settings by merging:
 //! 1. Command-line arguments (highest priority)
 //! 2. Environment variables
-//! 3. Configuration files (future)
+//! 3. Configuration files
 //! 4. Built-in defaults (lowest priority)
 
 use std::path::PathBuf;
@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 use crate::cli::{ColorChoice, GlobalArgs};
+use crate::config;
 
 /// Resolved global settings used throughout the application.
 ///
@@ -37,18 +38,21 @@ impl GlobalSettings {
     /// Priority order:
     /// 1. CLI flags (highest priority)
     /// 2. Environment variables
-    /// 3. Config file (future)
+    /// 3. Config file
     /// 4. Defaults (lowest priority)
     pub fn resolve(args: &GlobalArgs) -> Result<Self> {
-        // Resolve color setting
-        let color = resolve_color_choice(args)?;
+        // Load unified configuration (includes both state and preferences)
+        let config = config::Config::load().unwrap_or_default();
 
-        // Resolve lemma home directory
-        let lemma_home = resolve_lemma_home()?;
+        // Resolve each setting with proper precedence
+        let verbose = resolve_verbose(args, &config);
+        let quiet = resolve_quiet(args, &config);
+        let color = resolve_color_choice(args, &config)?;
+        let lemma_home = resolve_lemma_home(&config)?;
 
         Ok(Self {
-            verbose: args.verbose,
-            quiet: args.quiet,
+            verbose,
+            quiet,
             color,
             lemma_home,
         })
@@ -84,6 +88,7 @@ impl GlobalSettings {
     }
 
     /// Get verbosity level for detailed operations.
+    #[allow(dead_code)]
     pub fn verbosity_level(&self) -> u8 {
         self.verbose
     }
@@ -103,12 +108,52 @@ impl GlobalSettings {
     }
 }
 
-/// Resolve the color choice from CLI args and environment.
-fn resolve_color_choice(args: &GlobalArgs) -> Result<ColorChoice> {
+/// Resolve verbose level from CLI args and config.
+fn resolve_verbose(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
+    // Priority:
+    // 1. CLI flag (--verbose count)
+    // 2. Config file
+    // 3. Default (0)
+
+    if args.verbose > 0 {
+        return args.verbose;
+    }
+
+    config
+        .global
+        .as_ref()
+        .and_then(|g| g.verbose)
+        .unwrap_or(0)
+}
+
+/// Resolve quiet level from CLI args and config.
+fn resolve_quiet(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
+    // Priority:
+    // 1. CLI flag (--quiet count)
+    // 2. Config file
+    // 3. Default (0)
+
+    if args.quiet > 0 {
+        return args.quiet;
+    }
+
+    config
+        .global
+        .as_ref()
+        .and_then(|g| g.quiet)
+        .unwrap_or(0)
+}
+
+/// Resolve the color choice from CLI args, environment, and config.
+fn resolve_color_choice(
+    args: &GlobalArgs,
+    config: &crate::config::Config,
+) -> Result<ColorChoice> {
     // Priority:
     // 1. --color flag (if provided)
     // 2. --no-color flag (if provided)
-    // 3. Default (Auto)
+    // 3. Config file
+    // 4. Default (Auto)
 
     if let Some(color) = args.color {
         return Ok(color);
@@ -118,21 +163,38 @@ fn resolve_color_choice(args: &GlobalArgs) -> Result<ColorChoice> {
         return Ok(ColorChoice::Never);
     }
 
+    // Check config file
+    if let Some(color_config) = config.global.as_ref().and_then(|g| g.color) {
+        return Ok(color_config.into());
+    }
+
     // Default: auto-detect terminal support
     Ok(ColorChoice::Auto)
 }
 
-/// Resolve the Lemma home directory.
-fn resolve_lemma_home() -> Result<PathBuf> {
+/// Resolve the Lemma home directory from environment and config.
+fn resolve_lemma_home(config: &crate::config::Config) -> Result<PathBuf> {
     // Priority:
     // 1. LEMMA_HOME environment variable
-    // 2. Default: ~/.lemma
+    // 2. Config file
+    // 3. Default: ~/.lemma
 
     if let Ok(home) = std::env::var("LEMMA_HOME") {
         let path = PathBuf::from(home);
         if !path.is_absolute() {
             anyhow::bail!(
                 "LEMMA_HOME must be an absolute path, got: {}",
+                path.display()
+            );
+        }
+        return Ok(path);
+    }
+
+    // Check config file
+    if let Some(path) = config.paths.as_ref().and_then(|p| p.home.clone()) {
+        if !path.is_absolute() {
+            anyhow::bail!(
+                "Config file home path must be absolute, got: {}",
                 path.display()
             );
         }
@@ -197,6 +259,10 @@ mod tests {
 
     #[test]
     fn test_resolve_color_choice() {
+        use crate::config::Config;
+
+        let config = Config::default();
+
         // Test --color flag
         let args = GlobalArgs {
             verbose: 0,
@@ -205,7 +271,7 @@ mod tests {
             no_color: false,
         };
         assert!(matches!(
-            resolve_color_choice(&args).unwrap(),
+            resolve_color_choice(&args, &config).unwrap(),
             ColorChoice::Always
         ));
 
@@ -217,7 +283,7 @@ mod tests {
             no_color: true,
         };
         assert!(matches!(
-            resolve_color_choice(&args).unwrap(),
+            resolve_color_choice(&args, &config).unwrap(),
             ColorChoice::Never
         ));
 
@@ -229,7 +295,7 @@ mod tests {
             no_color: false,
         };
         assert!(matches!(
-            resolve_color_choice(&args).unwrap(),
+            resolve_color_choice(&args, &config).unwrap(),
             ColorChoice::Auto
         ));
     }

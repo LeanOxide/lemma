@@ -28,7 +28,7 @@ impl Installer {
     pub fn new() -> Result<Self> {
         let config = Config::load()?;
         let download_client = DownloadClient::new()?;
-        let release_client = ReleaseServerClient::new(download_client.clone(), config.release_url);
+        let release_client = ReleaseServerClient::new(download_client.clone(), config.lean_release_url());
 
         Ok(Self {
             download_client,
