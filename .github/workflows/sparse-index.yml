@@ -74,20 +74,20 @@ jobs:
           name: sparse-index-${{ matrix.platform }}
           path: artifacts/${{ matrix.platform }}/index.json
 
-      # - name: Upload Mathlib .olean files to R2
-      #   uses: ryand56/r2-upload-action@latest
-      #   with:
-      #     r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
-      #     r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-      #     r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      #     r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
-      #     source-dir: mathlib/.lake/build/lib/lean/Mathlib
-      #     destination-dir: sparse-cache/mathlib/${{ steps.versions.outputs.commit }}/${{ matrix.platform }}/Mathlib
-      #     output-file-url: false
-      #     multipart-size: 128
-      #     max-retries: 5
-      #     multipart-concurrent: true
-      #     keep-file-fresh: false
+      - name: Upload Mathlib .olean files to R2
+        uses: ryand56/r2-upload-action@latest
+        with:
+          r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
+          r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
+          source-dir: mathlib/.lake/build/lib/lean/Mathlib
+          destination-dir: mathlib/${{ steps.versions.outputs.commit }}/${{ matrix.platform }}/Mathlib
+          output-file-url: false
+          multipart-size: 128
+          max-retries: 5
+          multipart-concurrent: true
+          keep-file-fresh: false
 
       - name: Upload index to R2 (latest alias)
         uses: ryand56/r2-upload-action@latest
@@ -97,6 +97,6 @@ jobs:
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
           source-dir: artifacts/${{ matrix.platform }}
-          destination-dir: sparse-cache/mathlib/latest/${{ matrix.platform }}
+          destination-dir: mathlib/latest/${{ matrix.platform }}
           output-file-url: false
           keep-file-fresh: true
