@@ -6,9 +6,9 @@ use std::env;
 use std::path::PathBuf;
 
 use crate::cli::OverrideCommands;
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::toolchain::ToolchainDesc;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
+use lemma_toolchain::ToolchainDesc;
 
 pub fn execute(command: OverrideCommands, settings: &GlobalSettings) -> Result<()> {
     match command {

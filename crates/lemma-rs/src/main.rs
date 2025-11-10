@@ -17,36 +17,31 @@
 //!
 //! ## Module Organization
 //!
-//! - `archive`: Archive extraction (tar.gz, zip, zstd)
+//! ### External crates:
+//! - `lemma-config`: Configuration management and settings resolution
+//! - `lemma-toolchain`: Toolchain descriptor parsing and utilities
+//! - `lemma-download`: HTTP download client with retry logic and progress reporting
+//! - `lemma-install`: Toolchain installation and archive extraction
+//!
+//! ### Local modules:
 //! - `cli`: Command-line interface definitions
 //! - `commands`: Command implementations (install, update, show, etc.)
-//! - `config`: Configuration management and persistence
-//! - `download`: HTTP download client with retry logic and progress reporting
 //! - `help`: Help text and documentation
-//! - `install`: Toolchain installation and verification
-//! - `release`: Release channel and version resolution
-//! - `toolchain`: Toolchain descriptor parsing and resolution logic
+//! - `sparse_cache`: Sparse cache implementation for dependency management
 
-mod archive;
 mod cli;
 mod commands;
-mod config;
-mod download;
 mod help;
-mod install;
-mod release;
-mod settings;
 mod sparse_cache;
-mod toolchain;
 
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
+use lemma_config::GlobalSettings;
 use std::path::PathBuf;
 
 use cli::Cli;
 use commands::proxy_mode;
-use settings::GlobalSettings;
 
 /// Entry point for lemma
 ///
@@ -92,7 +87,8 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
 
     // Resolve settings from CLI args + environment + config
-    let settings = GlobalSettings::resolve(&cli.top_level.global_args)?;
+    let cli_args: lemma_config::CliArgs = (&*cli.top_level.global_args).into();
+    let settings = GlobalSettings::resolve(&cli_args)?;
 
     // Setup logging using resolved settings
     setup_logging(&settings);

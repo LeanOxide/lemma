@@ -154,7 +154,7 @@ impl MathlibCacheFetcher {
         // Extract archive
         println!("   {} Extracting archive...", "•".cyan());
         let file = std::fs::File::open(&archive_path)?;
-        crate::archive::extract_tar_zst(file, &cache_dir)?;
+        lemma_install::extract_tar_zst(file, &cache_dir)?;
 
         // Clean up archive
         fs::remove_file(&archive_path)?;

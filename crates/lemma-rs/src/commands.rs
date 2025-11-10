@@ -19,10 +19,9 @@ pub mod update;
 pub mod which;
 
 use anyhow::Result;
+use lemma_config::{Config, GlobalSettings};
 
 use crate::cli::{Commands, SelfCommands, ToolchainCommands};
-use crate::config::Config;
-use crate::settings::GlobalSettings;
 
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()> {
@@ -43,7 +42,9 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
 
         Commands::Show => show::execute(&settings),
 
-        Commands::Which { binary, toolchain } => which::execute(&binary, toolchain.as_deref(), &settings),
+        Commands::Which { binary, toolchain } => {
+            which::execute(&binary, toolchain.as_deref(), &settings)
+        }
 
         Commands::Update { toolchain } => update::execute(toolchain.as_deref(), &settings),
 

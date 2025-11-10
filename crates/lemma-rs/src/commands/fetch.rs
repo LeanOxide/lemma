@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::PathBuf;
 
-use crate::settings::GlobalSettings;
+use lemma_config::GlobalSettings;
 
 /// Execute the fetch command
 pub fn execute(

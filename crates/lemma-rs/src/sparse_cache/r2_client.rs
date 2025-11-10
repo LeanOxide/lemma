@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::download::DownloadClient;
+use lemma_download::DownloadClient;
 
 /// Default R2 base URL for sparse mathlib cache
 /// TODO: Replace with actual R2 URL when deployed

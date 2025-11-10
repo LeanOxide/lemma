@@ -5,8 +5,8 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
 
 pub fn execute(name: &str, path: &str, settings: &GlobalSettings) -> Result<()> {
     let source_path = Path::new(path);
@@ -34,7 +34,7 @@ pub fn execute(name: &str, path: &str, settings: &GlobalSettings) -> Result<()> 
     }
 
     // Parse the toolchain name to get the sanitized directory name
-    let toolchain_desc = crate::toolchain::ToolchainDesc::parse(name)?;
+    let toolchain_desc = lemma_toolchain::ToolchainDesc::parse(name)?;
     let dir_name = toolchain_desc.to_directory_name();
 
     // Get target path

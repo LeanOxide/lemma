@@ -91,19 +91,18 @@ pub struct GlobalArgs {
         value_name = "COLOR_CHOICE",
         env = "LEMMA_COLOR"
     )]
-    pub color: Option<ColorChoice>,
+    pub color: Option<lemma_config::ColorChoice>,
 }
 
-#[derive(Debug, Copy, Clone, clap::ValueEnum)]
-pub enum ColorChoice {
-    /// Enables colored output only when the output is going to a terminal or TTY with support.
-    Auto,
-
-    /// Enables colored output regardless of the detected environment.
-    Always,
-
-    /// Disables colored output.
-    Never,
+impl From<&GlobalArgs> for lemma_config::CliArgs {
+    fn from(args: &GlobalArgs) -> Self {
+        Self {
+            quiet: args.quiet,
+            verbose: args.verbose,
+            no_color: args.no_color,
+            color: args.color,
+        }
+    }
 }
 
 #[derive(Subcommand)]

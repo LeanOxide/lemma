@@ -8,14 +8,13 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
+use lemma_config::Config;
+use lemma_download::{DownloadClient, Release, ReleaseServerClient};
+use lemma_toolchain::ToolchainDesc;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::archive::extract_archive;
-use crate::config::Config;
-use crate::download::DownloadClient;
-use crate::release::{Release, ReleaseServerClient};
-use crate::toolchain::ToolchainDesc;
 
 /// Toolchain installer
 pub struct Installer {
@@ -28,7 +27,8 @@ impl Installer {
     pub fn new() -> Result<Self> {
         let config = Config::load()?;
         let download_client = DownloadClient::new()?;
-        let release_client = ReleaseServerClient::new(download_client.clone(), config.lean_release_url());
+        let release_client =
+            ReleaseServerClient::new(download_client.clone(), config.lean_release_url());
 
         Ok(Self {
             download_client,

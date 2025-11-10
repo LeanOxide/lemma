@@ -1,0 +1,28 @@
+[package]
+name = "lemma-toolchain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Workspace dependencies
+lemma-static.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true
+regex.workspace = true
+
+# Path utilities
+dirs.workspace = true
+
+# Logging
+tracing.workspace = true
+
+[lints]
+workspace = true

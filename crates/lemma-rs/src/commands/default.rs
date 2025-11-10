@@ -3,9 +3,9 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::toolchain::ToolchainDesc;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
+use lemma_toolchain::ToolchainDesc;
 
 pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
     // Parse the toolchain to get canonical format and directory name

@@ -1,0 +1,41 @@
+[package]
+name = "lemma-download"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Internal crates
+lemma-static.workspace = true
+lemma-config.workspace = true
+lemma-toolchain.workspace = true
+
+# HTTP client
+reqwest = { workspace = true, features = ["blocking", "json"] }
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+# File I/O
+fs-err.workspace = true
+
+# Progress indicators
+indicatif.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Utilities
+url.workspace = true
+regex.workspace = true
+rayon.workspace = true
+colored.workspace = true
+
+[lints]
+workspace = true

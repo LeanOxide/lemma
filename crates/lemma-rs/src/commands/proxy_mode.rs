@@ -13,8 +13,7 @@ use anyhow::Context;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use crate::config::Config;
-use crate::toolchain;
+use lemma_config::Config;
 
 /// List of tools that lemma proxies for Lean
 pub static PROXY_TOOLS: &[&str] = &[
@@ -44,10 +43,10 @@ pub fn execute(tool_name: &str) -> Result<()> {
     };
 
     // Resolve which toolchain to use
-    let toolchain_name = toolchain::resolve_toolchain_or_fail(explicit_toolchain.as_deref())?;
+    let toolchain_name = lemma_config::resolve_toolchain_or_fail(explicit_toolchain.as_deref())?;
 
     // Get the path to the actual tool binary
-    let tool_path = toolchain::find_tool_binary(&toolchain_name, tool_name)?;
+    let tool_path = lemma_config::find_tool_binary(&toolchain_name, tool_name)?;
 
     // Execute the tool, replacing the current process (Unix exec)
     // This ensures the tool runs with the correct PID and signal handling

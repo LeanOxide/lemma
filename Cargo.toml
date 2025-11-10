@@ -6,11 +6,18 @@ resolver = "2"
 [workspace.package]
 version = "0.1.5"
 edition = "2021"
+rust-version = "1.75"
 license = "MIT OR Apache-2.0"
 authors = ["PuQing <me@puqing.work>"]
 repository = "https://github.com/AndPuQing/lemma.git"
 
 [workspace.dependencies]
+lemma-config = { path = "crates/lemma-config" }
+lemma-toolchain = { path = "crates/lemma-toolchain" }
+lemma-static = { path = "crates/lemma-static" }
+lemma-download = { path = "crates/lemma-download" }
+lemma-install = { path = "crates/lemma-install" }
+
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 config = { version = "0.15.7", features = ["toml"], default-features = false }
@@ -39,6 +46,14 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rayon = "1.10"
 atty = "0.2"
+fs-err = "2.11"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
 
 [profile.release]
 strip = true

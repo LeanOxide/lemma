@@ -10,8 +10,19 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::cli::{ColorChoice, GlobalArgs};
-use crate::config;
+use crate::config::{self, ColorChoice};
+
+/// CLI arguments needed for settings resolution
+///
+/// This is a simplified version of the full CLI args structure,
+/// containing only what's needed for settings resolution.
+#[derive(Debug, Clone, Default)]
+pub struct CliArgs {
+    pub quiet: u8,
+    pub verbose: u8,
+    pub no_color: bool,
+    pub color: Option<ColorChoice>,
+}
 
 /// Resolved global settings used throughout the application.
 ///
@@ -40,7 +51,7 @@ impl GlobalSettings {
     /// 2. Environment variables
     /// 3. Config file
     /// 4. Defaults (lowest priority)
-    pub fn resolve(args: &GlobalArgs) -> Result<Self> {
+    pub fn resolve(args: &CliArgs) -> Result<Self> {
         // Load unified configuration (includes both state and preferences)
         let config = config::Config::load().unwrap_or_default();
 
@@ -109,7 +120,7 @@ impl GlobalSettings {
 }
 
 /// Resolve verbose level from CLI args and config.
-fn resolve_verbose(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
+fn resolve_verbose(args: &CliArgs, config: &config::Config) -> u8 {
     // Priority:
     // 1. CLI flag (--verbose count)
     // 2. Config file
@@ -119,15 +130,11 @@ fn resolve_verbose(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
         return args.verbose;
     }
 
-    config
-        .global
-        .as_ref()
-        .and_then(|g| g.verbose)
-        .unwrap_or(0)
+    config.global.as_ref().and_then(|g| g.verbose).unwrap_or(0)
 }
 
 /// Resolve quiet level from CLI args and config.
-fn resolve_quiet(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
+fn resolve_quiet(args: &CliArgs, config: &config::Config) -> u8 {
     // Priority:
     // 1. CLI flag (--quiet count)
     // 2. Config file
@@ -137,18 +144,11 @@ fn resolve_quiet(args: &GlobalArgs, config: &crate::config::Config) -> u8 {
         return args.quiet;
     }
 
-    config
-        .global
-        .as_ref()
-        .and_then(|g| g.quiet)
-        .unwrap_or(0)
+    config.global.as_ref().and_then(|g| g.quiet).unwrap_or(0)
 }
 
 /// Resolve the color choice from CLI args, environment, and config.
-fn resolve_color_choice(
-    args: &GlobalArgs,
-    config: &crate::config::Config,
-) -> Result<ColorChoice> {
+fn resolve_color_choice(args: &CliArgs, config: &config::Config) -> Result<ColorChoice> {
     // Priority:
     // 1. --color flag (if provided)
     // 2. --no-color flag (if provided)
@@ -173,7 +173,7 @@ fn resolve_color_choice(
 }
 
 /// Resolve the Lemma home directory from environment and config.
-fn resolve_lemma_home(config: &crate::config::Config) -> Result<PathBuf> {
+fn resolve_lemma_home(config: &config::Config) -> Result<PathBuf> {
     // Priority:
     // 1. LEMMA_HOME environment variable
     // 2. Config file
@@ -264,7 +264,7 @@ mod tests {
         let config = Config::default();
 
         // Test --color flag
-        let args = GlobalArgs {
+        let args = CliArgs {
             verbose: 0,
             quiet: 0,
             color: Some(ColorChoice::Always),
@@ -276,7 +276,7 @@ mod tests {
         ));
 
         // Test --no-color flag
-        let args = GlobalArgs {
+        let args = CliArgs {
             verbose: 0,
             quiet: 0,
             color: None,
@@ -288,7 +288,7 @@ mod tests {
         ));
 
         // Test default
-        let args = GlobalArgs {
+        let args = CliArgs {
             verbose: 0,
             quiet: 0,
             color: None,

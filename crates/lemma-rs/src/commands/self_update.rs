@@ -2,15 +2,15 @@
 
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
+use lemma_config::GlobalSettings;
 use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::settings::GlobalSettings;
 
-use crate::archive::extract_archive;
-use crate::config::Config;
-use crate::download::DownloadClient;
+use lemma_config::Config;
+use lemma_download::DownloadClient;
+use lemma_install::extract_archive;
 
 /// Release server base URL
 const RELEASE_BASE_URL: &str = "https://lemma.puqing.work";

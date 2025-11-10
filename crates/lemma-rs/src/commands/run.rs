@@ -4,9 +4,8 @@ use anyhow::{Context, Result};
 use std::env;
 use std::process::Command;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::toolchain;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
 
 /// Execute a command with a specific toolchain
 pub fn execute(toolchain: &str, command_args: &[String], settings: &GlobalSettings) -> Result<()> {
@@ -30,7 +29,7 @@ pub fn execute(toolchain: &str, command_args: &[String], settings: &GlobalSettin
 
     let actual_command = if is_lean_tool {
         // If it's a Lean tool, find it in the specified toolchain
-        toolchain::find_tool_binary(toolchain, command_name)?
+        lemma_config::find_tool_binary(toolchain, command_name)?
     } else {
         // If it's not a Lean tool, just use the command as-is from PATH
         // But we'll still set up the environment with the toolchain

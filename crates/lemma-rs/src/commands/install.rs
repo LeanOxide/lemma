@@ -2,8 +2,8 @@
 
 use anyhow::Result;
 
-use crate::install::Installer;
-use crate::settings::GlobalSettings;
+use lemma_config::GlobalSettings;
+use lemma_install::Installer;
 
 pub fn execute(toolchain: &str, force: bool, settings: &GlobalSettings) -> Result<()> {
     if settings.is_verbose() {

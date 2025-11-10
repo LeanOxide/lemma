@@ -4,16 +4,16 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::toolchain;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
+use lemma_toolchain as toolchain;
 
 pub fn execute(settings: &GlobalSettings) -> Result<()> {
     // Load config to get default toolchain
     let config = Config::load().unwrap_or_default();
 
     // Get active toolchain (from environment, override, project file, or default)
-    let active_toolchain = toolchain::resolve_toolchain(None)?;
+    let active_toolchain = lemma_config::resolve_toolchain(None)?;
 
     let toolchains_dir = Config::toolchains_dir()?;
 
@@ -54,7 +54,7 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
         }
 
         // Parse the directory name to get the canonical toolchain name
-        let name = match crate::toolchain::ToolchainDesc::from_directory_name(&dir_name) {
+        let name = match lemma_toolchain::ToolchainDesc::from_directory_name(&dir_name) {
             Ok(desc) => desc.to_string(),
             Err(_) => dir_name, // Fallback to directory name if parsing fails
         };

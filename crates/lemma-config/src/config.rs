@@ -26,7 +26,17 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::cli::ColorChoice;
+/// Color output control
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum ColorChoice {
+    /// Enables colored output only when the output is going to a terminal or TTY with support.
+    Auto,
+    /// Enables colored output regardless of the detected environment.
+    Always,
+    /// Disables colored output.
+    Never,
+}
 
 // ============================================================================
 // Unified Configuration Structure
@@ -45,7 +55,6 @@ pub struct Config {
     // ========================================================================
     // State (managed by lemma - written to user config)
     // ========================================================================
-
     /// Settings file version for future migrations
     #[serde(default = "default_version")]
     pub version: String,
@@ -65,7 +74,6 @@ pub struct Config {
     // ========================================================================
     // Preferences (user-configurable - merged from multiple sources)
     // ========================================================================
-
     /// Global settings
     #[serde(skip_serializing_if = "Option::is_none")]
     pub global: Option<GlobalConfig>,
@@ -169,7 +177,10 @@ impl Config {
                 // Try ./.lemma/lemma.toml
                 let project_path_alt = current_dir.join(".lemma").join("lemma.toml");
                 if project_path_alt.exists() {
-                    tracing::debug!("Loading project config from: {}", project_path_alt.display());
+                    tracing::debug!(
+                        "Loading project config from: {}",
+                        project_path_alt.display()
+                    );
                     builder = builder.add_source(
                         config::File::from(project_path_alt)
                             .required(false)
@@ -192,7 +203,7 @@ impl Config {
             config::Environment::with_prefix("LEMMA")
                 .prefix_separator("_")
                 .separator("__")
-                .try_parsing(true)
+                .try_parsing(true),
         );
 
         // Build and deserialize the merged config
@@ -297,7 +308,7 @@ impl Config {
 
     /// Load the update hash for a toolchain
     pub fn load_update_hash(toolchain_name: &str) -> Result<Option<String>> {
-        use crate::toolchain::ToolchainDesc;
+        use lemma_toolchain::ToolchainDesc;
 
         let update_hashes_dir = Self::update_hashes_dir()?;
 
@@ -322,7 +333,7 @@ impl Config {
 
     /// Save the update hash for a toolchain
     pub fn save_update_hash(toolchain_name: &str, version_hash: &str) -> Result<()> {
-        use crate::toolchain::ToolchainDesc;
+        use lemma_toolchain::ToolchainDesc;
 
         let update_hashes_dir = Self::update_hashes_dir()?;
         fs::create_dir_all(&update_hashes_dir)
@@ -635,9 +646,15 @@ lean_release = "https://mirror.example.com/lean"
 
         // State fields
         assert_eq!(config.version, "1");
-        assert_eq!(config.default_toolchain, Some("lean-4.24.0-linux".to_string()));
+        assert_eq!(
+            config.default_toolchain,
+            Some("lean-4.24.0-linux".to_string())
+        );
         assert_eq!(config.path_setup_shown, true);
-        assert_eq!(config.overrides.get("/path/to/project"), Some(&"lean-4.23.0-linux".to_string()));
+        assert_eq!(
+            config.overrides.get("/path/to/project"),
+            Some(&"lean-4.23.0-linux".to_string())
+        );
 
         // Preference fields
         assert_eq!(config.global.as_ref().unwrap().verbose, Some(1));

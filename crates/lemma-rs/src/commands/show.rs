@@ -4,9 +4,9 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::toolchain;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
+use lemma_toolchain as toolchain;
 
 pub fn execute(settings: &GlobalSettings) -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
@@ -22,7 +22,7 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
     println!();
 
     // Determine the active toolchain
-    let active_toolchain = toolchain::resolve_toolchain_with_source(None)?;
+    let active_toolchain = lemma_config::resolve_toolchain_with_source(None)?;
 
     // List installed toolchains first
     if settings.use_colors() {
@@ -50,8 +50,7 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
             for entry in entries {
                 if let Some(dir_name) = entry.file_name().to_str() {
                     // Parse directory name to get canonical toolchain name
-                    let name = match crate::toolchain::ToolchainDesc::from_directory_name(dir_name)
-                    {
+                    let name = match lemma_toolchain::ToolchainDesc::from_directory_name(dir_name) {
                         Ok(desc) => desc.to_string(),
                         Err(_) => dir_name.to_string(),
                     };
@@ -65,7 +64,8 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
                             true
                         } else {
                             // Check fallback
-                            if let Ok(lean_path) = toolchain::find_tool_binary(active_tc, "lean") {
+                            if let Ok(lean_path) = lemma_config::find_tool_binary(active_tc, "lean")
+                            {
                                 if let Some(bin_dir) = lean_path.parent() {
                                     if let Some(tc_path) = bin_dir.parent() {
                                         if let (Ok(entry_canonical), Ok(tc_canonical)) =
@@ -165,7 +165,7 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
         println!("active because: {}", reason);
 
         // Try to find the toolchain and show additional info
-        match toolchain::find_tool_binary(toolchain, "lean") {
+        match lemma_config::find_tool_binary(toolchain, "lean") {
             Ok(lean_path) => {
                 if let Some(bin_dir) = lean_path.parent() {
                     if let Some(toolchain_path) = bin_dir.parent() {

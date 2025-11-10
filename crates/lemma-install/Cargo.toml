@@ -1,0 +1,42 @@
+[package]
+name = "lemma-install"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Internal crates
+lemma-static.workspace = true
+lemma-config.workspace = true
+lemma-toolchain.workspace = true
+lemma-download.workspace = true
+
+# Archive handling
+tar.workspace = true
+flate2.workspace = true
+bzip2 = "0.4"
+zip.workspace = true
+zstd.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# File I/O
+fs-err.workspace = true
+
+# Progress indicators
+indicatif.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Path utilities
+dirs.workspace = true
+
+# Terminal utilities
+colored.workspace = true
+
+[lints]
+workspace = true

@@ -2,10 +2,13 @@
 
 use anyhow::Result;
 
-use crate::settings::GlobalSettings;
-use crate::toolchain;
+use lemma_config::GlobalSettings;
 
-pub fn execute(binary: &str, explicit_toolchain: Option<&str>, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(
+    binary: &str,
+    explicit_toolchain: Option<&str>,
+    settings: &GlobalSettings,
+) -> Result<()> {
     if settings.is_verbose() {
         tracing::debug!("Looking for binary: {}", binary);
         if let Some(tc) = explicit_toolchain {
@@ -13,10 +16,10 @@ pub fn execute(binary: &str, explicit_toolchain: Option<&str>, settings: &Global
         }
     }
     // Resolve which toolchain to use
-    let toolchain_name = toolchain::resolve_toolchain_or_fail(explicit_toolchain)?;
+    let toolchain_name = lemma_config::resolve_toolchain_or_fail(explicit_toolchain)?;
 
     // Find the binary path
-    let binary_path = toolchain::find_tool_binary(&toolchain_name, binary)?;
+    let binary_path = lemma_config::find_tool_binary(&toolchain_name, binary)?;
 
     // Print the path
     println!("{}", binary_path.display());

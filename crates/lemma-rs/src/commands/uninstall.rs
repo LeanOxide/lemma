@@ -4,14 +4,14 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
 
 pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     // Parse the toolchain to get the sanitized directory name
-    let toolchain_desc = crate::toolchain::ToolchainDesc::parse(toolchain)?;
+    let toolchain_desc = lemma_toolchain::ToolchainDesc::parse(toolchain)?;
     let dir_name = toolchain_desc.to_directory_name();
     let toolchain_path = toolchains_dir.join(&dir_name);
 
@@ -39,7 +39,10 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
                 toolchain
             );
         } else {
-            println!("⚠ Warning: '{}' is currently the default toolchain", toolchain);
+            println!(
+                "⚠ Warning: '{}' is currently the default toolchain",
+                toolchain
+            );
         }
     }
 

@@ -4,10 +4,10 @@ use anyhow::Result;
 use colored::Colorize;
 use std::fs;
 
-use crate::config::Config;
-use crate::settings::GlobalSettings;
-use crate::install::Installer;
-use crate::toolchain::ToolchainDesc;
+use lemma_config::Config;
+use lemma_config::GlobalSettings;
+use lemma_install::Installer;
+use lemma_toolchain::ToolchainDesc;
 
 pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings) -> Result<()> {
     if let Some(name) = toolchain {
@@ -108,7 +108,7 @@ fn update_all_toolchains() -> Result<()> {
             }
 
             // Parse directory name to get the canonical toolchain name
-            let name = match crate::toolchain::ToolchainDesc::from_directory_name(dir_name) {
+            let name = match lemma_toolchain::ToolchainDesc::from_directory_name(dir_name) {
                 Ok(desc) => desc.to_string(),
                 Err(_) => dir_name.to_string(),
             };
