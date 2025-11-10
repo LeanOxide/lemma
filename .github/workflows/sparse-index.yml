@@ -36,8 +36,7 @@ jobs:
           echo "~/.lemma/bin" >> $GITHUB_PATH
           lemma toolchain install beta
           lemma default beta
-          ls -lh ~/.lemma/toolchains/leanprover--lean4---beta/lib/libc++.so.1 || true
-          file ~/.lemma/toolchains/leanprover--lean4---beta/lib/libc++.so.1 || true
+
       - name: Verify Lean installation
         run: lake --version
 
@@ -74,6 +73,16 @@ jobs:
           name: sparse-index-${{ matrix.platform }}
           path: artifacts/${{ matrix.platform }}/index.json
 
+      - name: Prepare .olean files for upload
+        run: |
+          mkdir -p olean-staging/Mathlib
+          # Copy only .olean files, preserving directory structure
+          cd mathlib/.lake/build/lib/lean
+          find Mathlib -name "*.olean" -type f -exec cp --parents {} ../../../../olean-staging/ \;
+          cd ../../../..
+          echo "Total .olean files: $(find olean-staging -name "*.olean" | wc -l)"
+          echo "Total size: $(du -sh olean-staging | cut -f1)"
+
       - name: Upload Mathlib .olean files to R2
         uses: ryand56/r2-upload-action@latest
         with:
@@ -81,7 +90,7 @@ jobs:
           r2-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
           r2-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           r2-bucket: ${{ secrets.SPARSE_CACHE_BUCKET }}
-          source-dir: mathlib/.lake/build/lib/lean/Mathlib
+          source-dir: olean-staging/Mathlib
           destination-dir: mathlib/${{ steps.versions.outputs.commit }}/${{ matrix.platform }}/Mathlib
           output-file-url: false
           multipart-size: 128
