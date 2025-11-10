@@ -7,18 +7,19 @@ use std::path::PathBuf;
 
 use crate::cli::OverrideCommands;
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::toolchain::ToolchainDesc;
 
-pub fn execute(command: OverrideCommands) -> Result<()> {
+pub fn execute(command: OverrideCommands, settings: &GlobalSettings) -> Result<()> {
     match command {
-        OverrideCommands::Set { toolchain, path } => set_override(&toolchain, path),
-        OverrideCommands::Unset { path } => unset_override(path),
-        OverrideCommands::List => list_overrides(),
+        OverrideCommands::Set { toolchain, path } => set_override(&toolchain, path, settings),
+        OverrideCommands::Unset { path } => unset_override(path, settings),
+        OverrideCommands::List => list_overrides(settings),
     }
 }
 
 /// Set a directory override
-fn set_override(toolchain: &str, path: Option<String>) -> Result<()> {
+fn set_override(toolchain: &str, path: Option<String>, _settings: &GlobalSettings) -> Result<()> {
     let target_path = if let Some(p) = path {
         PathBuf::from(p)
     } else {
@@ -71,7 +72,7 @@ fn set_override(toolchain: &str, path: Option<String>) -> Result<()> {
 }
 
 /// Remove a directory override
-fn unset_override(path: Option<String>) -> Result<()> {
+fn unset_override(path: Option<String>, _settings: &GlobalSettings) -> Result<()> {
     let target_path = if let Some(p) = path {
         PathBuf::from(p)
     } else {
@@ -110,7 +111,7 @@ fn unset_override(path: Option<String>) -> Result<()> {
 }
 
 /// List all directory overrides
-fn list_overrides() -> Result<()> {
+fn list_overrides(_settings: &GlobalSettings) -> Result<()> {
     let config = Config::load()?;
 
     if config.overrides.is_empty() {

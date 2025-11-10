@@ -2,9 +2,16 @@
 
 use anyhow::Result;
 
+use crate::settings::GlobalSettings;
 use crate::toolchain;
 
-pub fn execute(binary: &str, explicit_toolchain: Option<&str>) -> Result<()> {
+pub fn execute(binary: &str, explicit_toolchain: Option<&str>, settings: &GlobalSettings) -> Result<()> {
+    if settings.is_verbose() {
+        tracing::debug!("Looking for binary: {}", binary);
+        if let Some(tc) = explicit_toolchain {
+            tracing::debug!("Using explicit toolchain: {}", tc);
+        }
+    }
     // Resolve which toolchain to use
     let toolchain_name = toolchain::resolve_toolchain_or_fail(explicit_toolchain)?;
 

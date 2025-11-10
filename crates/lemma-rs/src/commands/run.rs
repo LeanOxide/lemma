@@ -5,10 +5,15 @@ use std::env;
 use std::process::Command;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::toolchain;
 
 /// Execute a command with a specific toolchain
-pub fn execute(toolchain: &str, command_args: &[String]) -> Result<()> {
+pub fn execute(toolchain: &str, command_args: &[String], settings: &GlobalSettings) -> Result<()> {
+    if settings.is_verbose() {
+        tracing::debug!("Running command with toolchain: {}", toolchain);
+        tracing::debug!("Command: {:?}", command_args);
+    }
     // Check if command is empty
     if command_args.is_empty() {
         anyhow::bail!("No command specified.\n\nUsage: lemma run <toolchain> <command> [args...]");

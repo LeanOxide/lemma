@@ -8,6 +8,8 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::PathBuf;
 
+use crate::settings::GlobalSettings;
+
 /// Execute the fetch command
 pub fn execute(
     package: &str,
@@ -15,16 +17,21 @@ pub fn execute(
     auto: bool,
     dry_run: bool,
     path: Option<String>,
+    settings: &GlobalSettings,
 ) -> Result<()> {
     let project_path = match path {
         Some(p) => PathBuf::from(p),
         None => std::env::current_dir().context("Failed to get current directory")?,
     };
 
-    println!("{} Fetching cache for {}", "=>".green().bold(), package);
+    if settings.use_colors() {
+        println!("{} Fetching cache for {}", "=>".green().bold(), package);
+    } else {
+        println!("=> Fetching cache for {}", package);
+    }
 
     match package {
-        "mathlib4" | "mathlib" => fetch_mathlib(project_path, modules, auto, dry_run),
+        "mathlib4" | "mathlib" => fetch_mathlib(project_path, modules, auto, dry_run, settings),
         _ => {
             anyhow::bail!(
                 "Unknown package: {}. Currently only 'mathlib4' is supported.",
@@ -40,39 +47,60 @@ fn fetch_mathlib(
     modules: Vec<String>,
     auto: bool,
     dry_run: bool,
+    settings: &GlobalSettings,
 ) -> Result<()> {
     use crate::sparse_cache::mathlib::MathlibCacheFetcher;
 
     let fetcher = MathlibCacheFetcher::new()?;
 
     if auto {
-        println!(
-            "   {} Auto-detecting modules from project imports...",
-            "•".cyan()
-        );
+        if settings.use_colors() {
+            println!(
+                "   {} Auto-detecting modules from project imports...",
+                "•".cyan()
+            );
+        } else {
+            println!("   • Auto-detecting modules from project imports...");
+        }
         fetcher.fetch_auto(&project_path, dry_run)?;
     } else if !modules.is_empty() {
-        println!(
-            "   {} Fetching specified modules: {:?}",
-            "•".cyan(),
-            modules
-        );
+        if settings.use_colors() {
+            println!(
+                "   {} Fetching specified modules: {:?}",
+                "•".cyan(),
+                modules
+            );
+        } else {
+            println!("   • Fetching specified modules: {:?}", modules);
+        }
         fetcher.fetch_modules(&project_path, &modules, dry_run)?;
     } else {
-        println!(
-            "   {} Fetching full cache (no --module or --auto specified)",
-            "•".cyan()
-        );
+        if settings.use_colors() {
+            println!(
+                "   {} Fetching full cache (no --module or --auto specified)",
+                "•".cyan()
+            );
+        } else {
+            println!("   • Fetching full cache (no --module or --auto specified)");
+        }
         fetcher.fetch_full(&project_path, dry_run)?;
     }
 
     if dry_run {
-        println!(
-            "\n{} Dry run complete. No files were downloaded.",
-            "✓".green().bold()
-        );
+        if settings.use_colors() {
+            println!(
+                "\n{} Dry run complete. No files were downloaded.",
+                "✓".green().bold()
+            );
+        } else {
+            println!("\n✓ Dry run complete. No files were downloaded.");
+        }
     } else {
-        println!("\n{} Cache fetch complete!", "✓".green().bold());
+        if settings.use_colors() {
+            println!("\n{} Cache fetch complete!", "✓".green().bold());
+        } else {
+            println!("\n✓ Cache fetch complete!");
+        }
     }
 
     Ok(())

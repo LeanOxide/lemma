@@ -5,8 +5,9 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 
-pub fn execute(toolchain: &str) -> Result<()> {
+pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     // Parse the toolchain to get the sanitized directory name
@@ -31,11 +32,15 @@ pub fn execute(toolchain: &str) -> Result<()> {
         .unwrap_or(false);
 
     if is_default {
-        println!(
-            "{} Warning: '{}' is currently the default toolchain",
-            "⚠".yellow().bold(),
-            toolchain
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Warning: '{}' is currently the default toolchain",
+                "⚠".yellow().bold(),
+                toolchain
+            );
+        } else {
+            println!("⚠ Warning: '{}' is currently the default toolchain", toolchain);
+        }
     }
 
     // Check if this is a symlink (linked toolchain)
@@ -72,11 +77,15 @@ pub fn execute(toolchain: &str) -> Result<()> {
             }
         }
 
-        println!(
-            "{} Removed linked toolchain '{}'",
-            "✓".green().bold(),
-            toolchain
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Removed linked toolchain '{}'",
+                "✓".green().bold(),
+                toolchain
+            );
+        } else {
+            println!("✓ Removed linked toolchain '{}'", toolchain);
+        }
         println!("   (The original directory was not deleted)");
     } else {
         // For regular directories, remove everything
@@ -87,19 +96,27 @@ pub fn execute(toolchain: &str) -> Result<()> {
             )
         })?;
 
-        println!(
-            "{} Successfully uninstalled toolchain '{}'",
-            "✓".green().bold(),
-            toolchain
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Successfully uninstalled toolchain '{}'",
+                "✓".green().bold(),
+                toolchain
+            );
+        } else {
+            println!("✓ Successfully uninstalled toolchain '{}'", toolchain);
+        }
     }
 
-    if is_default {
+    if is_default && !settings.is_quiet() {
         println!();
-        println!(
-            "{} You may want to set a new default toolchain with:",
-            "Tip:".dimmed()
-        );
+        if settings.use_colors() {
+            println!(
+                "{} You may want to set a new default toolchain with:",
+                "Tip:".dimmed()
+            );
+        } else {
+            println!("Tip: You may want to set a new default toolchain with:");
+        }
         println!("   lemma default <toolchain>");
     }
 

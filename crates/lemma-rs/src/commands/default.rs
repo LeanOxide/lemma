@@ -4,9 +4,10 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: &str) -> Result<()> {
+pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
     // Parse the toolchain to get canonical format and directory name
     let toolchain_desc = ToolchainDesc::parse(toolchain)?;
     let canonical_name = toolchain_desc.to_string();
@@ -18,7 +19,7 @@ pub fn execute(toolchain: &str) -> Result<()> {
     // Check if toolchain exists
     if !toolchain_path.exists() {
         anyhow::bail!(
-            "Toolchain '{}' is not installed.\n\nRun 'lemma toolchain install {}' to install it first,\nor run 'lemma toolchain list' to see installed toolchains.",
+            "Toolchain '{}' is not installed.\n\nRun 'lemma lean install {}' to install it first,\nor run 'lemma lean list' to see installed toolchains.",
             canonical_name,
             canonical_name
         );
@@ -30,11 +31,15 @@ pub fn execute(toolchain: &str) -> Result<()> {
     // Check if this is already the default
     if let Some(ref current_default) = config.default_toolchain {
         if current_default == &canonical_name {
-            println!(
-                "{} '{}' is already the default toolchain",
-                "=>".cyan().bold(),
-                canonical_name
-            );
+            if settings.use_colors() {
+                println!(
+                    "{} '{}' is already the default toolchain",
+                    "=>".cyan().bold(),
+                    canonical_name
+                );
+            } else {
+                println!("=> '{}' is already the default toolchain", canonical_name);
+            }
             return Ok(());
         }
     }
@@ -48,18 +53,29 @@ pub fn execute(toolchain: &str) -> Result<()> {
 
     // Show success message
     if let Some(old) = old_default {
-        println!(
-            "{} Default toolchain changed from '{}' to '{}'",
-            "✓".green().bold(),
-            old.dimmed(),
-            canonical_name
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Default toolchain changed from '{}' to '{}'",
+                "✓".green().bold(),
+                old.dimmed(),
+                canonical_name
+            );
+        } else {
+            println!(
+                "✓ Default toolchain changed from '{}' to '{}'",
+                old, canonical_name
+            );
+        }
     } else {
-        println!(
-            "{} Default toolchain set to '{}'",
-            "✓".green().bold(),
-            canonical_name
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Default toolchain set to '{}'",
+                "✓".green().bold(),
+                canonical_name
+            );
+        } else {
+            println!("✓ Default toolchain set to '{}'", canonical_name);
+        }
     }
 
     Ok(())

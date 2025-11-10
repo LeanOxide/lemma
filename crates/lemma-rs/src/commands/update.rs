@@ -5,10 +5,11 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::install::Installer;
 use crate::toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: Option<&str>) -> Result<()> {
+pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings) -> Result<()> {
     if let Some(name) = toolchain {
         // Update specific toolchain
         update_toolchain(name)

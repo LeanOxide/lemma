@@ -6,8 +6,9 @@ use std::fs;
 use std::path::Path;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 
-pub fn execute(name: &str, path: &str) -> Result<()> {
+pub fn execute(name: &str, path: &str, settings: &GlobalSettings) -> Result<()> {
     let source_path = Path::new(path);
 
     // Validate source path exists and is a directory
@@ -22,10 +23,14 @@ pub fn execute(name: &str, path: &str) -> Result<()> {
     // Check if it looks like a valid toolchain (has bin/ directory)
     let bin_dir = source_path.join("bin");
     if !bin_dir.exists() || !bin_dir.is_dir() {
-        println!(
-            "{} Warning: Source directory doesn't have a 'bin' subdirectory. This might not be a valid toolchain.",
-            "⚠".yellow().bold()
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Warning: Source directory doesn't have a 'bin' subdirectory. This might not be a valid toolchain.",
+                "⚠".yellow().bold()
+            );
+        } else {
+            println!("⚠ Warning: Source directory doesn't have a 'bin' subdirectory. This might not be a valid toolchain.");
+        }
     }
 
     // Parse the toolchain name to get the sanitized directory name
@@ -71,12 +76,16 @@ pub fn execute(name: &str, path: &str) -> Result<()> {
         })?;
     }
 
-    println!(
-        "{} Successfully linked toolchain '{}' to {}",
-        "✓".green().bold(),
-        name,
-        path
-    );
+    if settings.use_colors() {
+        println!(
+            "{} Successfully linked toolchain '{}' to {}",
+            "✓".green().bold(),
+            name,
+            path
+        );
+    } else {
+        println!("✓ Successfully linked toolchain '{}' to {}", name, path);
+    }
 
     println!("   Target: {}", target_path.display());
 

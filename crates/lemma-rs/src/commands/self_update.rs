@@ -6,6 +6,7 @@ use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use crate::settings::GlobalSettings;
 
 use crate::archive::extract_archive;
 use crate::config::Config;
@@ -37,7 +38,7 @@ fn get_available_version() -> Result<String> {
     Ok(manifest.version)
 }
 
-pub fn update() -> Result<()> {
+pub fn update(_settings: &GlobalSettings) -> Result<()> {
     println!("{} Checking for updates...", "=>".cyan().bold());
 
     // Get current version
@@ -308,7 +309,7 @@ pub fn cleanup_old_backups() -> Result<()> {
 }
 
 /// Uninstall lemma and all toolchains
-pub fn uninstall(skip_confirm: bool) -> Result<()> {
+pub fn uninstall(skip_confirm: bool, _settings: &GlobalSettings) -> Result<()> {
     use std::io::{self, Write};
 
     println!();
