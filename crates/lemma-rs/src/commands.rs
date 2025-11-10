@@ -21,13 +21,13 @@ pub mod which;
 use anyhow::Result;
 
 use crate::cli::{Commands, SelfCommands, ToolchainCommands};
-
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 
 /// Dispatch and execute a command
-pub fn handle_command(command: Commands) -> Result<()> {
+pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()> {
     match command {
-        Commands::Toolchain { command } => handle_toolchain_command(command),
+        Commands::Lean { command } => handle_toolchain_command(command, &settings),
 
         Commands::Override { command } => {
             // Ensure setup for override commands
@@ -41,7 +41,7 @@ pub fn handle_command(command: Commands) -> Result<()> {
             default::execute(&toolchain)
         }
 
-        Commands::Show => show::execute(),
+        Commands::Show => show::execute(&settings),
 
         Commands::Which { binary, toolchain } => which::execute(&binary, toolchain.as_deref()),
 
@@ -72,17 +72,17 @@ fn handle_self_command(command: SelfCommands) -> Result<()> {
 }
 
 /// Handle toolchain subcommands
-fn handle_toolchain_command(command: ToolchainCommands) -> Result<()> {
+fn handle_toolchain_command(command: ToolchainCommands, settings: &GlobalSettings) -> Result<()> {
     match command {
         ToolchainCommands::Install { toolchain, force } => {
             // Ensure setup on first install
             Config::ensure_setup()?;
-            install::execute(&toolchain, force)
+            install::execute(&toolchain, force, settings)
         }
 
         ToolchainCommands::Uninstall { toolchain } => uninstall::execute(&toolchain),
 
-        ToolchainCommands::List { verbose } => list::execute(verbose),
+        ToolchainCommands::List {} => list::execute(settings),
 
         ToolchainCommands::Link { name, path } => {
             // Ensure setup for link command too

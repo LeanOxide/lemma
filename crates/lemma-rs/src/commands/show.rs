@@ -5,15 +5,19 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::toolchain;
 
-pub fn execute() -> Result<()> {
+pub fn execute(settings: &GlobalSettings) -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
 
     // Show platform and lemma home
-    println!("{} {}", "Default host:".bold(), get_host_triple());
-    if let Ok(lemma_home) = Config::lemma_home() {
-        println!("{} {}", "lemma home:".bold(), lemma_home.display());
+    if settings.use_colors() {
+        println!("{} {}", "Default host:".bold(), get_host_triple());
+        println!("{} {}", "lemma home:".bold(), settings.lemma_home.display());
+    } else {
+        println!("Default host: {}", get_host_triple());
+        println!("lemma home: {}", settings.lemma_home.display());
     }
     println!();
 
@@ -21,8 +25,13 @@ pub fn execute() -> Result<()> {
     let active_toolchain = toolchain::resolve_toolchain_with_source(None)?;
 
     // List installed toolchains first
-    println!("{}", "installed toolchains".bold());
-    println!("{}", "--------------------".bold());
+    if settings.use_colors() {
+        println!("{}", "installed toolchains".bold());
+        println!("{}", "--------------------".bold());
+    } else {
+        println!("installed toolchains");
+        println!("--------------------");
+    }
 
     let toolchains_dir = Config::toolchains_dir()?;
     let mut has_toolchains = false;
@@ -107,14 +116,23 @@ pub fn execute() -> Result<()> {
     }
 
     if !has_toolchains {
-        println!("{}", "no installed toolchains".dimmed());
+        if settings.use_colors() {
+            println!("{}", "no installed toolchains".dimmed());
+        } else {
+            println!("no installed toolchains");
+        }
     }
 
     println!();
 
     // Show active toolchain details
-    println!("{}", "active toolchain".bold());
-    println!("{}", "----------------".bold());
+    if settings.use_colors() {
+        println!("{}", "active toolchain".bold());
+        println!("{}", "----------------".bold());
+    } else {
+        println!("active toolchain");
+        println!("----------------");
+    }
 
     if let Some((toolchain, src)) = &active_toolchain {
         println!("name: {}", toolchain);
@@ -161,16 +179,26 @@ pub fn execute() -> Result<()> {
                 }
             }
             Err(_) => {
-                println!("{}", "warning: toolchain is not installed".yellow().bold());
+                if settings.use_colors() {
+                    println!("{}", "warning: toolchain is not installed".yellow().bold());
+                } else {
+                    println!("warning: toolchain is not installed");
+                }
             }
         }
     } else {
-        println!("{}", "no active toolchain".dimmed());
-        println!();
-        println!(
-            "{}",
-            "tip: set a default with 'lemma default <toolchain>'".dimmed()
-        );
+        if settings.use_colors() {
+            println!("{}", "no active toolchain".dimmed());
+            println!();
+            println!(
+                "{}",
+                "tip: set a default with 'lemma default <toolchain>'".dimmed()
+            );
+        } else {
+            println!("no active toolchain");
+            println!();
+            println!("tip: set a default with 'lemma default <toolchain>'");
+        }
     }
 
     println!();

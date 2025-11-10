@@ -5,9 +5,10 @@ use colored::Colorize;
 use std::fs;
 
 use crate::config::Config;
+use crate::settings::GlobalSettings;
 use crate::toolchain;
 
-pub fn execute(verbose: bool) -> Result<()> {
+pub fn execute(settings: &GlobalSettings) -> Result<()> {
     // Load config to get default toolchain
     let config = Config::load().unwrap_or_default();
 
@@ -70,45 +71,63 @@ pub fn execute(verbose: bool) -> Result<()> {
         return Ok(());
     }
 
-    for (name, path) in toolchains {
+    for (name, _path) in toolchains {
         // Check if this toolchain is active and/or default
         let is_active = active_toolchain.as_ref() == Some(&name);
         let is_default = config.default_toolchain.as_ref() == Some(&name);
 
         // Build status string
-        let status = match (is_active, is_default) {
+        let _status = match (is_active, is_default) {
             (true, true) => " (active, default)".green(),
             (true, false) => " (active)".green(),
             (false, true) => " (default)".dimmed(),
             (false, false) => "".normal(),
         };
 
-        if verbose {
-            // Show detailed information
-            let size = calculate_dir_size(&path)?;
+        if settings.is_verbose() {
+            // Show detailed information when verbose
+            let size = calculate_dir_size(&_path)?;
 
-            println!("{} {}{}", "•".cyan(), name.bold(), status);
-            println!("  Path: {}", path.display().to_string().dimmed());
-            println!("  Size: {}", format_size(size).dimmed());
+            if settings.use_colors() {
+                println!("{} {}{}", "•".cyan(), name.bold(), _status);
+                println!("  Path: {}", _path.display().to_string().dimmed());
+                println!("  Size: {}", format_size(size).dimmed());
+            } else {
+                println!("• {} {}", name, _status);
+                println!("  Path: {}", _path.display());
+                println!("  Size: {}", format_size(size));
+            }
 
             // Try to find lean binary and get version
-            let version = toolchain::get_lean_version_or_unknown(&path);
+            let version = toolchain::get_lean_version_or_unknown(&_path);
             if version != "unknown" {
-                println!("  Version: {}", version.dimmed());
+                if settings.use_colors() {
+                    println!("  Version: {}", version.dimmed());
+                } else {
+                    println!("  Version: {}", version);
+                }
             }
             println!();
         } else {
             // Simple list
-            println!("{} {}{}", "•".cyan(), name, status);
+            if settings.use_colors() {
+                println!("{} {}{}", "•".cyan(), name, _status);
+            } else {
+                println!("• {}{}", name, _status);
+            }
         }
     }
 
-    if !verbose {
+    if !settings.is_verbose() && !settings.is_quiet() {
         println!();
-        println!(
-            "{} Use 'lemma list --verbose' for more details",
-            "Tip:".dimmed()
-        );
+        if settings.use_colors() {
+            println!(
+                "{} Use 'lemma lean list -v' for more details",
+                "Tip:".dimmed()
+            );
+        } else {
+            println!("Tip: Use 'lemma lean list -v' for more details");
+        }
     }
 
     Ok(())

@@ -35,6 +35,7 @@ mod download;
 mod help;
 mod install;
 mod release;
+mod settings;
 mod sparse_cache;
 mod toolchain;
 
@@ -45,6 +46,7 @@ use std::path::PathBuf;
 
 use cli::Cli;
 use commands::proxy_mode;
+use settings::GlobalSettings;
 
 /// Entry point for lemma
 ///
@@ -89,12 +91,27 @@ fn run() -> Result<()> {
     // Otherwise, run as normal lemma CLI
     let cli = Cli::parse();
 
-    // Setup logging based on verbosity
-    if cli.verbose {
-        std::env::set_var("RUST_LOG", "debug");
-    }
-    tracing_subscriber::fmt::init();
+    // Resolve settings from CLI args + environment + config
+    let settings = GlobalSettings::resolve(&cli.top_level.global_args)?;
+
+    // Setup logging using resolved settings
+    setup_logging(&settings);
 
     // Dispatch to appropriate command handler
-    commands::handle_command(cli.command)
+    commands::handle_command(cli.command, settings)
+}
+
+/// Setup logging based on resolved settings
+fn setup_logging(settings: &GlobalSettings) {
+    use tracing_subscriber::EnvFilter;
+
+    // Try to use RUST_LOG environment variable first, otherwise use our computed level
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(settings.log_level()));
+
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .with_ansi(settings.use_colors())
+        .init();
 }

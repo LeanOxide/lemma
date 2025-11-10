@@ -1,29 +1,116 @@
 //! Command-line interface for Lemma
 
+use crate::help;
+use clap::builder::styling::{AnsiColor, Effects};
+use clap::builder::Styles;
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 
-use crate::help;
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .usage(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .literal(AnsiColor::Cyan.on_default().effects(Effects::BOLD))
+    .placeholder(AnsiColor::Cyan.on_default());
 
 #[derive(Parser)]
 #[command(name = "lemma")]
 #[command(about = "A modern Lean4 toolchain manager", long_about = None)]
 #[command(version)]
-#[command(after_long_help = help::LEMMA_HELP)]
+#[command(
+    after_long_help = "",
+    after_help = "Use `lemma help` for more details.",
+    disable_help_flag = true,
+    disable_help_subcommand = true,
+    disable_version_flag = true
+)]
+#[command(styles=STYLES)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Enable verbose logging
-    #[arg(short, long, global = true)]
-    pub verbose: bool,
+    #[command(flatten)]
+    pub top_level: TopLevelArgs,
+}
+
+#[derive(Parser)]
+#[command(disable_help_flag = true, disable_version_flag = true)]
+pub struct TopLevelArgs {
+    // #[command(flatten)]
+    // pub cache_args: Box<CacheArgs>,
+    #[command(flatten)]
+    pub global_args: Box<GlobalArgs>,
+
+    /// Display the concise help for this command.
+    #[arg(global = true, short, long, action = clap::ArgAction::HelpShort, help_heading = "Global options")]
+    help: Option<bool>,
+
+    /// Display the uv version.
+    #[arg(short = 'V', long, action = clap::ArgAction::Version)]
+    version: Option<bool>,
+}
+
+#[derive(Parser, Debug, Clone)]
+#[command(next_help_heading = "Global options", next_display_order = 1000)]
+pub struct GlobalArgs {
+    /// Use quiet output.
+    ///
+    /// Repeating this option, e.g., `-qq`, will enable a silent mode in which
+    /// lemma will write minimal output.
+    #[arg(global = true, action = clap::ArgAction::Count, long, short, conflicts_with = "verbose")]
+    pub quiet: u8,
+
+    /// Use verbose output.
+    ///
+    /// Repeating this option, e.g., `-vv`, will increase verbosity further.
+    /// You can configure fine-grained logging using the `RUST_LOG` environment variable.
+    /// (<https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives>)
+    #[arg(global = true, action = clap::ArgAction::Count, long, short,
+          conflicts_with = "quiet", env = "LEMMA_VERBOSE")]
+    pub verbose: u8,
+
+    /// Disable colors.
+    ///
+    /// Provided for compatibility with other tools, use `--color never` instead.
+    #[arg(
+        global = true,
+        long,
+        hide = true,
+        conflicts_with = "color",
+        env = "NO_COLOR"
+    )]
+    pub no_color: bool,
+
+    /// Control the use of color in output.
+    ///
+    /// By default, lemma will automatically detect support for colors when writing to a terminal.
+    #[arg(
+        global = true,
+        long,
+        value_enum,
+        conflicts_with = "no_color",
+        value_name = "COLOR_CHOICE",
+        env = "LEMMA_COLOR"
+    )]
+    pub color: Option<ColorChoice>,
+}
+
+#[derive(Debug, Copy, Clone, clap::ValueEnum)]
+pub enum ColorChoice {
+    /// Enables colored output only when the output is going to a terminal or TTY with support.
+    Auto,
+
+    /// Enables colored output regardless of the detected environment.
+    Always,
+
+    /// Disables colored output.
+    Never,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Manage toolchains
     #[command(after_long_help = help::TOOLCHAIN_HELP)]
-    Toolchain {
+    Lean {
         #[command(subcommand)]
         command: ToolchainCommands,
     },
@@ -150,11 +237,7 @@ pub enum ToolchainCommands {
 
     /// List installed toolchains
     #[command(after_long_help = help::TOOLCHAIN_LIST_HELP)]
-    List {
-        /// Show verbose information
-        #[arg(short, long)]
-        verbose: bool,
-    },
+    List,
 
     /// Link a custom toolchain
     #[command(after_long_help = help::TOOLCHAIN_LINK_HELP)]

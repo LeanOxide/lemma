@@ -1,13 +1,5 @@
 //! Help documentation for Lemma commands
 
-pub static LEMMA_HELP: &str = r"DISCUSSION:
-    lemma manages your installations of the Lean theorem prover.
-    It places `lean` and `lake` binaries in your `PATH` that automatically
-    select and, if necessary, download the Lean version described in your
-    project's `lean-toolchain` file. You can also install, select, run,
-    and uninstall Lean versions manually using the commands of the `lemma`
-    executable.";
-
 pub static SHOW_HELP: &str = r"DISCUSSION:
     Shows the name of the active toolchain and the version of `lean`.
 
