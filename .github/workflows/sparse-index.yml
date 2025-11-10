@@ -55,6 +55,7 @@ jobs:
         run: |
           cd mathlib
           lake exe cache get
+          lake build
 
       - name: Generate sparse index
         run: |
