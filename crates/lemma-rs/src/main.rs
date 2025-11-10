@@ -24,23 +24,19 @@
 //! - `lemma-install`: Toolchain installation and archive extraction
 //!
 //! ### Local modules:
-//! - `cli`: Command-line interface definitions
 //! - `commands`: Command implementations (install, update, show, etc.)
-//! - `help`: Help text and documentation
 //! - `sparse_cache`: Sparse cache implementation for dependency management
 
-mod cli;
 mod commands;
-mod help;
 mod sparse_cache;
 
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
+use lemma_cli::Cli;
 use lemma_config::GlobalSettings;
 use std::path::PathBuf;
 
-use cli::Cli;
 use commands::proxy_mode;
 
 /// Entry point for lemma

@@ -12,6 +12,7 @@ authors = ["PuQing <me@puqing.work>"]
 repository = "https://github.com/AndPuQing/lemma.git"
 
 [workspace.dependencies]
+lemma-cli = { path = "crates/lemma-cli" }
 lemma-config = { path = "crates/lemma-config" }
 lemma-toolchain = { path = "crates/lemma-toolchain" }
 lemma-static = { path = "crates/lemma-static" }

@@ -5,7 +5,7 @@ use colored::Colorize;
 use std::env;
 use std::path::PathBuf;
 
-use crate::cli::OverrideCommands;
+use lemma_cli::OverrideCommands;
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
 use lemma_toolchain::ToolchainDesc;

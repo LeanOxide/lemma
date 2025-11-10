@@ -5,7 +5,7 @@ use clap::CommandFactory;
 use clap_complete::{generate, Shell};
 use std::io;
 
-use crate::cli::Cli;
+use lemma_cli::Cli;
 use lemma_config::GlobalSettings;
 
 pub fn execute(shell: Shell, _settings: &GlobalSettings) -> Result<()> {

@@ -1050,7 +1050,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
-name = "lemma-cli"
+name = "lemma"
 version = "0.1.5"
 dependencies = [
  "anyhow",
@@ -1060,6 +1060,7 @@ dependencies = [
  "colored",
  "dirs",
  "fs-err",
+ "lemma-cli",
  "lemma-config",
  "lemma-download",
  "lemma-install",
@@ -1076,6 +1077,15 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "lemma-cli"
+version = "0.1.5"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "lemma-config",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "lemma-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# CLI framework
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+
+# Configuration (for ColorChoice enum)
+lemma-config.workspace = true
+
+[lints]
+workspace = true

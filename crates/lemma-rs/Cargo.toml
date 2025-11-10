@@ -1,5 +1,5 @@
 [package]
-name = "lemma-cli"
+name = "lemma"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,11 +12,12 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal crates
-lemma-static.workspace=true
-lemma-config.workspace=true
-lemma-toolchain.workspace=true
-lemma-download.workspace=true
-lemma-install = { path = "../lemma-install" }
+lemma-cli.workspace = true
+lemma-static.workspace = true
+lemma-config.workspace = true
+lemma-toolchain.workspace = true
+lemma-download.workspace = true
+lemma-install.workspace = true
 
 # Core dependencies
 anyhow.workspace = true

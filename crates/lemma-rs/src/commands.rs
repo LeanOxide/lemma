@@ -19,9 +19,8 @@ pub mod update;
 pub mod which;
 
 use anyhow::Result;
+use lemma_cli::{Commands, SelfCommands, ToolchainCommands};
 use lemma_config::{Config, GlobalSettings};
-
-use crate::cli::{Commands, SelfCommands, ToolchainCommands};
 
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()> {
