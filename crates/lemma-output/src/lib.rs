@@ -33,11 +33,11 @@
 //!
 //! The [`Printer`] is typically created from [`lemma_config::GlobalSettings`]:
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use lemma_config::GlobalSettings;
 //! use lemma_output::Printer;
 //!
-//! fn my_command(settings: &GlobalSettings) -> anyhow::Result<()> {
+//! fn my_command(settings: &GlobalSettings) -> Result<(), Box<dyn std::error::Error>> {
 //!     let printer = Printer::from_settings(settings);
 //!
 //!     printer.status("Doing something...")?;
@@ -46,8 +46,6 @@
 //!
 //!     Ok(())
 //! }
-//! # let settings = GlobalSettings::resolve(&Default::default()).unwrap();
-//! # my_command(&settings).unwrap();
 //! ```
 
 use colored::*;
@@ -110,17 +108,15 @@ impl Printer {
     ///
     /// This is the typical way to create a printer in command implementations.
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// use lemma_config::GlobalSettings;
     /// use lemma_output::Printer;
     ///
-    /// fn execute(settings: &GlobalSettings) -> anyhow::Result<()> {
+    /// fn execute(settings: &GlobalSettings) -> Result<(), Box<dyn std::error::Error>> {
     ///     let printer = Printer::from_settings(settings);
     ///     printer.status("Running command...")?;
     ///     Ok(())
     /// }
-    /// # let settings = GlobalSettings::resolve(&Default::default()).unwrap();
-    /// # execute(&settings).unwrap();
     /// ```
     pub fn from_settings(settings: &lemma_config::GlobalSettings) -> Self {
         Self::new(

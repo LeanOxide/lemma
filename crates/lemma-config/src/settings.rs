@@ -42,6 +42,18 @@ pub struct GlobalSettings {
 
     /// Lemma home directory (where toolchains are stored)
     pub lemma_home: PathBuf,
+
+    /// Network request timeout in seconds
+    pub network_timeout: u64,
+
+    /// Number of network retries
+    pub network_retries: u32,
+
+    /// HTTP proxy URL
+    pub http_proxy: Option<String>,
+
+    /// HTTPS proxy URL
+    pub https_proxy: Option<String>,
 }
 
 impl GlobalSettings {
@@ -61,12 +73,20 @@ impl GlobalSettings {
         let quiet = resolve_quiet(args, &config);
         let color = resolve_color_choice(args, &config)?;
         let lemma_home = resolve_lemma_home(&config)?;
+        let network_timeout = resolve_network_timeout(&config);
+        let network_retries = resolve_network_retries(&config);
+        let http_proxy = resolve_http_proxy(&config);
+        let https_proxy = resolve_https_proxy(&config);
 
         Ok(Self {
             verbose,
             quiet,
             color,
             lemma_home,
+            network_timeout,
+            network_retries,
+            http_proxy,
+            https_proxy,
         })
     }
 
@@ -209,6 +229,80 @@ fn resolve_lemma_home(config: &config::Config) -> Result<PathBuf> {
     Ok(home.join(".lemma"))
 }
 
+/// Resolve network timeout from environment and config.
+fn resolve_network_timeout(config: &config::Config) -> u64 {
+    // Priority:
+    // 1. LEMMA_NETWORK_TIMEOUT environment variable
+    // 2. Config file
+    // 3. Default (30 seconds)
+
+    if let Ok(timeout) = std::env::var("LEMMA_NETWORK_TIMEOUT") {
+        if let Ok(value) = timeout.parse::<u64>() {
+            return value;
+        }
+    }
+
+    config
+        .network
+        .as_ref()
+        .and_then(|n| n.timeout)
+        .unwrap_or(30)
+}
+
+/// Resolve network retries from environment and config.
+fn resolve_network_retries(config: &config::Config) -> u32 {
+    // Priority:
+    // 1. LEMMA_NETWORK_RETRIES environment variable
+    // 2. Config file
+    // 3. Default (3 retries)
+
+    if let Ok(retries) = std::env::var("LEMMA_NETWORK_RETRIES") {
+        if let Ok(value) = retries.parse::<u32>() {
+            return value;
+        }
+    }
+
+    config
+        .network
+        .as_ref()
+        .and_then(|n| n.retries)
+        .unwrap_or(3)
+}
+
+/// Resolve HTTP proxy from environment and config.
+fn resolve_http_proxy(config: &config::Config) -> Option<String> {
+    // Priority:
+    // 1. HTTP_PROXY environment variable
+    // 2. Config file
+    // 3. None
+
+    if let Ok(proxy) = std::env::var("HTTP_PROXY") {
+        return Some(proxy);
+    }
+
+    config
+        .network
+        .as_ref()
+        .and_then(|n| n.http_proxy.clone())
+}
+
+/// Resolve HTTPS proxy from environment and config.
+fn resolve_https_proxy(config: &config::Config) -> Option<String> {
+    // Priority:
+    // 1. HTTPS_PROXY environment variable
+    // 2. Config file
+    // 3. None
+
+    if let Ok(proxy) = std::env::var("HTTPS_PROXY") {
+        return Some(proxy);
+    }
+
+    config
+        .network
+        .as_ref()
+        .and_then(|n| n.https_proxy.clone())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,6 +314,10 @@ mod tests {
             quiet: 0,
             color: ColorChoice::Auto,
             lemma_home: PathBuf::from("/tmp/lemma"),
+            network_timeout: 30,
+            network_retries: 3,
+            http_proxy: None,
+            https_proxy: None,
         };
         assert_eq!(settings.log_level(), "info");
 
@@ -228,6 +326,10 @@ mod tests {
             quiet: 0,
             color: ColorChoice::Auto,
             lemma_home: PathBuf::from("/tmp/lemma"),
+            network_timeout: 30,
+            network_retries: 3,
+            http_proxy: None,
+            https_proxy: None,
         };
         assert_eq!(settings.log_level(), "debug");
 
@@ -236,6 +338,10 @@ mod tests {
             quiet: 1,
             color: ColorChoice::Auto,
             lemma_home: PathBuf::from("/tmp/lemma"),
+            network_timeout: 30,
+            network_retries: 3,
+            http_proxy: None,
+            https_proxy: None,
         };
         assert_eq!(settings.log_level(), "warn");
     }
@@ -247,6 +353,10 @@ mod tests {
             quiet: 0,
             color: ColorChoice::Auto,
             lemma_home: PathBuf::from("/tmp/lemma"),
+            network_timeout: 30,
+            network_retries: 3,
+            http_proxy: None,
+            https_proxy: None,
         };
         assert!(!settings.is_quiet());
 
@@ -255,6 +365,10 @@ mod tests {
             quiet: 1,
             color: ColorChoice::Auto,
             lemma_home: PathBuf::from("/tmp/lemma"),
+            network_timeout: 30,
+            network_retries: 3,
+            http_proxy: None,
+            https_proxy: None,
         };
         assert!(settings.is_quiet());
     }

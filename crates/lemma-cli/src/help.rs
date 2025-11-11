@@ -335,3 +335,53 @@ pub static SELF_UNINSTALL_HELP: &str = r"DISCUSSION:
 
         $ lemma self uninstall
         $ lemma self uninstall -y  # Skip confirmation";
+
+pub static CACHE_HELP: &str = r"DISCUSSION:
+    The `cache` command provides tools to manage lemma's download cache
+    and installed toolchains. Use these commands to inspect disk usage,
+    clean up temporary downloads, or remove unused toolchains.";
+
+pub static CACHE_DIR_HELP: &str = r"DISCUSSION:
+    Displays the path to lemma's cache directory where downloaded
+    toolchain archives are stored temporarily before installation.
+
+    Example:
+
+        $ lemma cache dir";
+
+pub static CACHE_STATS_HELP: &str = r"DISCUSSION:
+    Shows statistics about disk space used by lemma, including:
+    - Downloaded toolchain archives (cache)
+    - Installed toolchains
+    - Total disk usage
+
+    This helps you understand how much space lemma is using on your system.
+
+    Example:
+
+        $ lemma cache stats";
+
+pub static CACHE_CLEAN_HELP: &str = r"DISCUSSION:
+    Removes all cached toolchain downloads. This frees up disk space
+    by deleting temporary archive files that were downloaded during
+    toolchain installation.
+
+    Installed toolchains are NOT removed - only the downloaded archives
+    in the cache directory are deleted.
+
+    Example:
+
+        $ lemma cache clean       # Prompts for confirmation
+        $ lemma cache clean -y    # Skip confirmation";
+
+pub static CACHE_PRUNE_HELP: &str = r"DISCUSSION:
+    Removes all cached downloads AND all installed toolchains. This is
+    a complete cleanup that will free up all disk space used by lemma.
+
+    WARNING: This will uninstall all Lean toolchains. You will need to
+    reinstall any toolchains you want to use.
+
+    Example:
+
+        $ lemma cache prune       # Prompts for confirmation
+        $ lemma cache prune -y    # Skip confirmation";

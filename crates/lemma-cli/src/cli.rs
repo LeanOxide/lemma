@@ -186,6 +186,13 @@ pub enum Commands {
         path: Option<String>,
     },
 
+    /// Manage the lemma cache
+    #[command(after_long_help = help::CACHE_HELP)]
+    Cache {
+        #[command(subcommand)]
+        command: CacheCommands,
+    },
+
     /// Modify the lemma installation
     #[command(after_long_help = help::SELF_HELP)]
     #[command(name = "self")]
@@ -298,4 +305,31 @@ pub enum OverrideCommands {
     /// List all directory overrides
     #[command(after_long_help = help::OVERRIDE_LIST_HELP)]
     List,
+}
+
+#[derive(Subcommand)]
+pub enum CacheCommands {
+    /// Show cache directory path
+    #[command(after_long_help = help::CACHE_DIR_HELP)]
+    Dir,
+
+    /// Display cache statistics
+    #[command(after_long_help = help::CACHE_STATS_HELP)]
+    Stats,
+
+    /// Remove cached downloads
+    #[command(after_long_help = help::CACHE_CLEAN_HELP)]
+    Clean {
+        /// Don't ask for confirmation
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
+
+    /// Remove all cached data (downloads and toolchains)
+    #[command(after_long_help = help::CACHE_PRUNE_HELP)]
+    Prune {
+        /// Don't ask for confirmation
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
 }

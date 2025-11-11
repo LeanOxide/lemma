@@ -17,9 +17,8 @@ use std::time::Duration;
 use url::Url;
 
 /// Network timeouts and retry settings
-const CONNECT_TIMEOUT_SECS: u64 = 30;
-const READ_TIMEOUT_SECS: u64 = 30;
-const MAX_RETRIES: u32 = 3;
+const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_MAX_RETRIES: u32 = 3;
 
 const TEMPLATE_PIP: & str =
         "{bar:40.green/black} {bytes:>11.green}/{total_bytes:<11.green} {bytes_per_sec:>13.red} eta {eta:.blue}";
@@ -29,19 +28,61 @@ const CHARS_LINE: &str = "━╾╴─";
 #[derive(Clone)]
 pub struct DownloadClient {
     client: Client,
+    max_retries: u32,
 }
 
 impl DownloadClient {
+    /// Create a new download client with default settings
     pub fn new() -> Result<Self> {
-        let client = Client::builder()
-            .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT_SECS))
-            .timeout(Duration::from_secs(READ_TIMEOUT_SECS))
+        Self::with_settings(DEFAULT_CONNECT_TIMEOUT_SECS, DEFAULT_MAX_RETRIES, None, None)
+    }
+
+    /// Create a download client from global settings
+    pub fn from_settings(settings: &lemma_config::GlobalSettings) -> Result<Self> {
+        Self::with_settings(
+            settings.network_timeout,
+            settings.network_retries,
+            settings.http_proxy.clone(),
+            settings.https_proxy.clone(),
+        )
+    }
+
+    /// Create a download client with specific network settings
+    fn with_settings(
+        timeout_secs: u64,
+        max_retries: u32,
+        http_proxy: Option<String>,
+        https_proxy: Option<String>,
+    ) -> Result<Self> {
+        let mut builder = Client::builder()
+            .connect_timeout(Duration::from_secs(timeout_secs))
+            .timeout(Duration::from_secs(timeout_secs))
             .user_agent(format!("lemma/{}", env!("CARGO_PKG_VERSION")))
-            .redirect(reqwest::redirect::Policy::limited(10))
+            .redirect(reqwest::redirect::Policy::limited(10));
+
+        // Add proxies if specified
+        if let Some(proxy_url) = http_proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::http(&proxy_url)
+                    .context("Failed to configure HTTP proxy")?,
+            );
+        }
+
+        if let Some(proxy_url) = https_proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::https(&proxy_url)
+                    .context("Failed to configure HTTPS proxy")?,
+            );
+        }
+
+        let client = builder
             .build()
             .context("Failed to create HTTP client")?;
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            max_retries,
+        })
     }
 
     /// Download a file with retry logic and progress reporting
@@ -50,10 +91,10 @@ impl DownloadClient {
         let parsed_url = Url::parse(url).context("Invalid download URL")?;
 
         // Attempt download with retries
-        for attempt in 0..=MAX_RETRIES {
+        for attempt in 0..=self.max_retries {
             match self.try_download(&parsed_url, dest, attempt) {
                 Ok(()) => return Ok(()),
-                Err(e) if attempt < MAX_RETRIES => {
+                Err(e) if attempt < self.max_retries => {
                     let delay = self.calculate_backoff(attempt);
                     eprintln!(
                         "Download attempt {} failed: {}. Retrying in {:?}...",
@@ -66,7 +107,7 @@ impl DownloadClient {
                 Err(e) => {
                     return Err(e).context(format!(
                         "Failed to download after {} attempts",
-                        MAX_RETRIES + 1
+                        self.max_retries + 1
                     ));
                 }
             }
@@ -181,10 +222,10 @@ impl DownloadClient {
     pub fn download_to_string(&self, url: &str) -> Result<String> {
         let parsed_url = Url::parse(url).context("Invalid URL")?;
 
-        for attempt in 0..=MAX_RETRIES {
+        for attempt in 0..=self.max_retries {
             match self.try_download_string(&parsed_url) {
                 Ok(content) => return Ok(content),
-                Err(e) if attempt < MAX_RETRIES => {
+                Err(e) if attempt < self.max_retries => {
                     let delay = self.calculate_backoff(attempt);
                     eprintln!(
                         "Request attempt {} failed: {}. Retrying in {:?}...",

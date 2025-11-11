@@ -3,7 +3,6 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
-use std::io::Write;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
@@ -50,10 +49,7 @@ pub fn execute(
     // Check if we have anything to show
     if installed_toolchains.is_empty() && available_releases.is_empty() {
         printer.status("No toolchains installed yet.")?;
-        writeln!(
-            printer.stdout(),
-            "   Run 'lemma lean install stable' to install the stable toolchain."
-        )?;
+        printer.hint("Run 'lemma lean install stable' to install the stable toolchain.")?;
         return Ok(());
     }
 

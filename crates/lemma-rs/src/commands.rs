@@ -3,6 +3,7 @@
 //! This module contains all command implementations, organized into
 //! separate files for better maintainability.
 
+pub mod cache;
 pub mod completions;
 pub mod default;
 pub mod dir;
@@ -63,6 +64,8 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
             dry_run,
             path,
         } => fetch::execute(&package, modules, auto, dry_run, path, &settings, &printer),
+
+        Commands::Cache { command } => cache::execute(command, &settings, &printer),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
     }
