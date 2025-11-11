@@ -8,7 +8,11 @@ use lemma_config::{Config, GlobalSettings};
 use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
+pub fn execute(
+    toolchain: Option<&str>,
+    _settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     if let Some(toolchain_name) = toolchain {

@@ -39,7 +39,10 @@ fn get_available_version() -> Result<String> {
     Ok(manifest.version)
 }
 
-pub fn update(_settings: &GlobalSettings, #[allow(unused_variables)] printer: &Printer) -> Result<()> {
+pub fn update(
+    _settings: &GlobalSettings,
+    #[allow(unused_variables)] printer: &Printer,
+) -> Result<()> {
     println!("{} Checking for updates...", "=>".cyan().bold());
 
     // Get current version

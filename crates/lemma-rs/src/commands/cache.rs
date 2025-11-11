@@ -9,11 +9,7 @@ use lemma_cli::cli::CacheCommands;
 use lemma_config::{Config, GlobalSettings};
 use lemma_output::Printer;
 
-pub fn execute(
-    command: CacheCommands,
-    settings: &GlobalSettings,
-    printer: &Printer,
-) -> Result<()> {
+pub fn execute(command: CacheCommands, settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     match command {
         CacheCommands::Dir => show_dir(settings, printer),
         CacheCommands::Stats => show_stats(settings, printer),
@@ -75,10 +71,7 @@ fn clean_cache(_settings: &GlobalSettings, printer: &Printer, yes: bool) -> Resu
     }
 
     if !yes {
-        print!(
-            "Remove {} of cached downloads? [y/N]: ",
-            format_size(size)
-        );
+        print!("Remove {} of cached downloads? [y/N]: ", format_size(size));
         io::stdout().flush()?;
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;

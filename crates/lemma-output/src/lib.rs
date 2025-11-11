@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn test_errors_always_shown() {
         let printer = Printer::new(true, false, false); // quiet mode
-        // Errors should still work in quiet mode
+                                                        // Errors should still work in quiet mode
         assert!(printer.error("test error").is_ok());
     }
 

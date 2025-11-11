@@ -26,7 +26,12 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     };
 
     writeln!(printer.stdout(), "{} {}", host_label, get_host_triple())?;
-    writeln!(printer.stdout(), "{} {}", home_label, settings.lemma_home.display())?;
+    writeln!(
+        printer.stdout(),
+        "{} {}",
+        home_label,
+        settings.lemma_home.display()
+    )?;
     writeln!(printer.stdout())?;
 
     // Determine the active toolchain

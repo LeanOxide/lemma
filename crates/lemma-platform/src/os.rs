@@ -59,7 +59,9 @@ impl FromStr for Os {
             // Allow "macos" as an alias for Darwin
             "macos" => OperatingSystem::Darwin,
             // Parse other OS names using target_lexicon
-            _ => OperatingSystem::from_str(s).map_err(|()| crate::Error::UnknownOs(s.to_string()))?,
+            _ => {
+                OperatingSystem::from_str(s).map_err(|()| crate::Error::UnknownOs(s.to_string()))?
+            }
         };
 
         if matches!(os, OperatingSystem::Unknown) {

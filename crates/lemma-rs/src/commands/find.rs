@@ -29,7 +29,9 @@ pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Prin
             writeln!(printer.stdout(), "{}", display)?;
             return Ok(());
         } else {
-            anyhow::bail!("No active toolchain found. Run 'lemma default <toolchain>' to set a default.");
+            anyhow::bail!(
+                "No active toolchain found. Run 'lemma default <toolchain>' to set a default."
+            );
         }
     }
 
@@ -58,7 +60,13 @@ pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Prin
         let path = entry.path();
 
         // Skip non-directories and temp directories
-        if !path.is_dir() || path.file_name().and_then(|n| n.to_str()).unwrap_or("").ends_with(".tmp") {
+        if !path.is_dir()
+            || path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .ends_with(".tmp")
+        {
             continue;
         }
 
@@ -92,10 +100,15 @@ pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Prin
         // Sort Remote toolchains by version, keep Local ones at the end
         use lemma_toolchain::ToolchainDesc;
         match (&a.0, &b.0) {
-            (ToolchainDesc::Remote { release: r1, .. }, ToolchainDesc::Remote { release: r2, .. }) => {
+            (
+                ToolchainDesc::Remote { release: r1, .. },
+                ToolchainDesc::Remote { release: r2, .. },
+            ) => {
                 r2.cmp(r1) // Reverse order for newest first
             }
-            (ToolchainDesc::Local { .. }, ToolchainDesc::Remote { .. }) => std::cmp::Ordering::Greater,
+            (ToolchainDesc::Local { .. }, ToolchainDesc::Remote { .. }) => {
+                std::cmp::Ordering::Greater
+            }
             (ToolchainDesc::Remote { .. }, ToolchainDesc::Local { .. }) => std::cmp::Ordering::Less,
             _ => std::cmp::Ordering::Equal,
         }

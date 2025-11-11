@@ -126,7 +126,10 @@ fn collect_installed_toolchains(
 }
 
 /// Fetch available releases from the release server
-fn fetch_available_releases(lean_downloads_json_url: Option<&str>, config: &Config) -> Result<Vec<(String, String)>> {
+fn fetch_available_releases(
+    lean_downloads_json_url: Option<&str>,
+    config: &Config,
+) -> Result<Vec<(String, String)>> {
     let client = DownloadClient::new()?;
     let base_url = lean_downloads_json_url
         .map(|s| s.to_string())

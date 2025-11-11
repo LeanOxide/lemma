@@ -33,7 +33,10 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
         .unwrap_or(false);
 
     if is_default {
-        printer.warning(format!("'{}' is currently the default toolchain", toolchain))?;
+        printer.warning(format!(
+            "'{}' is currently the default toolchain",
+            toolchain
+        ))?;
     }
 
     // Check if this is a symlink (linked toolchain)
@@ -71,7 +74,10 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
         }
 
         printer.success(format!("Removed linked toolchain '{}'", toolchain))?;
-        writeln!(printer.stdout(), "   (The original directory was not deleted)")?;
+        writeln!(
+            printer.stdout(),
+            "   (The original directory was not deleted)"
+        )?;
     } else {
         // For regular directories, remove everything
         fs::remove_dir_all(&toolchain_path).with_context(|| {
@@ -81,7 +87,10 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
             )
         })?;
 
-        printer.success(format!("Successfully uninstalled toolchain '{}'", toolchain))?;
+        printer.success(format!(
+            "Successfully uninstalled toolchain '{}'",
+            toolchain
+        ))?;
     }
 
     if is_default {

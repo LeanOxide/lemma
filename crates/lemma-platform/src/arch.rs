@@ -45,7 +45,9 @@ impl FromStr for Arch {
             // Allow "x86" as shorthand for i686
             "x86" => Architecture::X86_32(target_lexicon::X86_32Architecture::I686),
             // Parse other architectures using target_lexicon
-            _ => Architecture::from_str(s).map_err(|()| crate::Error::UnknownArch(s.to_string()))?,
+            _ => {
+                Architecture::from_str(s).map_err(|()| crate::Error::UnknownArch(s.to_string()))?
+            }
         };
 
         if matches!(arch, Architecture::Unknown) {
@@ -69,16 +71,19 @@ mod tests {
 
     #[test]
     fn test_arch_display() {
+        assert_eq!(Arch::new(Architecture::X86_64).to_string(), "x86_64");
         assert_eq!(
-            Arch::new(Architecture::X86_64).to_string(),
-            "x86_64"
-        );
-        assert_eq!(
-            Arch::new(Architecture::X86_32(target_lexicon::X86_32Architecture::I686)).to_string(),
+            Arch::new(Architecture::X86_32(
+                target_lexicon::X86_32Architecture::I686
+            ))
+            .to_string(),
             "x86"
         );
         assert_eq!(
-            Arch::new(Architecture::Aarch64(target_lexicon::Aarch64Architecture::Aarch64)).to_string(),
+            Arch::new(Architecture::Aarch64(
+                target_lexicon::Aarch64Architecture::Aarch64
+            ))
+            .to_string(),
             "aarch64"
         );
     }

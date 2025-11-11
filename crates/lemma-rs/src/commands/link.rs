@@ -9,7 +9,12 @@ use lemma_config::Config;
 use lemma_config::GlobalSettings;
 use lemma_output::Printer;
 
-pub fn execute(name: &str, path: &str, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
+pub fn execute(
+    name: &str,
+    path: &str,
+    _settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
     let source_path = Path::new(path);
 
     // Validate source path exists and is a directory
@@ -70,7 +75,10 @@ pub fn execute(name: &str, path: &str, _settings: &GlobalSettings, printer: &Pri
         })?;
     }
 
-    printer.success(format!("Successfully linked toolchain '{}' to {}", name, path))?;
+    printer.success(format!(
+        "Successfully linked toolchain '{}' to {}",
+        name, path
+    ))?;
     writeln!(printer.stdout(), "   Target: {}", target_path.display())?;
 
     Ok(())

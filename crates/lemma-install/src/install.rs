@@ -32,8 +32,7 @@ impl Installer {
     /// Create a new installer with a custom release URL
     pub fn with_url(release_url: String) -> Result<Self> {
         let download_client = DownloadClient::new()?;
-        let release_client =
-            ReleaseServerClient::new(download_client.clone(), release_url);
+        let release_client = ReleaseServerClient::new(download_client.clone(), release_url);
 
         Ok(Self {
             download_client,

@@ -32,7 +32,10 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
     // Check if this is already the default
     if let Some(ref current_default) = config.default_toolchain {
         if current_default == &canonical_name {
-            printer.status(format!("'{}' is already the default toolchain", canonical_name))?;
+            printer.status(format!(
+                "'{}' is already the default toolchain",
+                canonical_name
+            ))?;
             return Ok(());
         }
     }
@@ -53,7 +56,10 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
                 canonical_name
             )
         } else {
-            format!("Default toolchain changed from '{}' to '{}'", old, canonical_name)
+            format!(
+                "Default toolchain changed from '{}' to '{}'",
+                old, canonical_name
+            )
         };
         printer.success(msg)?;
     } else {
