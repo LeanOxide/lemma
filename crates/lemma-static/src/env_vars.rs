@@ -59,6 +59,11 @@ impl EnvVars {
     /// a custom mirror or CDN.
     pub const LEMMA_MIRROR: &'static str = "LEMMA_MIRROR";
 
+    /// Lean release server URL.
+    ///
+    /// URL endpoint for Lean toolchain releases.
+    pub const LEMMA_RELEASE_URL: &'static str = "LEMMA_RELEASE_URL";
+
     /// Disable SSL certificate verification.
     ///
     /// WARNING: This is insecure and should only be used for debugging.

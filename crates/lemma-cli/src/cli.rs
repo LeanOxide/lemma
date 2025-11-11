@@ -8,6 +8,7 @@ use clap::builder::styling::{AnsiColor, Effects};
 use clap::builder::Styles;
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
+use lemma_static::EnvVars;
 
 const STYLES: Styles = Styles::styled()
     .header(AnsiColor::Green.on_default().effects(Effects::BOLD))
@@ -47,7 +48,7 @@ pub struct TopLevelArgs {
     #[arg(global = true, short, long, action = clap::ArgAction::HelpShort, help_heading = "Global options")]
     help: Option<bool>,
 
-    /// Display the uv version.
+    /// Display the lemma version.
     #[arg(short = 'V', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
 }
@@ -222,12 +223,21 @@ pub enum ToolchainCommands {
     /// Install a toolchain
     #[command(after_long_help = help::TOOLCHAIN_INSTALL_HELP)]
     Install {
-        /// Toolchain to install (e.g., stable, v4.24.0, https://...)
+        /// Toolchain to install (e.g., stable, v4.24.0)
         toolchain: String,
 
         /// Force reinstall if already installed
         #[arg(short, long)]
         force: bool,
+
+        /// Custom URL pointing to a JSON file containing Lean installation metadata.
+        ///
+        /// This allows using alternative Lean distribution sources instead of the
+        /// official release server at https://release.lean-lang.org.
+        ///
+        /// The JSON file should follow the same format as the official release index.
+        #[arg(long, value_name = "URL", env = EnvVars::LEMMA_RELEASE_URL)]
+        lean_release_json_url: Option<String>,
     },
 
     /// Uninstall a toolchain
@@ -247,6 +257,13 @@ pub enum ToolchainCommands {
         /// Show only available toolchains for download
         #[arg(long, conflicts_with = "only_installed")]
         only_available: bool,
+
+        /// Custom URL pointing to a JSON file containing Lean installation metadata.
+        ///
+        /// This allows using alternative Lean distribution sources instead of the
+        /// official release server at https://release.lean-lang.org.
+        #[arg(long, value_name = "URL", env = EnvVars::LEMMA_RELEASE_URL)]
+        lean_release_json_url: Option<String>,
     },
 
     /// Show the installation directory for toolchains

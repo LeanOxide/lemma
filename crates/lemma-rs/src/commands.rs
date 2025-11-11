@@ -90,10 +90,10 @@ fn handle_toolchain_command(
     printer: &Printer,
 ) -> Result<()> {
     match command {
-        ToolchainCommands::Install { toolchain, force } => {
+        ToolchainCommands::Install { toolchain, force, lean_release_json_url: lean_downloads_json_url } => {
             // Ensure setup on first install
             Config::ensure_setup()?;
-            install::execute(&toolchain, force, settings, printer)
+            install::execute(&toolchain, force, lean_downloads_json_url.as_deref(), settings, printer)
         }
 
         ToolchainCommands::Uninstall { toolchain } => {
@@ -103,7 +103,8 @@ fn handle_toolchain_command(
         ToolchainCommands::List {
             only_installed,
             only_available,
-        } => list::execute(only_installed, only_available, settings, printer),
+            lean_release_json_url: lean_downloads_json_url,
+        } => list::execute(only_installed, only_available, lean_downloads_json_url.as_deref(), settings, printer),
 
         ToolchainCommands::Dir { toolchain } => {
             Config::ensure_setup()?;

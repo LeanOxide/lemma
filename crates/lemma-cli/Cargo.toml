@@ -12,6 +12,7 @@ clap_complete.workspace = true
 
 # Configuration (for ColorChoice enum)
 lemma-config.workspace = true
+lemma-static.workspace = true
 
 [lints]
 workspace = true

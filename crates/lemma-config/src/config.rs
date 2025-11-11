@@ -169,7 +169,7 @@ pub struct Config {
 
     /// Lean release server URL (overrides default https://release.lean-lang.org)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub lean_release: Option<String>,
+    pub release_url: Option<String>,
 }
 
 impl Default for Config {
@@ -181,7 +181,7 @@ impl Default for Config {
             path_setup_shown: false,
             global: None,
             paths: None,
-            lean_release: None,
+            release_url: None,
         }
     }
 }
@@ -564,7 +564,7 @@ impl Config {
     /// Checks mirrors.lean_release in config, falls back to default.
     /// Can be overridden by LEMMA_RELEASE_URL environment variable.
     pub fn lean_release_url(&self) -> String {
-        self.lean_release
+        self.release_url
             .as_ref()
             .cloned()
             .unwrap_or_else(|| "https://release.lean-lang.org".to_string())
@@ -641,7 +641,7 @@ mod tests {
         assert!(!config.path_setup_shown);
         assert!(config.global.is_none());
         assert!(config.paths.is_none());
-        assert!(config.lean_release.is_none());
+        assert!(config.release_url.is_none());
     }
 
     #[test]

@@ -12,6 +12,7 @@ use lemma_output::Printer;
 pub fn execute(
     only_installed: bool,
     only_available: bool,
+    lean_downloads_json_url: Option<&str>,
     _settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
@@ -38,7 +39,7 @@ pub fn execute(
     if show_available {
         printer.hint("Fetching available releases...")?;
 
-        match fetch_available_releases(&config) {
+        match fetch_available_releases(lean_downloads_json_url, &config) {
             Ok(releases) => available_releases = releases,
             Err(e) => {
                 printer.warning(format!("Failed to fetch available releases: {}", e))?;
@@ -125,9 +126,11 @@ fn collect_installed_toolchains(
 }
 
 /// Fetch available releases from the release server
-fn fetch_available_releases(config: &Config) -> Result<Vec<(String, String)>> {
+fn fetch_available_releases(lean_downloads_json_url: Option<&str>, config: &Config) -> Result<Vec<(String, String)>> {
     let client = DownloadClient::new()?;
-    let base_url = config.lean_release_url();
+    let base_url = lean_downloads_json_url
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| config.lean_release_url());
     let release_client = ReleaseServerClient::new(client, base_url);
 
     let index = release_client.fetch_index()?;

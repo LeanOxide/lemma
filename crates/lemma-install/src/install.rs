@@ -23,12 +23,17 @@ pub struct Installer {
 }
 
 impl Installer {
-    /// Create a new installer
+    /// Create a new installer with default release URL
     pub fn new() -> Result<Self> {
         let config = Config::load()?;
+        Self::with_url(config.lean_release_url())
+    }
+
+    /// Create a new installer with a custom release URL
+    pub fn with_url(release_url: String) -> Result<Self> {
         let download_client = DownloadClient::new()?;
         let release_client =
-            ReleaseServerClient::new(download_client.clone(), config.lean_release_url());
+            ReleaseServerClient::new(download_client.clone(), release_url);
 
         Ok(Self {
             download_client,

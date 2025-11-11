@@ -932,6 +932,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "lemma-config",
+ "lemma-static",
 ]
 
 [[package]]
