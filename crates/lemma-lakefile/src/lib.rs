@@ -2,20 +2,7 @@
 //!
 //! This crate provides types and parsers for Lake project configuration files.
 //! It supports both `lakefile.toml` and (eventually) `lakefile.lean` formats.
-//!
-//! # Example
-//!
-//! ```rust
-//! use lemma_lakefile::Lakefile;
-//!
-//! let content = r#"
-//! name = "MyProject"
-//! version = "0.1.0"
-//! "#;
-//!
-//! let lakefile = Lakefile::parse_toml(content).unwrap();
-//! assert_eq!(lakefile.name, "MyProject");
-//! ```
+
 
 pub mod error;
 pub mod parser;

@@ -20,6 +20,8 @@ lemma-download.workspace = true
 lemma-install.workspace = true
 lemma-output.workspace = true
 lemma-sparse-cache.workspace = true
+lemma-build.workspace = true
+lemma-lakefile.workspace = true
 
 # Core dependencies
 anyhow.workspace = true

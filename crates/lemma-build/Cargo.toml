@@ -1,0 +1,34 @@
+[package]
+name = "lemma-build"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Build system engine for Lemma"
+
+[dependencies]
+lemma-lakefile.workspace = true
+lemma-graph.workspace = true
+lemma-output.workspace = true
+lemma-config.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+fs-err.workspace = true
+
+# For hashing
+blake3 = "1.5"
+
+# For async parallel execution
+tokio = { version = "1.40", features = ["full"] }
+
+# For file walking
+walkdir = "2.5"
+
+[dev-dependencies]
+tempfile.workspace = true

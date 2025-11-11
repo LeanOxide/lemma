@@ -86,16 +86,10 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
         ),
 
         Commands::Build {
-            toolchain,
             path,
-            args,
-        } => build::execute(
-            toolchain.as_deref(),
-            path.as_deref(),
-            &args,
-            &settings,
-            &printer,
-        ),
+            native,
+            targets,
+        } => build::execute(path.as_deref(), native, &targets, &settings, &printer),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
     }

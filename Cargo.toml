@@ -21,6 +21,9 @@ lemma-download = { path = "crates/lemma-download" }
 lemma-install = { path = "crates/lemma-install" }
 lemma-output = { path = "crates/lemma-output" }
 lemma-sparse-cache = { path = "crates/lemma-sparse-cache" }
+lemma-lakefile = { path = "crates/lemma-lakefile" }
+lemma-graph = { path = "crates/lemma-graph" }
+lemma-build = { path = "crates/lemma-build" }
 
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
@@ -51,6 +54,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rayon = "1.10"
 fs-err = "2.11"
 target-lexicon = "0.12"
+petgraph = "0.6"
 
 # Dev dependencies
 tempfile = "3.10"

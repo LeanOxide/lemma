@@ -1,21 +1,83 @@
-//! Build command - Build the current Lean project using Lake
+//! Build command - Build the current Lean project
 
 use anyhow::{Context, Result};
 use lemma_config::{Config, GlobalSettings};
 use lemma_output::Printer;
-use lemma_static::EnvVars;
-use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Execute the build command
 pub fn execute(
-    toolchain: Option<&str>,
     path: Option<&str>,
-    args: &[String],
+    native: bool,
+    targets: &[String],
     settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
+    if native {
+        execute_native_build(path, targets, settings, printer)
+    } else {
+        execute_lake_wrapper(path, targets, settings, printer)
+    }
+}
+
+/// Execute build using the native lemma build system
+fn execute_native_build(
+    path: Option<&str>,
+    _targets: &[String],
+    _settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
+    printer.status("Using native lemma build system (experimental)")?;
+
+    // Determine the project directory
+    let project_dir = if let Some(p) = path {
+        PathBuf::from(p)
+    } else {
+        std::env::current_dir().context("Failed to get current directory")?
+    };
+
+    // Try to load the lakefile to validate this is a Lean project
+    match lemma_lakefile::load(&project_dir) {
+        Ok(lakefile) => {
+            printer.status(format!("Building project: {}", lakefile.name))?;
+
+            // Report current implementation status
+            printer.warning(
+                "Native build system is in Phase 0 (Foundation). Full build functionality is not yet implemented."
+            )?;
+            printer.hint("The following features are available:")?;
+            printer.hint("  - Lakefile parsing (lakefile.toml)")?;
+            printer.hint("  - Dependency graph data structures")?;
+            printer.hint("  - Build cache framework")?;
+            printer.hint("")?;
+            printer.hint("Coming in future phases:")?;
+            printer.hint("  - Phase 1: Module discovery and import parsing")?;
+            printer.hint("  - Phase 2: Build planning and topological sort")?;
+            printer.hint("  - Phase 3: Incremental build cache")?;
+            printer.hint("  - Phase 4-6: Compilation and linking")?;
+            printer.hint("")?;
+            printer.hint("Use `lemma build` (without --native) to build with Lake.")?;
+
+            Ok(())
+        }
+        Err(e) => {
+            printer.error(format!("Failed to load lakefile: {}", e))?;
+            Err(e.into())
+        }
+    }
+}
+
+/// Execute build by wrapping lake (default mode)
+fn execute_lake_wrapper(
+    path: Option<&str>,
+    targets: &[String],
+    settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
+    use lemma_static::EnvVars;
+    use std::env;
+    use std::process::Command;
+
     // Determine the project directory
     let project_dir = if let Some(p) = path {
         PathBuf::from(p)
@@ -27,43 +89,36 @@ pub fn execute(
     validate_lean_project(&project_dir)?;
 
     // Determine which toolchain to use
-    let toolchain_name = if let Some(tc) = toolchain {
-        // Explicit toolchain specified
-        printer.hint(format!("Using specified toolchain: {}", tc))?;
-        tc.to_string()
-    } else {
-        // Resolve toolchain from environment/overrides/project/default
-        match resolve_toolchain(&project_dir, settings, printer)? {
-            Some(tc) => {
-                printer.hint(format!("Using active toolchain: {}", tc))?;
-                tc
-            }
-            None => {
-                anyhow::bail!(
-                    "No toolchain found. Install one with `lemma lean install stable` \
-                     or specify with --toolchain"
-                );
-            }
+    let toolchain_name = match resolve_toolchain(&project_dir, settings, printer)? {
+        Some(tc) => {
+            printer.hint(format!("Using toolchain: {}", tc))?;
+            tc
+        }
+        None => {
+            anyhow::bail!(
+                "No toolchain found. Install one with `lemma lean install stable`"
+            );
         }
     };
 
     // Find the lake binary in the toolchain
-    let lake_binary = lemma_config::find_tool_binary(&toolchain_name, "lake")
-        .with_context(|| {
+    let lake_binary = lemma_config::find_tool_binary(&toolchain_name, "lake").with_context(
+        || {
             format!(
                 "Failed to find 'lake' in toolchain '{}'. \
                  Ensure the toolchain is properly installed.",
                 toolchain_name
             )
-        })?;
+        },
+    )?;
 
     // Build the lake command
     let mut cmd = Command::new(&lake_binary);
     cmd.arg("build");
 
     // Add any additional arguments (targets, flags, etc.)
-    if !args.is_empty() {
-        cmd.args(args);
+    if !targets.is_empty() {
+        cmd.args(targets);
     }
 
     // Set the working directory to the project directory
@@ -76,7 +131,6 @@ pub fn execute(
     }
 
     // Prepend the toolchain's bin directory to PATH
-    // This ensures lake can find lean and other tools from the same toolchain
     if let Some(bin_dir) = lake_binary.parent() {
         if let Some(current_path) = env::var_os("PATH") {
             let mut paths = vec![bin_dir.to_path_buf()];
@@ -89,7 +143,7 @@ pub fn execute(
     }
 
     // Show what we're doing
-    printer.status("Building Lean project...")?;
+    printer.status("Building Lean project with Lake...")?;
 
     // Run the command and wait for it to complete
     let status = cmd
@@ -128,6 +182,9 @@ fn resolve_toolchain(
     _settings: &GlobalSettings,
     _printer: &Printer,
 ) -> Result<Option<String>> {
+    use lemma_static::EnvVars;
+    use std::env;
+
     // Priority order:
     // 1. LEMMA_TOOLCHAIN environment variable
     // 2. Directory override

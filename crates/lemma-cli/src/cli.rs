@@ -222,17 +222,16 @@ pub enum Commands {
     /// Build the current Lean project
     #[command(after_long_help = help::BUILD_HELP)]
     Build {
-        /// Toolchain to use for building (defaults to active toolchain)
-        #[arg(short, long)]
-        toolchain: Option<String>,
-
         /// Project path (defaults to current directory)
         #[arg(long)]
         path: Option<String>,
 
-        /// Build targets and additional arguments to pass to lake
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        args: Vec<String>,
+        /// Use the native lemma build system (experimental)
+        #[arg(long)]
+        native: bool,
+
+        /// Build targets (e.g., module names, executable names)
+        targets: Vec<String>,
     },
 
     /// Modify the lemma installation
