@@ -95,7 +95,7 @@ impl ToolchainDesc {
 
     /// Parse from a directory name (reverse of to_directory_name)
     ///
-    /// Supports both new format (`release-platform`) and old format (`origin--repo---release`)
+    /// Supports both new format (`release-platform`)
     /// for backwards compatibility during migration.
     pub fn from_directory_name(dir_name: &str) -> Result<Self> {
         // List of known platform suffixes for new format detection
@@ -118,14 +118,6 @@ impl ToolchainDesc {
             }
         }
 
-        // Fall back to old format: origin--repo---release
-        // This provides backwards compatibility
-        if dir_name.contains("---") || dir_name.contains("--") {
-            let name = dir_name.replace("---", ":").replace("--", "/");
-            return Self::parse(&name);
-        }
-
-        // If neither format matches, treat as local toolchain
         Ok(Self::Local {
             name: dir_name.to_string(),
         })
