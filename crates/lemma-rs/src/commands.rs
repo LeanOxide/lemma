@@ -82,7 +82,10 @@ fn handle_toolchain_command(command: ToolchainCommands, settings: &GlobalSetting
 
         ToolchainCommands::Uninstall { toolchain } => uninstall::execute(&toolchain, settings),
 
-        ToolchainCommands::List {} => list::execute(settings),
+        ToolchainCommands::List {
+            only_installed,
+            only_available,
+        } => list::execute(only_installed, only_available, settings),
 
         ToolchainCommands::Dir { toolchain } => {
             Config::ensure_setup()?;

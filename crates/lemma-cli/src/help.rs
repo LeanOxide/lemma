@@ -59,8 +59,28 @@ pub static TOOLCHAIN_LINK_HELP: &str = r"DISCUSSION:
     toolchain 'my-lean' will be used.";
 
 pub static TOOLCHAIN_LIST_HELP: &str = r"DISCUSSION:
-    Lists all installed toolchains. With the -v/--verbose flag, shows
-    additional information including toolchain paths and Lean versions.";
+    Lists toolchains available for use. By default, shows both installed
+    toolchains and available downloads from the release server.
+
+    With the -v/--verbose flag, shows additional information including
+    toolchain paths, Lean versions, and installation sizes.
+
+    FLAGS:
+        --only-installed    Show only installed toolchains
+        --only-available    Show only available downloads
+
+    EXAMPLES:
+        $ lemma lean list
+        Shows both installed and available toolchains
+
+        $ lemma lean list --only-installed
+        Shows only what's currently installed
+
+        $ lemma lean list --only-available
+        Shows only what can be downloaded
+
+        $ lemma lean list -v
+        Shows detailed information about all toolchains";
 
 pub static TOOLCHAIN_DIR_HELP: &str = r"DISCUSSION:
     Show the installation directory for toolchains.

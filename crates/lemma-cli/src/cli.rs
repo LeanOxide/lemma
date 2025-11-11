@@ -232,7 +232,15 @@ pub enum ToolchainCommands {
 
     /// List installed toolchains
     #[command(after_long_help = help::TOOLCHAIN_LIST_HELP)]
-    List,
+    List {
+        /// Show only installed toolchains
+        #[arg(long, conflicts_with = "only_available")]
+        only_installed: bool,
+
+        /// Show only available toolchains for download
+        #[arg(long, conflicts_with = "only_installed")]
+        only_available: bool,
+    },
 
     /// Show the installation directory for toolchains
     #[command(after_long_help = help::TOOLCHAIN_DIR_HELP)]
