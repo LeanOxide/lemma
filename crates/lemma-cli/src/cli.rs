@@ -202,12 +202,16 @@ pub enum Commands {
         #[arg(long)]
         bare: bool,
 
-        /// Create an application project (default)
-        #[arg(long, conflicts_with = "lib")]
-        app: bool,
+        /// Create a standard project with library and executable (default)
+        #[arg(long, alias = "app", conflicts_with_all = ["exe", "lib"])]
+        std: bool,
 
-        /// Create a library project
-        #[arg(long, conflicts_with = "app")]
+        /// Create an executable-only project
+        #[arg(long, conflicts_with_all = ["std", "lib"])]
+        exe: bool,
+
+        /// Create a library-only project
+        #[arg(long, conflicts_with_all = ["std", "exe"])]
         lib: bool,
 
         /// Do not create a README.md file

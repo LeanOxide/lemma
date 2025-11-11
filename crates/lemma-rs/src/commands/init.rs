@@ -10,13 +10,17 @@ use lemma_output::Printer;
 /// Project type to create
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProjectKind {
-    Application,
+    /// Standard project with library and executable (Lake's 'std')
+    Standard,
+    /// Executable-only project (Lake's 'exe')
+    Executable,
+    /// Library-only project (Lake's 'lib')
     Library,
 }
 
 impl Default for ProjectKind {
     fn default() -> Self {
-        Self::Application
+        Self::Standard
     }
 }
 
@@ -25,18 +29,20 @@ pub fn execute(
     name: Option<String>,
     path: Option<String>,
     bare: bool,
-    app: bool,
+    std: bool,
+    exe: bool,
     lib: bool,
     no_readme: bool,
     _settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
     // Determine project kind
-    let kind = match (app, lib) {
-        (true, false) => ProjectKind::Application,
-        (false, true) => ProjectKind::Library,
-        (false, false) => ProjectKind::default(),
-        (true, true) => unreachable!("app and lib are mutually exclusive"),
+    let kind = match (std, exe, lib) {
+        (true, false, false) => ProjectKind::Standard,
+        (false, true, false) => ProjectKind::Executable,
+        (false, false, true) => ProjectKind::Library,
+        (false, false, false) => ProjectKind::default(),
+        _ => unreachable!("std, exe, and lib are mutually exclusive"),
     };
 
     // Determine project path and name
@@ -75,7 +81,8 @@ pub fn execute(
     printer.success(format!(
         "Initialized {} project '{}' at {}",
         match kind {
-            ProjectKind::Application => "application",
+            ProjectKind::Standard => "standard",
+            ProjectKind::Executable => "executable",
             ProjectKind::Library => "library",
         },
         project_name,
@@ -200,7 +207,8 @@ fn init_project(
 
     // Create project files based on kind
     match kind {
-        ProjectKind::Application => create_application_files(name, path)?,
+        ProjectKind::Standard => create_standard_files(name, path)?,
+        ProjectKind::Executable => create_executable_files(name, path)?,
         ProjectKind::Library => create_library_files(name, path)?,
     }
 
@@ -254,7 +262,8 @@ fn create_lakefile(name: &str, path: &Path, kind: ProjectKind) -> Result<()> {
     }
 
     let content = match kind {
-        ProjectKind::Application => generate_app_lakefile(name),
+        ProjectKind::Standard => generate_std_lakefile(name),
+        ProjectKind::Executable => generate_exe_lakefile(name),
         ProjectKind::Library => generate_lib_lakefile(name),
     };
 
@@ -263,8 +272,8 @@ fn create_lakefile(name: &str, path: &Path, kind: ProjectKind) -> Result<()> {
     Ok(())
 }
 
-/// Generate lakefile.toml for an application
-fn generate_app_lakefile(name: &str) -> String {
+/// Generate lakefile.toml for a standard project (library + executable)
+fn generate_std_lakefile(name: &str) -> String {
     let module_name = to_module_name(name);
     format!(
         r#"name = "{name}"
@@ -283,7 +292,22 @@ root = "Main"
     )
 }
 
-/// Generate lakefile.toml for a library
+/// Generate lakefile.toml for an executable-only project
+fn generate_exe_lakefile(name: &str) -> String {
+    format!(
+        r#"name = "{name}"
+version = "0.1.0"
+defaultTargets = ["{name}"]
+
+[[lean_exe]]
+name = "{name}"
+root = "Main"
+"#,
+        name = name
+    )
+}
+
+/// Generate lakefile.toml for a library-only project
 fn generate_lib_lakefile(name: &str) -> String {
     let module_name = to_module_name(name);
     format!(
@@ -324,14 +348,6 @@ fn create_gitignore(path: &Path) -> Result<()> {
         r#"
 # Lake build artifacts
 .lake/
-lake-packages/
-build/
-
-# Lean build artifacts
-*.olean
-*.trace
-*.c
-*.o
 "#,
     );
 
@@ -349,15 +365,42 @@ fn create_readme(name: &str, path: &Path, kind: ProjectKind) -> Result<()> {
         return Ok(());
     }
 
-    let description = match kind {
-        ProjectKind::Application => "This is a Lean 4 application project.",
-        ProjectKind::Library => "This is a Lean 4 library project.",
-    };
+    let content = match kind {
+        ProjectKind::Standard => {
+            format!(
+                r#"# {name}
 
-    let content = format!(
-        r#"# {name}
+This is a Lean 4 project with both library and executable components.
 
-{description}
+## Building
+
+```bash
+lake build
+```
+
+## Running
+
+```bash
+lake exe {name}
+```
+
+## Using as a dependency
+
+Add this to your `lakefile.toml`:
+
+```toml
+[[require]]
+name = "{name}"
+```
+"#,
+                name = name
+            )
+        }
+        ProjectKind::Executable => {
+            format!(
+                r#"# {name}
+
+This is a Lean 4 executable project.
 
 ## Building
 
@@ -371,35 +414,57 @@ lake build
 lake exe {name}
 ```
 "#,
-        name = name,
-        description = description
-    );
+                name = name
+            )
+        }
+        ProjectKind::Library => {
+            format!(
+                r#"# {name}
+
+This is a Lean 4 library project.
+
+## Building
+
+```bash
+lake build
+```
+
+## Using as a dependency
+
+Add this to your `lakefile.toml`:
+
+```toml
+[[require]]
+name = "{name}"
+```
+"#,
+                name = name
+            )
+        }
+    };
 
     fs::write(readme_path, content).context("Failed to write README.md")?;
 
     Ok(())
 }
 
-/// Create application-specific files
-fn create_application_files(name: &str, path: &Path) -> Result<()> {
+/// Create standard project files (library + executable)
+fn create_standard_files(name: &str, path: &Path) -> Result<()> {
     // Create Main.lean
     let main_path = path.join("Main.lean");
 
-    if main_path.exists() {
-        return Ok(());
-    }
-
-    let module_name = to_module_name(name);
-    let content = format!(
-        r#"import {module_name}
+    if !main_path.exists() {
+        let module_name = to_module_name(name);
+        let content = format!(
+            r#"import {module_name}
 
 def main : IO Unit :=
   IO.println s!"Hello from {{hello}}!"
 "#,
-        module_name = module_name,
-    );
-
-    fs::write(main_path, content).context("Failed to write Main.lean")?;
+            module_name = module_name
+        );
+        fs::write(main_path, content).context("Failed to write Main.lean")?;
+    }
 
     // Create library directory and files
     create_library_structure(name, path)?;
@@ -407,7 +472,25 @@ def main : IO Unit :=
     Ok(())
 }
 
-/// Create library-specific files
+/// Create executable-only project files
+fn create_executable_files(name: &str, path: &Path) -> Result<()> {
+    // Create Main.lean
+    let main_path = path.join("Main.lean");
+
+    if !main_path.exists() {
+        let content = format!(
+            r#"def main : IO Unit :=
+  IO.println s!"Hello from {name}!"
+"#,
+            name = name
+        );
+        fs::write(main_path, content).context("Failed to write Main.lean")?;
+    }
+
+    Ok(())
+}
+
+/// Create library-only project files
 fn create_library_files(name: &str, path: &Path) -> Result<()> {
     create_library_structure(name, path)
 }
@@ -420,7 +503,7 @@ fn create_library_structure(name: &str, path: &Path) -> Result<()> {
     // Create library directory
     fs::create_dir_all(&lib_dir).context("Failed to create library directory")?;
 
-    // Create <ModuleName>.lean (root module)
+    // Create <ModuleName>/<ModuleName>.lean (root module)
     let root_module_path = path.join(format!("{}.lean", module_name));
     if !root_module_path.exists() {
         let content = format!(

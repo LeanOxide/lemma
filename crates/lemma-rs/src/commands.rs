@@ -76,10 +76,11 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
             name,
             path,
             bare,
-            app,
+            std,
+            exe,
             lib,
             no_readme,
-        } => init::execute(name, path, bare, app, lib, no_readme, &settings, &printer),
+        } => init::execute(name, path, bare, std, exe, lib, no_readme, &settings, &printer),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
     }

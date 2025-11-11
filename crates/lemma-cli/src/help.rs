@@ -390,20 +390,24 @@ pub static INIT_HELP: &str = r"DISCUSSION:
     Initialize a new Lean project in the specified directory (or the
     current directory if not specified).
 
-    By default, creates an application project with:
+    By default, creates a standard project with both library and executable.
+    All projects include:
     - lakefile.toml configuration file
-    - Main.lean entry point for the executable
     - README.md with project description
     - .gitignore configured for Lean projects
     - Git repository initialization
+    - lean-toolchain file
 
     PROJECT TYPES:
 
-    Application (default): A project with an executable entry point
+    Standard (default): Library + executable (matches Lake's 'std' template)
         $ lemma init myapp
-        $ lemma init myapp --app
+        $ lemma init myapp --std
 
-    Library: A project intended to be used as a dependency
+    Executable: Executable-only project (matches Lake's 'exe' template)
+        $ lemma init mytool --exe
+
+    Library: Library-only project (matches Lake's 'lib' template)
         $ lemma init mylib --lib
 
     Bare: Only creates lakefile.toml, useful for custom setups
@@ -411,8 +415,9 @@ pub static INIT_HELP: &str = r"DISCUSSION:
 
     FLAGS:
 
-        --app           Create an application project (default)
-        --lib           Create a library project
+        --std           Create standard project with library and executable (default)
+        --exe           Create executable-only project
+        --lib           Create library-only project
         --bare          Create minimal project (lakefile.toml only)
         --no-readme     Do not create README.md
         --path <PATH>   Create project at specified path
@@ -420,7 +425,8 @@ pub static INIT_HELP: &str = r"DISCUSSION:
     EXAMPLES:
 
         $ lemma init                    # Initialize in current directory
-        $ lemma init myapp              # Create 'myapp' application
+        $ lemma init myapp              # Create 'myapp' standard project
+        $ lemma init mytool --exe       # Create 'mytool' executable
         $ lemma init mylib --lib        # Create 'mylib' library
         $ lemma init --bare             # Minimal setup
         $ lemma init --path ./projects/myapp myapp";
