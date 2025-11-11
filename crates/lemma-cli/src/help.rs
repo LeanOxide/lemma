@@ -62,6 +62,50 @@ pub static TOOLCHAIN_LIST_HELP: &str = r"DISCUSSION:
     Lists all installed toolchains. With the -v/--verbose flag, shows
     additional information including toolchain paths and Lean versions.";
 
+pub static TOOLCHAIN_DIR_HELP: &str = r"DISCUSSION:
+    Show the installation directory for toolchains.
+
+    When called without arguments, shows the root directory where all
+    toolchains are installed.
+
+    When called with a specific toolchain, shows the directory for that
+    toolchain.
+
+    This is useful for debugging or when you need to inspect the
+    toolchain installation directly.
+
+    Examples:
+
+        $ lemma lean dir
+        ~/.lemma/toolchains
+
+        $ lemma lean dir stable
+        ~/.lemma/toolchains/stable-linux";
+
+pub static TOOLCHAIN_FIND_HELP: &str = r"DISCUSSION:
+    Find an installed toolchain matching a request.
+
+    This command searches for toolchains that match the given version
+    request. The request can be a channel name (stable, beta, nightly),
+    a partial version (v4, v4.24), or a full version (v4.24.0).
+
+    If no request is given, it shows the currently active toolchain.
+
+    The command prints the unique identifier for the toolchain, which
+    includes the version and platform information in the format:
+    <release>-<platform>
+
+    Examples:
+
+        $ lemma lean find
+        stable-linux
+
+        $ lemma lean find v4
+        v4.24.0-linux
+
+        $ lemma lean find stable
+        stable-linux";
+
 pub static TOOLCHAIN_UNINSTALL_HELP: &str = r"DISCUSSION:
     Uninstalls the specified toolchain. The toolchain must not be the
     active or default toolchain.";

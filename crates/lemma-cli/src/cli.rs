@@ -234,6 +234,20 @@ pub enum ToolchainCommands {
     #[command(after_long_help = help::TOOLCHAIN_LIST_HELP)]
     List,
 
+    /// Show the installation directory for toolchains
+    #[command(after_long_help = help::TOOLCHAIN_DIR_HELP)]
+    Dir {
+        /// Show the directory for a specific toolchain
+        toolchain: Option<String>,
+    },
+
+    /// Find an installed toolchain matching a request
+    #[command(after_long_help = help::TOOLCHAIN_FIND_HELP)]
+    Find {
+        /// Toolchain request (e.g., stable, v4, v4.24, v4.24.0)
+        request: Option<String>,
+    },
+
     /// Link a custom toolchain
     #[command(after_long_help = help::TOOLCHAIN_LINK_HELP)]
     Link {

@@ -5,7 +5,9 @@
 
 pub mod completions;
 pub mod default;
+pub mod dir;
 pub mod fetch;
+pub mod find;
 pub mod install;
 pub mod link;
 pub mod list;
@@ -81,6 +83,16 @@ fn handle_toolchain_command(command: ToolchainCommands, settings: &GlobalSetting
         ToolchainCommands::Uninstall { toolchain } => uninstall::execute(&toolchain, settings),
 
         ToolchainCommands::List {} => list::execute(settings),
+
+        ToolchainCommands::Dir { toolchain } => {
+            Config::ensure_setup()?;
+            dir::execute(toolchain.as_deref(), settings)
+        }
+
+        ToolchainCommands::Find { request } => {
+            Config::ensure_setup()?;
+            find::execute(request.as_deref(), settings)
+        }
 
         ToolchainCommands::Link { name, path } => {
             // Ensure setup for link command too

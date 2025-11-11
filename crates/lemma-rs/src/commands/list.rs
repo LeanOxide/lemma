@@ -53,13 +53,16 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
             continue;
         }
 
-        // Parse the directory name to get the canonical toolchain name
-        let name = match lemma_toolchain::ToolchainDesc::from_directory_name(&dir_name) {
-            Ok(desc) => desc.to_string(),
-            Err(_) => dir_name, // Fallback to directory name if parsing fails
+        // Parse the directory name to get the canonical toolchain name and desc
+        let (name, desc) = match lemma_toolchain::ToolchainDesc::from_directory_name(&dir_name) {
+            Ok(desc) => {
+                let name = desc.to_string();
+                (name, Some(desc))
+            }
+            Err(_) => (dir_name.clone(), None), // Fallback to directory name if parsing fails
         };
 
-        toolchains.push((name, path));
+        toolchains.push((name, dir_name, path, desc));
     }
 
     // Sort toolchains by name
@@ -71,7 +74,7 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
         return Ok(());
     }
 
-    for (name, _path) in toolchains {
+    for (name, dir_name, _path, _desc) in toolchains {
         // Check if this toolchain is active and/or default
         let is_active = active_toolchain.as_ref() == Some(&name);
         let is_default = config.default_toolchain.as_ref() == Some(&name);
@@ -89,11 +92,15 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
             let size = calculate_dir_size(&_path)?;
 
             if settings.use_colors() {
+                // Show the name and status
                 println!("{} {}{}", "•".cyan(), name.bold(), _status);
+                // Show the unique identifier (directory name) which includes platform
+                println!("  Key: {}", dir_name.dimmed());
                 println!("  Path: {}", _path.display().to_string().dimmed());
                 println!("  Size: {}", format_size(size).dimmed());
             } else {
                 println!("• {} {}", name, _status);
+                println!("  Key: {}", dir_name);
                 println!("  Path: {}", _path.display());
                 println!("  Size: {}", format_size(size));
             }
@@ -109,11 +116,11 @@ pub fn execute(settings: &GlobalSettings) -> Result<()> {
             }
             println!();
         } else {
-            // Simple list
+            // Simple list - show both name and unique key
             if settings.use_colors() {
-                println!("{} {}{}", "•".cyan(), name, _status);
+                println!("{} {} {}{}", "•".cyan(), name, format!("({})", dir_name).dimmed(), _status);
             } else {
-                println!("• {}{}", name, _status);
+                println!("• {} ({}){}", name, dir_name, _status);
             }
         }
     }
