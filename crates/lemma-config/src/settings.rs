@@ -6,6 +6,7 @@
 //! 3. Configuration files
 //! 4. Built-in defaults (lowest priority)
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -113,7 +114,7 @@ impl GlobalSettings {
             ColorChoice::Never => false,
             ColorChoice::Auto => {
                 // Auto-detect: use colors if stderr is a TTY
-                atty::is(atty::Stream::Stderr)
+                std::io::stderr().is_terminal()
             }
         }
     }

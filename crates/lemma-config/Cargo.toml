@@ -12,7 +12,7 @@ lemma-toolchain.workspace = true
 
 # Configuration
 anyhow.workspace = true
-config = "0.14"
+config.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
 
@@ -27,7 +27,6 @@ clap = { workspace = true, features = ["derive", "env"] }
 
 # Terminal utilities
 colored.workspace = true
-atty.workspace = true
 
 [lints]
 workspace = true

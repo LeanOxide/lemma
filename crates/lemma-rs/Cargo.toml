@@ -34,7 +34,6 @@ tracing-subscriber.workspace = true
 
 # Utilities
 dirs.workspace = true
-atty.workspace = true
 regex.workspace = true
 rayon.workspace = true
 url.workspace = true

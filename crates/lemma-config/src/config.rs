@@ -45,11 +45,108 @@ pub enum ColorChoice {
 
 /// Unified configuration structure
 ///
-/// Combines both mutable state (managed by lemma) and user preferences
-/// (configured via lemma.toml files at various levels).
+/// This structure combines both **state** (managed internally by lemma) and
+/// **preferences** (configured by users) in a single configuration file.
 ///
-/// State fields are only written to `~/.lemma/lemma.toml`.
-/// Preference fields are merged from system/user/project configs.
+/// ## State vs Preferences
+///
+/// **State** is data that lemma manages automatically:
+/// - Only stored in user config (`~/.lemma/lemma.toml`)
+/// - Modified by lemma commands (e.g., `lemma default`, `lemma override set`)
+/// - Not merged from other config sources
+/// - Examples: default toolchain, directory overrides, internal flags
+///
+/// **Preferences** are user-configurable settings:
+/// - Can be set in any config file (system, user, or project)
+/// - Merged from all sources with proper precedence
+/// - Can be overridden by environment variables or CLI flags
+/// - Examples: verbosity, colors, network timeouts
+///
+/// ## Configuration Sources
+///
+/// Preferences are loaded and merged from multiple sources:
+///
+/// 1. **System config** (Unix only): `/etc/lemma/lemma.toml`
+///    - Read-only, system-wide defaults
+///    - Lowest precedence
+///
+/// 2. **User config**: `~/.lemma/lemma.toml`
+///    - Read/write for both state and preferences
+///    - Personal defaults and state
+///
+/// 3. **Project config**: `./lemma.toml` or `./.lemma/lemma.toml`
+///    - Read-only, project-specific preferences
+///    - Highest precedence (among files)
+///
+/// 4. **Environment variables**: `LEMMA_*`
+///    - Can override config file preferences
+///    - Checked during settings resolution
+///
+/// ## Example Configuration File
+///
+/// ```toml
+/// # State (managed by lemma)
+/// version = "1"
+/// default_toolchain = "stable"
+/// path_setup_shown = true
+///
+/// [overrides]
+/// "/home/user/myproject" = "v4.24.0"
+///
+/// # Preferences (user-configurable)
+/// [global]
+/// verbose = 1
+/// color = "auto"
+///
+/// [paths]
+/// home = "/custom/lemma/home"
+///
+/// [network]
+/// timeout = 60
+/// retries = 5
+/// http_proxy = "http://proxy.example.com:8080"
+///
+/// lean_release = "https://mirror.example.com/lean"
+/// ```
+///
+/// ## Usage
+///
+/// Loading is typically done once at startup:
+///
+/// ```rust,no_run
+/// use lemma_config::Config;
+///
+/// // Load and merge all configuration sources
+/// let config = Config::load()?;
+///
+/// // Check default toolchain (state)
+/// if let Some(default) = &config.default_toolchain {
+///     println!("Default toolchain: {}", default);
+/// }
+///
+/// // Check network timeout (preference)
+/// if let Some(network) = &config.network {
+///     if let Some(timeout) = network.timeout {
+///         println!("Network timeout: {}s", timeout);
+///     }
+/// }
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// Saving is only for the user config (to update state):
+///
+/// ```rust,no_run
+/// use lemma_config::Config;
+///
+/// let mut config = Config::load()?;
+///
+/// // Update state (e.g., setting default toolchain)
+/// config.default_toolchain = Some("stable".to_string());
+///
+/// // Save back to user config
+/// config.save()?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
