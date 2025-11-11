@@ -22,10 +22,6 @@ const STYLES: Styles = Styles::styled()
 #[command(version)]
 #[command(
     after_long_help = "",
-    after_help = "Use `lemma help` for more details.",
-    disable_help_flag = true,
-    disable_help_subcommand = true,
-    disable_version_flag = true
 )]
 #[command(styles=STYLES)]
 pub struct Cli {
