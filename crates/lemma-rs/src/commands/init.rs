@@ -466,14 +466,13 @@ fn create_lean_toolchain_file(path: &Path, toolchain: &str) -> Result<()> {
 
 /// Detect the current Lean toolchain
 fn detect_lean_toolchain() -> Result<String> {
-    // Try to get from LEMMA_TOOLCHAIN environment variable
-    if let Ok(toolchain) = std::env::var("LEMMA_TOOLCHAIN") {
+    // Try to resolve the active toolchain using lemma's resolution system
+    if let Some((toolchain, _source)) = lemma_config::resolve_toolchain_with_source(None)? {
         return Ok(toolchain);
     }
 
-    // Try to find the active toolchain from lemma
-    // This would ideally use the toolchain resolution logic, but for now
-    // we'll just return a reasonable default
+    // If no toolchain is active, use a sensible default
+    // This matches Lake's default behavior
     Ok("leanprover/lean4:stable".to_string())
 }
 
