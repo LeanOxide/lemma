@@ -9,9 +9,9 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use lemma_static::EnvVars;
 
 use crate::config::{self, ColorChoice};
-
 /// CLI arguments needed for settings resolution
 ///
 /// This is a simplified version of the full CLI args structure,
@@ -179,11 +179,12 @@ fn resolve_lemma_home(config: &config::Config) -> Result<PathBuf> {
     // 2. Config file
     // 3. Default: ~/.lemma
 
-    if let Ok(home) = std::env::var("LEMMA_HOME") {
+    if let Ok(home) = std::env::var(EnvVars::LEMMA_HOME) {
         let path = PathBuf::from(home);
         if !path.is_absolute() {
             anyhow::bail!(
-                "LEMMA_HOME must be an absolute path, got: {}",
+                "{} must be an absolute path, got: {}",
+                EnvVars::LEMMA_HOME,
                 path.display()
             );
         }

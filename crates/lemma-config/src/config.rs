@@ -22,6 +22,7 @@
 //! with precedence: CLI args > Project config > User config > System config > Defaults
 
 use anyhow::{Context, Result};
+use lemma_static::EnvVars;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -244,7 +245,7 @@ impl Config {
 
     /// Get the Lemma home directory
     pub fn lemma_home() -> Result<PathBuf> {
-        if let Ok(home) = std::env::var("LEMMA_HOME") {
+        if let Ok(home) = std::env::var(EnvVars::LEMMA_HOME) {
             return Ok(PathBuf::from(home));
         }
 

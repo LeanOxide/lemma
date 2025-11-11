@@ -10,6 +10,7 @@
 //! It depends on both the Config and ToolchainDesc types.
 
 use anyhow::{Context, Result};
+use lemma_static::EnvVars;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +29,7 @@ pub fn resolve_toolchain_with_source(
     }
 
     // 2. Environment variable override
-    if let Ok(toolchain) = env::var("LEMMA_TOOLCHAIN") {
+    if let Ok(toolchain) = env::var(EnvVars::LEMMA_TOOLCHAIN) {
         return Ok(Some((toolchain, ToolchainSource::Environment)));
     }
 

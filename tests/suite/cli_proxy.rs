@@ -1,5 +1,7 @@
 //! Tests for proxy mode (when invoked as lean, lake, etc.)
 
+use lemma_static::EnvVars;
+
 use super::test_helpers::{LemmaTestContext, TestSetup};
 
 #[test]
@@ -41,7 +43,7 @@ fn test_which_with_environment_override() {
     // Use which with LEMMA_TOOLCHAIN environment variable
     let result = ctx.run_with_env(
         &["which", "lean"],
-        &[("LEMMA_TOOLCHAIN", "leanprover/lean4:v4.24.0")],
+        &[(EnvVars::LEMMA_TOOLCHAIN, "leanprover/lean4:v4.24.0")],
     );
 
     result.assert_success();

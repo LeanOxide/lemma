@@ -1,6 +1,7 @@
 //! Run command - Execute a command with a specific toolchain
 
 use anyhow::{Context, Result};
+use lemma_static::EnvVars;
 use std::env;
 use std::process::Command;
 
@@ -41,9 +42,9 @@ pub fn execute(toolchain: &str, command_args: &[String], settings: &GlobalSettin
     cmd.args(args);
 
     // Set environment variables
-    cmd.env("LEMMA_TOOLCHAIN", toolchain);
+    cmd.env(EnvVars::LEMMA_TOOLCHAIN, toolchain);
     if let Ok(lemma_home) = Config::lemma_home() {
-        cmd.env("LEMMA_HOME", lemma_home);
+        cmd.env(EnvVars::LEMMA_HOME, lemma_home);
     }
 
     // Prepend the toolchain's bin directory to PATH

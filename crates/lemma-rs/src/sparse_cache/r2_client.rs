@@ -4,6 +4,7 @@
 //! to download dependency indexes and cache files.
 
 use anyhow::{Context, Result};
+use lemma_static::EnvVars;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -64,7 +65,7 @@ impl R2Client {
         let download_client = DownloadClient::new()?;
 
         // Allow override via environment variable
-        let base_url = std::env::var("LEMMA_SPARSE_CACHE_URL")
+        let base_url = std::env::var(EnvVars::LEMMA_SPARSE_CACHE_URL)
             .unwrap_or_else(|_| DEFAULT_R2_BASE_URL.to_string());
 
         Ok(Self {

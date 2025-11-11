@@ -1,5 +1,6 @@
 //! Test utilities and helpers for integration tests
 
+use lemma_static::EnvVars;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -44,7 +45,7 @@ impl LemmaTestContext {
     pub fn run(&self, args: &[&str]) -> CommandResult {
         let mut cmd = Command::new(&self.lemma_exe);
         cmd.args(args)
-            .env("LEMMA_HOME", &self.lemma_home)
+            .env(EnvVars::LEMMA_HOME, &self.lemma_home)
             .env("PATH", env::var("PATH").unwrap_or_default());
 
         let output = cmd.output().expect("Failed to execute command");
@@ -55,7 +56,7 @@ impl LemmaTestContext {
     pub fn run_with_env(&self, args: &[&str], env_vars: &[(&str, &str)]) -> CommandResult {
         let mut cmd = Command::new(&self.lemma_exe);
         cmd.args(args)
-            .env("LEMMA_HOME", &self.lemma_home)
+            .env(EnvVars::LEMMA_HOME, &self.lemma_home)
             .env("PATH", env::var("PATH").unwrap_or_default());
 
         for (key, value) in env_vars {

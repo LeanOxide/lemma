@@ -4,6 +4,7 @@
 //! to the actual tool in the active toolchain.
 
 use anyhow::Result;
+use lemma_static::EnvVars;
 use std::env;
 use std::process::Command;
 
@@ -54,9 +55,9 @@ pub fn execute(tool_name: &str) -> Result<()> {
     cmd.args(&tool_args);
 
     // Set environment variables to communicate toolchain info
-    cmd.env("LEMMA_TOOLCHAIN", &toolchain_name);
+    cmd.env(EnvVars::LEMMA_TOOLCHAIN, &toolchain_name);
     if let Ok(lemma_home) = Config::lemma_home() {
-        cmd.env("LEMMA_HOME", lemma_home);
+        cmd.env(EnvVars::LEMMA_HOME, lemma_home);
     }
 
     // Prepend ~/.lemma/bin to PATH for recursive tool calls

@@ -1,5 +1,7 @@
 //! Tests for toolchain management commands
 
+use lemma_static::EnvVars;
+
 use super::test_helpers::{LemmaTestContext, TestSetup};
 
 #[test]
@@ -51,7 +53,7 @@ fn test_show_with_environment_override() {
 
     let result = ctx.run_with_env(
         &["show"],
-        &[("LEMMA_TOOLCHAIN", "leanprover/lean4:v4.24.0")],
+        &[(EnvVars::LEMMA_TOOLCHAIN, "leanprover/lean4:v4.24.0")],
     );
 
     result.assert_success();
@@ -73,7 +75,7 @@ fn test_which_command() {
     // Try to run which command with environment override
     let result = ctx.run_with_env(
         &["which", "lean"],
-        &[("LEMMA_TOOLCHAIN", "leanprover/lean4:v4.24.0")],
+        &[(EnvVars::LEMMA_TOOLCHAIN, "leanprover/lean4:v4.24.0")],
     );
 
     result.assert_success();

@@ -1,4 +1,7 @@
 //! Command-line interface for Lemma
+//!
+//! Note: Environment variable names in clap attributes (e.g., `env = "LEMMA_VERBOSE"`)
+//! must be string literals and match the constants defined in `lemma_static::EnvVars`.
 
 use crate::help;
 use clap::builder::styling::{AnsiColor, Effects};
