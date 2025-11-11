@@ -1,0 +1,16 @@
+[package]
+name = "lemma-platform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Target triple parsing
+target-lexicon.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+[lints]
+workspace = true

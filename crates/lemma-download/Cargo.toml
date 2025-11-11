@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 # Internal crates
 lemma-static.workspace = true
+lemma-platform.workspace = true
 lemma-config.workspace = true
 lemma-toolchain.workspace = true
 

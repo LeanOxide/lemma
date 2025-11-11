@@ -16,6 +16,7 @@ lemma-cli = { path = "crates/lemma-cli" }
 lemma-config = { path = "crates/lemma-config" }
 lemma-toolchain = { path = "crates/lemma-toolchain" }
 lemma-static = { path = "crates/lemma-static" }
+lemma-platform = { path = "crates/lemma-platform" }
 lemma-download = { path = "crates/lemma-download" }
 lemma-install = { path = "crates/lemma-install" }
 
@@ -48,6 +49,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rayon = "1.10"
 atty = "0.2"
 fs-err = "2.11"
+target-lexicon = "0.12"
 
 # Dev dependencies
 tempfile = "3.10"

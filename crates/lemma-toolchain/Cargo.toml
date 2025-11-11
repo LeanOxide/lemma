@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 # Workspace dependencies
 lemma-static.workspace = true
+lemma-platform.workspace = true
 
 # Error handling
 anyhow.workspace = true

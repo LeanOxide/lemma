@@ -77,22 +77,58 @@ impl ToolchainDesc {
 
     /// Get the directory name for this toolchain
     ///
-    /// For remote toolchains, sanitizes the name by replacing:
-    /// - '/' with '--'
-    /// - ':' with '---'
+    /// For remote toolchains, uses the format: `{release}-{platform}`
+    /// - Channels: `stable-linux`, `nightly-darwin_aarch64`
+    /// - Versions: `v4.24.0-linux`, `v4.15.0-darwin`
     ///
     /// For local toolchains, returns the name as-is
     pub fn to_directory_name(&self) -> String {
         match self {
             Self::Local { name } => name.clone(),
-            Self::Remote { .. } => self.to_string().replace('/', "--").replace(':', "---"),
+            Self::Remote { release, .. } => {
+                // Get current platform
+                let platform = lemma_platform::current_platform();
+                format!("{}-{}", release, platform)
+            }
         }
     }
 
     /// Parse from a directory name (reverse of to_directory_name)
+    ///
+    /// Supports both new format (`release-platform`) and old format (`origin--repo---release`)
+    /// for backwards compatibility during migration.
     pub fn from_directory_name(dir_name: &str) -> Result<Self> {
-        let name = dir_name.replace("---", ":").replace("--", "/");
-        Self::parse(&name)
+        // List of known platform suffixes for new format detection
+        const PLATFORM_SUFFIXES: &[&str] = &[
+            "linux",
+            "linux_aarch64",
+            "linux_x86",
+            "darwin",
+            "darwin_aarch64",
+            "windows",
+        ];
+
+        // Try new format first: {release}-{platform}
+        for platform in PLATFORM_SUFFIXES {
+            let suffix = format!("-{}", platform);
+            if let Some(release) = dir_name.strip_suffix(&suffix) {
+                // This looks like the new format
+                // Parse as a simple release name (assumes default origin)
+                return Self::parse(release);
+            }
+        }
+
+        // Fall back to old format: origin--repo---release
+        // This provides backwards compatibility
+        if dir_name.contains("---") || dir_name.contains("--") {
+            let name = dir_name.replace("---", ":").replace("--", "/");
+            return Self::parse(&name);
+        }
+
+        // If neither format matches, treat as local toolchain
+        Ok(Self::Local {
+            name: dir_name.to_string(),
+        })
     }
 
     /// Get the release version string

@@ -113,7 +113,7 @@ impl ReleaseServerClient {
 
     /// Find the appropriate asset for the current platform
     pub fn find_platform_asset<'a>(&self, release: &'a Release) -> Result<&'a Asset> {
-        let platform = current_platform();
+        let platform = lemma_platform::current_platform();
 
         // The release server uses naming like: lean-4.24.0-linux.tar.zst
         // We need to match: linux, linux_aarch64, darwin, darwin_aarch64, windows
@@ -141,30 +141,8 @@ impl ReleaseServerClient {
     }
 }
 
-/// Get the current platform identifier
-fn current_platform() -> String {
-    let os = if cfg!(target_os = "linux") {
-        "linux"
-    } else if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "windows") {
-        "windows"
-    } else {
-        "unknown"
-    };
-
-    let mut platform = os.to_string();
-
-    // Add architecture suffix for non-x86_64
-    if cfg!(target_arch = "aarch64") {
-        platform.push_str("_aarch64");
-    } else if cfg!(target_arch = "x86") {
-        platform.push_str("_x86");
-    }
-    // x86_64 (default) has no suffix
-
-    platform
-}
+// Re-export current_platform from lemma_platform for backwards compatibility
+pub use lemma_platform::current_platform;
 
 #[cfg(test)]
 mod tests {
