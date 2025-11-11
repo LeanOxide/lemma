@@ -3,12 +3,14 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
+use std::io::Write;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 use lemma_toolchain as toolchain;
 
-pub fn execute(settings: &GlobalSettings) -> Result<()> {
+pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
 
     // Show platform and lemma home

@@ -3,15 +3,18 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
+use std::io::Write;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
 use lemma_download::{DownloadClient, ReleaseServerClient};
+use lemma_output::Printer;
 
 pub fn execute(
     only_installed: bool,
     only_available: bool,
     settings: &GlobalSettings,
+    printer: &Printer,
 ) -> Result<()> {
     // Load config to get default toolchain
     let config = Config::load().unwrap_or_default();
@@ -34,59 +37,38 @@ pub fn execute(
     // Fetch available toolchains from release server
     let mut available_releases = Vec::new();
     if show_available {
-        if !settings.is_quiet() {
-            if settings.use_colors() {
-                eprintln!("{}", "Fetching available releases...".dimmed());
-            } else {
-                eprintln!("Fetching available releases...");
-            }
-        }
+        printer.hint("Fetching available releases...")?;
 
         match fetch_available_releases(&config) {
             Ok(releases) => available_releases = releases,
             Err(e) => {
-                if !settings.is_quiet() {
-                    if settings.use_colors() {
-                        eprintln!(
-                            "{} {}",
-                            "Warning:".yellow(),
-                            format!("Failed to fetch available releases: {}", e).dimmed()
-                        );
-                    } else {
-                        eprintln!("Warning: Failed to fetch available releases: {}", e);
-                    }
-                }
+                printer.warning(format!("Failed to fetch available releases: {}", e))?;
             }
         }
     }
 
     // Check if we have anything to show
     if installed_toolchains.is_empty() && available_releases.is_empty() {
-        println!("{} No toolchains installed yet.", "=>".yellow().bold());
-        println!("   Run 'lemma lean install stable' to install the stable toolchain.");
+        printer.status("No toolchains installed yet.")?;
+        writeln!(
+            printer.stdout(),
+            "   Run 'lemma lean install stable' to install the stable toolchain."
+        )?;
         return Ok(());
     }
 
     // Display sections
     if show_installed && !installed_toolchains.is_empty() {
-        if settings.use_colors() {
-            println!("{}", "Installed toolchains:".bold());
-        } else {
-            println!("Installed toolchains:");
-        }
-        display_installed_toolchains(&installed_toolchains, &active_toolchain, &config, settings)?;
+        printer.header("Installed toolchains")?;
+        display_installed_toolchains(&installed_toolchains, &active_toolchain, &config, printer)?;
     }
 
     if show_available && !available_releases.is_empty() {
         if !installed_toolchains.is_empty() {
-            println!();
+            writeln!(printer.stdout())?;
         }
-        if settings.use_colors() {
-            println!("{}", "Available for download:".bold());
-        } else {
-            println!("Available for download:");
-        }
-        display_available_releases(&available_releases, settings)?;
+        printer.header("Available for download")?;
+        display_available_releases(&available_releases, printer)?;
     }
 
     Ok(())
@@ -194,7 +176,7 @@ fn display_installed_toolchains(
     )],
     active_toolchain: &Option<String>,
     config: &Config,
-    settings: &GlobalSettings,
+    printer: &Printer,
 ) -> Result<()> {
     for (name, _dir_name, _path, _desc) in toolchains {
         // Check if this toolchain is active and/or default
@@ -209,47 +191,39 @@ fn display_installed_toolchains(
             (false, false) => "",
         };
 
-        if settings.use_colors() {
+        let display = if printer.use_colors() {
             let status_colored = if is_active || is_default {
-                status.green()
+                status.green().to_string()
             } else {
-                status.normal()
+                status.to_string()
             };
-            println!("  {} {}{}", "•".cyan(), name, status_colored);
+            format!("{}{}", name, status_colored)
         } else {
-            println!("  • {}{}", name, status);
-        }
+            format!("{}{}", name, status)
+        };
+
+        printer.list_item(display)?;
     }
 
     Ok(())
 }
 
 /// Display available releases from the release server
-fn display_available_releases(
-    releases: &[(String, String)],
-    settings: &GlobalSettings,
-) -> Result<()> {
+fn display_available_releases(releases: &[(String, String)], printer: &Printer) -> Result<()> {
     for (channel, version) in releases {
-        if channel == version {
+        let display = if channel == version {
             // For specific versions, just show once
-            if settings.use_colors() {
-                println!("  {} {}", "•".cyan(), channel);
-            } else {
-                println!("  • {}", channel);
-            }
+            channel.to_string()
         } else {
             // For channels, show channel -> version
-            if settings.use_colors() {
-                println!(
-                    "  {} {} {}",
-                    "•".cyan(),
-                    channel,
-                    format!("({})", version).dimmed()
-                );
+            if printer.use_colors() {
+                format!("{} {}", channel, format!("({})", version).dimmed())
             } else {
-                println!("  • {} ({})", channel, version);
+                format!("{} ({})", channel, version)
             }
-        }
+        };
+
+        printer.list_item(display)?;
     }
 
     Ok(())

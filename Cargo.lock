@@ -909,6 +909,7 @@ dependencies = [
  "lemma-config",
  "lemma-download",
  "lemma-install",
+ "lemma-output",
  "lemma-static",
  "lemma-toolchain",
  "proptest",
@@ -991,6 +992,15 @@ dependencies = [
  "tracing",
  "zip",
  "zstd 0.13.3",
+]
+
+[[package]]
+name = "lemma-output"
+version = "0.1.5"
+dependencies = [
+ "colored",
+ "indicatif",
+ "lemma-config",
 ]
 
 [[package]]
