@@ -105,5 +105,6 @@ fn setup_logging(settings: &GlobalSettings) {
         .with_env_filter(filter)
         .with_target(false)
         .with_ansi(settings.use_colors())
+        .without_time()
         .init();
 }
