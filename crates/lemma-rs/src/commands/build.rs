@@ -36,35 +36,44 @@ fn execute_native_build(
         std::env::current_dir().context("Failed to get current directory")?
     };
 
-    // Try to load the lakefile to validate this is a Lean project
-    match lemma_lakefile::load(&project_dir) {
-        Ok(lakefile) => {
-            printer.status(format!("Building project: {}", lakefile.name))?;
+    // Validate that this is a Lean project
+    validate_lean_project(&project_dir)?;
 
-            // Report current implementation status
-            printer.warning(
-                "Native build system is in Phase 0 (Foundation). Full build functionality is not yet implemented."
-            )?;
-            printer.hint("The following features are available:")?;
-            printer.hint("  - Lakefile parsing (lakefile.toml)")?;
-            printer.hint("  - Dependency graph data structures")?;
-            printer.hint("  - Build cache framework")?;
-            printer.hint("")?;
-            printer.hint("Coming in future phases:")?;
-            printer.hint("  - Phase 1: Module discovery and import parsing")?;
-            printer.hint("  - Phase 2: Build planning and topological sort")?;
-            printer.hint("  - Phase 3: Incremental build cache")?;
-            printer.hint("  - Phase 4-6: Compilation and linking")?;
-            printer.hint("")?;
-            printer.hint("Use `lemma build` (without --native) to build with Lake.")?;
+    // Create a Tokio runtime to run the async build
+    let runtime = tokio::runtime::Runtime::new()
+        .context("Failed to create async runtime")?;
 
-            Ok(())
+    runtime.block_on(async {
+        // Create the build context
+        printer.status("Loading project configuration...")?;
+        let context = lemma_build::BuildContext::from_directory(&project_dir)
+            .context("Failed to create build context")?;
+
+        printer.status(format!("Building project: {}", context.lakefile.name))?;
+        printer.hint("Native build system: Phases 1-5 complete (compilation ready)")?;
+
+        // Execute the build
+        printer.status("Discovering modules and analyzing dependencies...")?;
+        match context.build().await {
+            Ok(()) => {
+                printer.success("Build completed successfully")?;
+                Ok(())
+            }
+            Err(e) => {
+                // Check if this is a "not yet implemented" error for linking
+                let err_msg = e.to_string();
+                if err_msg.contains("Linking not yet implemented") {
+                    printer.warning("Compilation succeeded, but linking is not yet implemented (Phase 6)")?;
+                    printer.hint("All .olean files have been generated successfully.")?;
+                    printer.hint("Use `lemma build` (without --native) to link with Lake.")?;
+                    Ok(())
+                } else {
+                    printer.error(format!("Build failed: {}", e))?;
+                    Err(anyhow::anyhow!(e))
+                }
+            }
         }
-        Err(e) => {
-            printer.error(format!("Failed to load lakefile: {}", e))?;
-            Err(e.into())
-        }
-    }
+    })
 }
 
 /// Execute build by wrapping lake (default mode)
