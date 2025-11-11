@@ -14,26 +14,32 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let config = Config::load().context("Failed to load configuration")?;
 
     // Show platform and lemma home
-    if settings.use_colors() {
-        println!("{} {}", "Default host:".bold(), get_host_triple());
-        println!("{} {}", "lemma home:".bold(), settings.lemma_home.display());
+    let host_label = if printer.use_colors() {
+        "Default host:".bold().to_string()
     } else {
-        println!("Default host: {}", get_host_triple());
-        println!("lemma home: {}", settings.lemma_home.display());
-    }
-    println!();
+        "Default host:".to_string()
+    };
+    let home_label = if printer.use_colors() {
+        "lemma home:".bold().to_string()
+    } else {
+        "lemma home:".to_string()
+    };
+
+    writeln!(printer.stdout(), "{} {}", host_label, get_host_triple())?;
+    writeln!(printer.stdout(), "{} {}", home_label, settings.lemma_home.display())?;
+    writeln!(printer.stdout())?;
 
     // Determine the active toolchain
     let active_toolchain = lemma_config::resolve_toolchain_with_source(None)?;
 
     // List installed toolchains first
-    if settings.use_colors() {
-        println!("{}", "installed toolchains".bold());
-        println!("{}", "--------------------".bold());
+    printer.header("installed toolchains")?;
+    let separator = if printer.use_colors() {
+        "--------------------".bold().to_string()
     } else {
-        println!("installed toolchains");
-        println!("--------------------");
-    }
+        "--------------------".to_string()
+    };
+    writeln!(printer.stdout(), "{}", separator)?;
 
     let toolchains_dir = Config::toolchains_dir()?;
     let mut has_toolchains = false;
@@ -108,9 +114,9 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
 
                     // Print with status
                     if status_parts.is_empty() {
-                        println!("{}", name);
+                        writeln!(printer.stdout(), "{}", name)?;
                     } else {
-                        println!("{} ({})", name, status_parts.join(", "));
+                        writeln!(printer.stdout(), "{} ({})", name, status_parts.join(", "))?;
                     }
                 }
             }
@@ -118,26 +124,27 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     }
 
     if !has_toolchains {
-        if settings.use_colors() {
-            println!("{}", "no installed toolchains".dimmed());
+        let msg = if printer.use_colors() {
+            "no installed toolchains".dimmed().to_string()
         } else {
-            println!("no installed toolchains");
-        }
+            "no installed toolchains".to_string()
+        };
+        writeln!(printer.stdout(), "{}", msg)?;
     }
 
-    println!();
+    writeln!(printer.stdout())?;
 
     // Show active toolchain details
-    if settings.use_colors() {
-        println!("{}", "active toolchain".bold());
-        println!("{}", "----------------".bold());
+    printer.header("active toolchain")?;
+    let separator = if printer.use_colors() {
+        "----------------".bold().to_string()
     } else {
-        println!("active toolchain");
-        println!("----------------");
-    }
+        "----------------".to_string()
+    };
+    writeln!(printer.stdout(), "{}", separator)?;
 
     if let Some((toolchain, src)) = &active_toolchain {
-        println!("name: {}", toolchain);
+        writeln!(printer.stdout(), "name: {}", toolchain)?;
 
         // Show reason for being active
         let reason = match src {
@@ -164,7 +171,7 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
             }
             toolchain::ToolchainSource::Default => "it's the default toolchain",
         };
-        println!("active because: {}", reason);
+        writeln!(printer.stdout(), "active because: {}", reason)?;
 
         // Try to find the toolchain and show additional info
         match lemma_config::find_tool_binary(toolchain, "lean") {
@@ -174,36 +181,29 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
                         // Show lean version
                         if let Ok(version) = toolchain::get_lean_version(toolchain_path) {
                             if let Some(version_str) = extract_version_line(&version) {
-                                println!("lean version: {}", version_str);
+                                writeln!(printer.stdout(), "lean version: {}", version_str)?;
                             }
                         }
                     }
                 }
             }
             Err(_) => {
-                if settings.use_colors() {
-                    println!("{}", "warning: toolchain is not installed".yellow().bold());
-                } else {
-                    println!("warning: toolchain is not installed");
-                }
+                printer.warning("toolchain is not installed")?;
             }
         }
     } else {
-        if settings.use_colors() {
-            println!("{}", "no active toolchain".dimmed());
-            println!();
-            println!(
-                "{}",
-                "tip: set a default with 'lemma default <toolchain>'".dimmed()
-            );
+        let no_tc_msg = if printer.use_colors() {
+            "no active toolchain".dimmed().to_string()
         } else {
-            println!("no active toolchain");
-            println!();
-            println!("tip: set a default with 'lemma default <toolchain>'");
-        }
+            "no active toolchain".to_string()
+        };
+        writeln!(printer.stdout(), "{}", no_tc_msg)?;
+        writeln!(printer.stdout())?;
+
+        printer.hint("set a default with 'lemma default <toolchain>'")?;
     }
 
-    println!();
+    writeln!(printer.stdout())?;
 
     Ok(())
 }

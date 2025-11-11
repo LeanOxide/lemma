@@ -7,9 +7,14 @@ use std::fs;
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
 use lemma_install::Installer;
+use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings) -> Result<()> {
+pub fn execute(
+    toolchain: Option<&str>,
+    _settings: &GlobalSettings,
+    #[allow(unused_variables)] printer: &Printer,
+) -> Result<()> {
     if let Some(name) = toolchain {
         // Upgrade specific toolchain
         upgrade_toolchain(name)

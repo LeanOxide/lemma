@@ -3,11 +3,13 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::fs;
+use std::io::Write;
 
 use lemma_config::{Config, GlobalSettings};
+use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(request: Option<&str>, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     // If no request given, show the active toolchain
@@ -19,11 +21,12 @@ pub fn execute(request: Option<&str>, settings: &GlobalSettings) -> Result<()> {
                 .with_context(|| format!("Invalid toolchain name: {}", toolchain_name))?;
             let dir_name = desc.to_directory_name();
 
-            if settings.use_colors() {
-                println!("{}", dir_name.cyan().bold());
+            let display = if printer.use_colors() {
+                dir_name.cyan().bold().to_string()
             } else {
-                println!("{}", dir_name);
-            }
+                dir_name.to_string()
+            };
+            writeln!(printer.stdout(), "{}", display)?;
             return Ok(());
         } else {
             anyhow::bail!("No active toolchain found. Run 'lemma default <toolchain>' to set a default.");
@@ -101,11 +104,12 @@ pub fn execute(request: Option<&str>, settings: &GlobalSettings) -> Result<()> {
     let (_desc, dir_name, _path) = &matching_toolchains[0];
 
     // Print the unique identifier (directory name)
-    if settings.use_colors() {
-        println!("{}", dir_name.cyan().bold());
+    let display = if printer.use_colors() {
+        dir_name.cyan().bold().to_string()
     } else {
-        println!("{}", dir_name);
-    }
+        dir_name.to_string()
+    };
+    writeln!(printer.stdout(), "{}", display)?;
 
     Ok(())
 }

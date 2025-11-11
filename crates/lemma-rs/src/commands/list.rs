@@ -13,7 +13,7 @@ use lemma_output::Printer;
 pub fn execute(
     only_installed: bool,
     only_available: bool,
-    settings: &GlobalSettings,
+    _settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
     // Load config to get default toolchain

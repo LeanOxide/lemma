@@ -7,13 +7,17 @@ use std::process::Command;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 
 /// Execute a command with a specific toolchain
-pub fn execute(toolchain: &str, command_args: &[String], settings: &GlobalSettings) -> Result<()> {
-    if settings.is_verbose() {
-        tracing::debug!("Running command with toolchain: {}", toolchain);
-        tracing::debug!("Command: {:?}", command_args);
-    }
+pub fn execute(
+    toolchain: &str,
+    command_args: &[String],
+    _settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
+    printer.hint(format!("Running command with toolchain: {}", toolchain))?;
+    printer.hint(format!("Command: {:?}", command_args))?;
     // Check if command is empty
     if command_args.is_empty() {
         anyhow::bail!("No command specified.\n\nUsage: lemma run <toolchain> <command> [args...]");

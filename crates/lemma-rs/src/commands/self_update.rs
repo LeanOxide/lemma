@@ -3,6 +3,7 @@
 use anyhow::{bail, Context, Result};
 use colored::Colorize;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 use serde::Deserialize;
 use std::env;
 use std::fs;
@@ -38,7 +39,7 @@ fn get_available_version() -> Result<String> {
     Ok(manifest.version)
 }
 
-pub fn update(_settings: &GlobalSettings) -> Result<()> {
+pub fn update(_settings: &GlobalSettings, #[allow(unused_variables)] printer: &Printer) -> Result<()> {
     println!("{} Checking for updates...", "=>".cyan().bold());
 
     // Get current version
@@ -309,7 +310,11 @@ pub fn cleanup_old_backups() -> Result<()> {
 }
 
 /// Uninstall lemma and all toolchains
-pub fn uninstall(skip_confirm: bool, _settings: &GlobalSettings) -> Result<()> {
+pub fn uninstall(
+    skip_confirm: bool,
+    _settings: &GlobalSettings,
+    #[allow(unused_variables)] printer: &Printer,
+) -> Result<()> {
     use std::io::{self, Write};
 
     println!();

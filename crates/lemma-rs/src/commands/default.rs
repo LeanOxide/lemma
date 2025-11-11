@@ -5,9 +5,10 @@ use colored::Colorize;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     // Parse the toolchain to get canonical format and directory name
     let toolchain_desc = ToolchainDesc::parse(toolchain)?;
     let canonical_name = toolchain_desc.to_string();
@@ -31,15 +32,7 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
     // Check if this is already the default
     if let Some(ref current_default) = config.default_toolchain {
         if current_default == &canonical_name {
-            if settings.use_colors() {
-                println!(
-                    "{} '{}' is already the default toolchain",
-                    "=>".cyan().bold(),
-                    canonical_name
-                );
-            } else {
-                println!("=> '{}' is already the default toolchain", canonical_name);
-            }
+            printer.status(format!("'{}' is already the default toolchain", canonical_name))?;
             return Ok(());
         }
     }
@@ -53,29 +46,18 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
 
     // Show success message
     if let Some(old) = old_default {
-        if settings.use_colors() {
-            println!(
-                "{} Default toolchain changed from '{}' to '{}'",
-                "✓".green().bold(),
+        let msg = if printer.use_colors() {
+            format!(
+                "Default toolchain changed from '{}' to '{}'",
                 old.dimmed(),
                 canonical_name
-            );
+            )
         } else {
-            println!(
-                "✓ Default toolchain changed from '{}' to '{}'",
-                old, canonical_name
-            );
-        }
+            format!("Default toolchain changed from '{}' to '{}'", old, canonical_name)
+        };
+        printer.success(msg)?;
     } else {
-        if settings.use_colors() {
-            println!(
-                "{} Default toolchain set to '{}'",
-                "✓".green().bold(),
-                canonical_name
-            );
-        } else {
-            println!("✓ Default toolchain set to '{}'", canonical_name);
-        }
+        printer.success(format!("Default toolchain set to '{}'", canonical_name))?;
     }
 
     Ok(())

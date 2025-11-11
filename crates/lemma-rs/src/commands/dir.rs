@@ -2,11 +2,13 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
+use std::io::Write;
 
 use lemma_config::{Config, GlobalSettings};
+use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(toolchain: Option<&str>, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     if let Some(toolchain_name) = toolchain {
@@ -26,18 +28,20 @@ pub fn execute(toolchain: Option<&str>, settings: &GlobalSettings) -> Result<()>
         }
 
         // Print the full path to the toolchain
-        if settings.use_colors() {
-            println!("{}", toolchain_path.display().to_string().cyan());
+        let display = if printer.use_colors() {
+            toolchain_path.display().to_string().cyan().to_string()
         } else {
-            println!("{}", toolchain_path.display());
-        }
+            toolchain_path.display().to_string()
+        };
+        writeln!(printer.stdout(), "{}", display)?;
     } else {
         // Show the root toolchains directory
-        if settings.use_colors() {
-            println!("{}", toolchains_dir.display().to_string().cyan());
+        let display = if printer.use_colors() {
+            toolchains_dir.display().to_string().cyan().to_string()
         } else {
-            println!("{}", toolchains_dir.display());
-        }
+            toolchains_dir.display().to_string()
+        };
+        writeln!(printer.stdout(), "{}", display)?;
     }
 
     Ok(())

@@ -9,6 +9,7 @@ use colored::Colorize;
 use std::path::PathBuf;
 
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 
 /// Execute the fetch command
 pub fn execute(
@@ -18,6 +19,7 @@ pub fn execute(
     dry_run: bool,
     path: Option<String>,
     settings: &GlobalSettings,
+    #[allow(unused_variables)] printer: &Printer,
 ) -> Result<()> {
     let project_path = match path {
         Some(p) => PathBuf::from(p),

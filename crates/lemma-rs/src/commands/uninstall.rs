@@ -1,13 +1,14 @@
 //! Uninstall command - Remove installed toolchains
 
 use anyhow::{Context, Result};
-use colored::Colorize;
 use std::fs;
+use std::io::Write;
 
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 
-pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let toolchains_dir = Config::toolchains_dir()?;
 
     // Parse the toolchain to get the sanitized directory name
@@ -32,18 +33,7 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
         .unwrap_or(false);
 
     if is_default {
-        if settings.use_colors() {
-            println!(
-                "{} Warning: '{}' is currently the default toolchain",
-                "⚠".yellow().bold(),
-                toolchain
-            );
-        } else {
-            println!(
-                "⚠ Warning: '{}' is currently the default toolchain",
-                toolchain
-            );
-        }
+        printer.warning(format!("'{}' is currently the default toolchain", toolchain))?;
     }
 
     // Check if this is a symlink (linked toolchain)
@@ -80,16 +70,8 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
             }
         }
 
-        if settings.use_colors() {
-            println!(
-                "{} Removed linked toolchain '{}'",
-                "✓".green().bold(),
-                toolchain
-            );
-        } else {
-            println!("✓ Removed linked toolchain '{}'", toolchain);
-        }
-        println!("   (The original directory was not deleted)");
+        printer.success(format!("Removed linked toolchain '{}'", toolchain))?;
+        writeln!(printer.stdout(), "   (The original directory was not deleted)")?;
     } else {
         // For regular directories, remove everything
         fs::remove_dir_all(&toolchain_path).with_context(|| {
@@ -99,28 +81,13 @@ pub fn execute(toolchain: &str, settings: &GlobalSettings) -> Result<()> {
             )
         })?;
 
-        if settings.use_colors() {
-            println!(
-                "{} Successfully uninstalled toolchain '{}'",
-                "✓".green().bold(),
-                toolchain
-            );
-        } else {
-            println!("✓ Successfully uninstalled toolchain '{}'", toolchain);
-        }
+        printer.success(format!("Successfully uninstalled toolchain '{}'", toolchain))?;
     }
 
-    if is_default && !settings.is_quiet() {
-        println!();
-        if settings.use_colors() {
-            println!(
-                "{} You may want to set a new default toolchain with:",
-                "Tip:".dimmed()
-            );
-        } else {
-            println!("Tip: You may want to set a new default toolchain with:");
-        }
-        println!("   lemma default <toolchain>");
+    if is_default {
+        writeln!(printer.stdout())?;
+        printer.hint("You may want to set a new default toolchain with:")?;
+        writeln!(printer.stdout(), "   lemma default <toolchain>")?;
     }
 
     Ok(())

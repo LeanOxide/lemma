@@ -8,9 +8,14 @@ use std::path::PathBuf;
 use lemma_cli::OverrideCommands;
 use lemma_config::Config;
 use lemma_config::GlobalSettings;
+use lemma_output::Printer;
 use lemma_toolchain::ToolchainDesc;
 
-pub fn execute(command: OverrideCommands, settings: &GlobalSettings) -> Result<()> {
+pub fn execute(
+    command: OverrideCommands,
+    settings: &GlobalSettings,
+    #[allow(unused_variables)] printer: &Printer,
+) -> Result<()> {
     match command {
         OverrideCommands::Set { toolchain, path } => set_override(&toolchain, path, settings),
         OverrideCommands::Unset { path } => unset_override(path, settings),
