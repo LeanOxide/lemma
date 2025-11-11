@@ -87,7 +87,7 @@ fn find_channel_with_version(
     toolchains_dir: &Path,
     requested: &ToolchainDesc,
 ) -> Result<Option<PathBuf>> {
-    let channels = ["stable", "beta", "nightly", "latest"];
+    let channels = ["stable", "beta", "nightly"];
 
     for channel in &channels {
         let channel_desc = ToolchainDesc::parse(channel)?;

@@ -213,7 +213,7 @@ fn is_specific_version(name: &str) -> bool {
         }
 
         // If parsing failed and doesn't look like a channel, treat as specific version
-        !matches!(name, "stable" | "beta" | "nightly" | "latest")
+        !matches!(name, "stable" | "beta" | "nightly")
     }
 }
 
@@ -251,7 +251,6 @@ mod tests {
         assert!(!is_specific_version("stable"));
         assert!(!is_specific_version("beta"));
         assert!(!is_specific_version("nightly"));
-        assert!(!is_specific_version("latest"));
     }
 
     #[test]

@@ -150,7 +150,7 @@ impl ToolchainDesc {
         match self {
             Self::Local { .. } => false,
             Self::Remote { release, .. } => {
-                matches!(release.as_str(), "stable" | "beta" | "nightly" | "latest")
+                matches!(release.as_str(), "stable" | "beta" | "nightly")
             }
         }
     }
