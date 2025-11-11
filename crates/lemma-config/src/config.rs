@@ -684,7 +684,7 @@ lean_release = "https://mirror.example.com/lean"
             config.default_toolchain,
             Some("lean-4.24.0-linux".to_string())
         );
-        assert_eq!(config.path_setup_shown, true);
+        assert!(config.path_setup_shown);
         assert_eq!(
             config.overrides.get("/path/to/project"),
             Some(&"lean-4.23.0-linux".to_string())
