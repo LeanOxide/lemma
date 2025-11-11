@@ -26,9 +26,14 @@ blake3 = "1.5"
 
 # For async parallel execution
 tokio = { version = "1.40", features = ["full"] }
+futures = "0.3"
+num_cpus = "1.16"
 
 # For file walking
 walkdir = "2.5"
+
+# For finding executables in PATH
+which = "7.0"
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -95,14 +95,23 @@ impl ModuleResolver {
     /// Parse imports from a .lean file
     ///
     /// This extracts all `import Foo.Bar` statements from the file.
+    /// Uses buffered reading for better performance on large files,
+    /// since imports only appear at the beginning.
     pub fn parse_imports(&self, file: &Path) -> Result<Vec<String>> {
-        let content = std::fs::read_to_string(file).map_err(|e| {
-            Error::ModuleResolution(format!("Failed to read {}: {}", file.display(), e))
+        use std::io::{BufRead, BufReader};
+
+        let file_handle = std::fs::File::open(file).map_err(|e| {
+            Error::ModuleResolution(format!("Failed to open {}: {}", file.display(), e))
         })?;
 
+        let reader = BufReader::new(file_handle);
         let mut imports = Vec::new();
 
-        for line in content.lines() {
+        for line_result in reader.lines() {
+            let line = line_result.map_err(|e| {
+                Error::ModuleResolution(format!("Failed to read line from {}: {}", file.display(), e))
+            })?;
+
             // Stop at the first non-import, non-comment, non-blank line
             // In Lean, imports must come at the beginning of the file
             let trimmed = line.trim();
@@ -110,11 +119,11 @@ impl ModuleResolver {
                 continue;
             }
 
-            if let Some(captures) = self.import_regex.captures(line) {
+            if let Some(captures) = self.import_regex.captures(&line) {
                 if let Some(import) = captures.get(1) {
                     imports.push(import.as_str().to_string());
                 }
-            } else if !trimmed.is_empty() {
+            } else {
                 // We've hit a non-import line, stop processing
                 break;
             }

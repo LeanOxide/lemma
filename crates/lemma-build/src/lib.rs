@@ -34,6 +34,7 @@ pub mod context;
 pub mod error;
 pub mod module;
 pub mod plan;
+pub mod scheduler;
 
 pub use cache::BuildCache;
 pub use compiler::CompilationDriver;
@@ -41,6 +42,7 @@ pub use context::BuildContext;
 pub use error::{Error, Result};
 pub use module::{Module, ModuleResolver};
 pub use plan::BuildPlan;
+pub use scheduler::{BuildJob, JobScheduler, JobState, JobStats};
 
 /// Build a Lean project from the given directory
 ///

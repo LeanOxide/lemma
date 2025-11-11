@@ -1,6 +1,7 @@
 //! Build context - The main orchestrator for builds
 
 use crate::cache::BuildCache;
+use crate::compiler::CompilationDriver;
 use crate::error::{Error, Result};
 use crate::module::ModuleResolver;
 use lemma_lakefile::Lakefile;
@@ -82,17 +83,51 @@ impl BuildContext {
             return Ok(());
         }
 
-        // TODO: Phase 4 - Implement job scheduling
-        // TODO: Phase 5 - Implement compilation
+        // Phase 4: Execute jobs in parallel using the scheduler
+        let concurrency = num_cpus::get();
+        let mut scheduler = crate::scheduler::JobScheduler::new(
+            plan.modules
+                .into_iter()
+                .filter(|m| modules_to_build.contains(&m.name))
+                .collect(),
+            concurrency,
+        );
+
+        // Phase 5: Set up compilation driver
+        // Find the lean binary (assume it's in PATH for now; TODO: use lemma-toolchain)
+        let lean_binary = which::which("lean").map_err(|e| {
+            Error::Other(format!(
+                "Could not find 'lean' binary in PATH. \
+                 Please ensure Lean is installed and available. Error: {}",
+                e
+            ))
+        })?;
+
+        let driver = CompilationDriver::new(
+            lean_binary,
+            self.project_dir.join(&self.lakefile.src_dir),
+            build_dir.clone(),
+        );
+        let driver = std::sync::Arc::new(driver);
+
+        // Define the compilation job function
+        let job_fn = move |module: crate::module::Module| {
+            let driver = std::sync::Arc::clone(&driver);
+            let build_dir = build_dir.clone();
+            async move {
+                // Compile the module
+                driver.compile_module(&module, &build_dir).await?;
+                Ok(())
+            }
+        };
+
+        // Execute all compilation jobs
+        scheduler.execute_all(job_fn).await?;
+
+        // TODO: Phase 5 - Update build cache with new hashes
         // TODO: Phase 6 - Implement linking
 
-        Err(Error::Other(format!(
-            "Build functionality partially implemented (Phases 1-3 complete). \
-             {} module(s) need rebuilding: {:?}. \
-             Compilation and linking not yet implemented.",
-            modules_to_build.len(),
-            modules_to_build
-        )))
+        Ok(())
     }
 
     /// Clean the build directory
