@@ -20,9 +20,7 @@ const STYLES: Styles = Styles::styled()
 #[command(name = "lemma")]
 #[command(about = "A modern Lean4 toolchain manager", long_about = None)]
 #[command(version)]
-#[command(
-    after_long_help = "",
-)]
+#[command(after_long_help = "")]
 #[command(styles=STYLES)]
 pub struct Cli {
     #[command(subcommand)]
@@ -188,6 +186,33 @@ pub enum Commands {
     Cache {
         #[command(subcommand)]
         command: CacheCommands,
+    },
+
+    /// Initialize a new Lean project
+    #[command(after_long_help = help::INIT_HELP)]
+    Init {
+        /// Name of the project (defaults to directory name)
+        name: Option<String>,
+
+        /// Path to create the project (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Create a minimal project with only lakefile.toml
+        #[arg(long)]
+        bare: bool,
+
+        /// Create an application project (default)
+        #[arg(long, conflicts_with = "lib")]
+        app: bool,
+
+        /// Create a library project
+        #[arg(long, conflicts_with = "app")]
+        lib: bool,
+
+        /// Do not create a README.md file
+        #[arg(long)]
+        no_readme: bool,
     },
 
     /// Modify the lemma installation

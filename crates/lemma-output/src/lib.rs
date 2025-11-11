@@ -86,7 +86,6 @@ impl Printer {
         }
     }
 
-
     /// Print a status message (=> Installing...)
     ///
     /// Status messages indicate an ongoing operation. They are suppressed

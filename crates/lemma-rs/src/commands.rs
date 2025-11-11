@@ -9,6 +9,7 @@ pub mod default;
 pub mod dir;
 pub mod fetch;
 pub mod find;
+pub mod init;
 pub mod install;
 pub mod link;
 pub mod list;
@@ -29,7 +30,11 @@ use lemma_output::Printer;
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()> {
     // Create printer from settings for consistent output handling
-    let printer = Printer::new(settings.is_quiet(), settings.is_verbose(), settings.use_colors());
+    let printer = Printer::new(
+        settings.is_quiet(),
+        settings.is_verbose(),
+        settings.use_colors(),
+    );
     match command {
         Commands::Lean { command } => handle_toolchain_command(command, &settings, &printer),
 
@@ -66,6 +71,15 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
         } => fetch::execute(&package, modules, auto, dry_run, path, &settings, &printer),
 
         Commands::Cache { command } => cache::execute(command, &settings, &printer),
+
+        Commands::Init {
+            name,
+            path,
+            bare,
+            app,
+            lib,
+            no_readme,
+        } => init::execute(name, path, bare, app, lib, no_readme, &settings, &printer),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
     }

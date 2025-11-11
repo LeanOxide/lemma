@@ -204,10 +204,7 @@ mod tests {
     fn test_registry_creation() {
         let temp = TempDir::new().unwrap();
         let registry = ToolchainRegistry::new(temp.path());
-        assert_eq!(
-            registry.toolchains_dir(),
-            temp.path().join("toolchains")
-        );
+        assert_eq!(registry.toolchains_dir(), temp.path().join("toolchains"));
     }
 
     #[test]

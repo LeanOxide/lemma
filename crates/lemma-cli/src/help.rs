@@ -385,3 +385,42 @@ pub static CACHE_PRUNE_HELP: &str = r"DISCUSSION:
 
         $ lemma cache prune       # Prompts for confirmation
         $ lemma cache prune -y    # Skip confirmation";
+
+pub static INIT_HELP: &str = r"DISCUSSION:
+    Initialize a new Lean project in the specified directory (or the
+    current directory if not specified).
+
+    By default, creates an application project with:
+    - lakefile.toml configuration file
+    - Main.lean entry point for the executable
+    - README.md with project description
+    - .gitignore configured for Lean projects
+    - Git repository initialization
+
+    PROJECT TYPES:
+
+    Application (default): A project with an executable entry point
+        $ lemma init myapp
+        $ lemma init myapp --app
+
+    Library: A project intended to be used as a dependency
+        $ lemma init mylib --lib
+
+    Bare: Only creates lakefile.toml, useful for custom setups
+        $ lemma init myproject --bare
+
+    FLAGS:
+
+        --app           Create an application project (default)
+        --lib           Create a library project
+        --bare          Create minimal project (lakefile.toml only)
+        --no-readme     Do not create README.md
+        --path <PATH>   Create project at specified path
+
+    EXAMPLES:
+
+        $ lemma init                    # Initialize in current directory
+        $ lemma init myapp              # Create 'myapp' application
+        $ lemma init mylib --lib        # Create 'mylib' library
+        $ lemma init --bare             # Minimal setup
+        $ lemma init --path ./projects/myapp myapp";
