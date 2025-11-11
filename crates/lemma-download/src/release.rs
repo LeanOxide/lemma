@@ -6,6 +6,7 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::download::DownloadClient;
 
@@ -43,10 +44,33 @@ pub struct ReleaseServerClient {
     base_url: String,
 }
 
+fn normalize_base_url(url: &str) -> Result<String, url::ParseError> {
+    let mut parsed = Url::parse(url)?;
+
+    let mut path_segments: Vec<String> = parsed
+        .path_segments()
+        .map(|segments| segments.map(|s| s.to_string()).collect())
+        .unwrap_or_default();
+
+    if path_segments.last().map(|s| s.as_str()) != Some("index.json") {
+        if path_segments.last().map(|s| s.is_empty()) == Some(true) {
+            path_segments.pop();
+        }
+        path_segments.push("index.json".to_string());
+    }
+
+    parsed.set_path(&path_segments.join("/"));
+
+    Ok(parsed.to_string())
+}
+
 impl ReleaseServerClient {
     /// Create a new release server client
     pub fn new(client: DownloadClient, base_url: String) -> Self {
-        Self { client, base_url }
+        Self {
+            client,
+            base_url: normalize_base_url(&base_url).unwrap_or(base_url),
+        }
     }
 
     /// Fetch the release index
