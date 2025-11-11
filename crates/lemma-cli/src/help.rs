@@ -119,14 +119,14 @@ pub static WHICH_HELP: &str = r"DISCUSSION:
         $ lemma which --toolchain stable lean
         ~/.lemma/toolchains/stable/bin/lean";
 
-pub static UPDATE_HELP: &str = r"DISCUSSION:
-    Updates installed toolchains to their latest versions. If a specific
-    toolchain is specified, only that toolchain is updated. Otherwise,
-    all updateable toolchains are updated.
+pub static TOOLCHAIN_UPGRADE_HELP: &str = r"DISCUSSION:
+    Upgrades installed toolchains to their latest versions. If a specific
+    toolchain is specified, only that toolchain is upgraded. Otherwise,
+    all upgradeable toolchains are upgraded.
 
     Toolchains that are pinned to specific versions (like 'v4.24.0') are
-    skipped during update. Only channel toolchains (like 'stable') are
-    automatically updated.";
+    skipped during upgrade. Only channel toolchains (like 'stable') are
+    automatically upgraded.";
 
 pub static COMPLETIONS_HELP: &str = r"DISCUSSION:
     One can generate a completion script for `lemma` that is

@@ -146,13 +146,6 @@ pub enum Commands {
         toolchain: Option<String>,
     },
 
-    /// Update installed toolchains
-    #[command(after_long_help = help::UPDATE_HELP)]
-    Update {
-        /// Specific toolchain to update (updates all if not specified)
-        toolchain: Option<String>,
-    },
-
     /// Run a command with a toolchain
     #[command(after_long_help = help::RUN_HELP)]
     Run {
@@ -249,6 +242,13 @@ pub enum ToolchainCommands {
 
         /// Path to the toolchain directory
         path: String,
+    },
+
+    /// Upgrade installed toolchains
+    #[command(after_long_help = help::TOOLCHAIN_UPGRADE_HELP)]
+    Upgrade {
+        /// Specific toolchain to upgrade (upgrades all if not specified)
+        toolchain: Option<String>,
     },
 }
 

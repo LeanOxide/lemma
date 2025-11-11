@@ -15,7 +15,7 @@ pub mod run;
 pub mod self_update;
 pub mod show;
 pub mod uninstall;
-pub mod update;
+pub mod upgrade;
 pub mod which;
 
 use anyhow::Result;
@@ -44,8 +44,6 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
         Commands::Which { binary, toolchain } => {
             which::execute(&binary, toolchain.as_deref(), &settings)
         }
-
-        Commands::Update { toolchain } => update::execute(toolchain.as_deref(), &settings),
 
         Commands::Run { toolchain, command } => run::execute(&toolchain, &command, &settings),
 
@@ -88,6 +86,10 @@ fn handle_toolchain_command(command: ToolchainCommands, settings: &GlobalSetting
             // Ensure setup for link command too
             Config::ensure_setup()?;
             link::execute(&name, &path, settings)
+        }
+
+        ToolchainCommands::Upgrade { toolchain } => {
+            upgrade::execute(toolchain.as_deref(), settings)
         }
     }
 }

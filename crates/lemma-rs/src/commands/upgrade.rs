@@ -1,4 +1,4 @@
-//! Update command - Update installed toolchains
+//! Upgrade command - Upgrade installed toolchains
 
 use anyhow::Result;
 use colored::Colorize;
@@ -11,15 +11,15 @@ use lemma_toolchain::ToolchainDesc;
 
 pub fn execute(toolchain: Option<&str>, _settings: &GlobalSettings) -> Result<()> {
     if let Some(name) = toolchain {
-        // Update specific toolchain
-        update_toolchain(name)
+        // Upgrade specific toolchain
+        upgrade_toolchain(name)
     } else {
-        // Update all updateable toolchains
-        update_all_toolchains()
+        // Upgrade all upgradeable toolchains
+        upgrade_all_toolchains()
     }
 }
 
-fn update_toolchain(name: &str) -> Result<()> {
+fn upgrade_toolchain(name: &str) -> Result<()> {
     let installer = Installer::new()?;
 
     // Parse the toolchain descriptor first to get canonical name
@@ -37,7 +37,7 @@ fn update_toolchain(name: &str) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Checking for updates: {}", "=>".cyan().bold(), name);
+    println!("{} Checking for upgrades: {}", "=>".cyan().bold(), name);
 
     // Fetch the latest release information
     let release = installer.fetch_release(&toolchain_desc)?;
@@ -63,15 +63,15 @@ fn update_toolchain(name: &str) -> Result<()> {
         println!("   Latest:  {}", release.name);
     }
 
-    // Perform the update
-    println!("{} Updating toolchain...", "=>".cyan().bold());
+    // Perform the upgrade
+    println!("{} Upgrading toolchain...", "=>".cyan().bold());
     installer.install(name, true)?;
 
     Ok(())
 }
 
-fn update_all_toolchains() -> Result<()> {
-    println!("{} Updating all toolchains...", "=>".green().bold());
+fn upgrade_all_toolchains() -> Result<()> {
+    println!("{} Upgrading all toolchains...", "=>".green().bold());
     println!();
 
     let toolchains_dir = Config::toolchains_dir()?;
@@ -120,7 +120,7 @@ fn update_all_toolchains() -> Result<()> {
                 continue;
             }
 
-            // Check if update is needed
+            // Check if upgrade is needed
             println!("   Checking {}...", name.bold());
             let installer = Installer::new()?;
 
@@ -162,13 +162,13 @@ fn update_all_toolchains() -> Result<()> {
                 println!("   Latest: {}", release.name);
             }
 
-            // Perform the update
+            // Perform the upgrade
             match installer.install(&name, true) {
                 Ok(_) => {
                     updated_count += 1;
                 }
                 Err(e) => {
-                    println!("   {} Failed to update {}: {}", "✗".red(), name, e);
+                    println!("   {} Failed to upgrade {}: {}", "✗".red(), name, e);
                 }
             }
             println!();
@@ -177,7 +177,7 @@ fn update_all_toolchains() -> Result<()> {
 
     println!();
     println!(
-        "{} Updated {} toolchain(s), skipped {}",
+        "{} Upgraded {} toolchain(s), skipped {}",
         "✓".green().bold(),
         updated_count,
         skipped_count
@@ -190,8 +190,8 @@ fn update_all_toolchains() -> Result<()> {
 fn is_specific_version(name: &str) -> bool {
     // Use toolchain descriptor parsing for accurate detection
     if let Ok(desc) = ToolchainDesc::parse(name) {
-        // Only tracking channels (stable, beta, nightly) should auto-update
-        // Return true if it's NOT a tracking channel (i.e., should skip updates)
+        // Only tracking channels (stable, beta, nightly) should auto-upgrade
+        // Return true if it's NOT a tracking channel (i.e., should skip upgrades)
         !desc.is_tracking_channel()
     } else {
         // Fallback to heuristic detection for edge cases
