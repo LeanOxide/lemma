@@ -64,9 +64,6 @@ pub fn execute(
     }
 
     if show_available && !available_releases.is_empty() {
-        if !installed_toolchains.is_empty() {
-            writeln!(printer.stdout())?;
-        }
         printer.header("Available for download")?;
         display_available_releases(&available_releases, printer)?;
     }
