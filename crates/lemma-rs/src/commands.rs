@@ -29,7 +29,7 @@ use lemma_output::Printer;
 /// Dispatch and execute a command
 pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()> {
     // Create printer from settings for consistent output handling
-    let printer = Printer::from_settings(&settings);
+    let printer = Printer::new(settings.is_quiet(), settings.is_verbose(), settings.use_colors());
     match command {
         Commands::Lean { command } => handle_toolchain_command(command, &settings, &printer),
 

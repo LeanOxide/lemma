@@ -131,12 +131,6 @@ impl ToolchainDesc {
         }
     }
 
-    /// Check if this is a local toolchain
-    #[allow(dead_code)]
-    pub fn is_local(&self) -> bool {
-        matches!(self, Self::Local { .. })
-    }
-
     /// Check if this toolchain should auto-update (is a tracking channel)
     pub fn is_tracking_channel(&self) -> bool {
         match self {
@@ -148,7 +142,6 @@ impl ToolchainDesc {
     }
 
     /// Get the origin for a remote toolchain, or None for local
-    #[allow(dead_code)]
     pub fn origin(&self) -> Option<&str> {
         match self {
             Self::Remote { origin, .. } => Some(origin),

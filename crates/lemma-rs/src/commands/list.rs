@@ -1,11 +1,9 @@
 //! List command - Show installed toolchains
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use colored::Colorize;
-use std::fs;
 
-use lemma_config::Config;
-use lemma_config::GlobalSettings;
+use lemma_config::{Config, GlobalSettings, ToolchainRegistry};
 use lemma_download::{DownloadClient, ReleaseServerClient};
 use lemma_output::Printer;
 
@@ -22,17 +20,18 @@ pub fn execute(
     // Get active toolchain (from environment, override, project file, or default)
     let active_toolchain = lemma_config::resolve_toolchain(None)?;
 
-    let toolchains_dir = Config::toolchains_dir()?;
+    // Create toolchain registry
+    let registry = ToolchainRegistry::new(&Config::lemma_home()?);
 
     let show_installed = !only_available;
     let show_available = !only_installed;
 
     // Collect installed toolchains
-    let mut installed_toolchains = Vec::new();
-
-    if show_installed && toolchains_dir.exists() {
-        installed_toolchains = collect_installed_toolchains(&toolchains_dir)?;
-    }
+    let installed_toolchains = if show_installed {
+        registry.list_installed()?
+    } else {
+        Vec::new()
+    };
 
     // Fetch available toolchains from release server
     let mut available_releases = Vec::new();
@@ -57,7 +56,13 @@ pub fn execute(
     // Display sections
     if show_installed && !installed_toolchains.is_empty() {
         printer.header("Installed toolchains")?;
-        display_installed_toolchains(&installed_toolchains, &active_toolchain, &config, printer)?;
+        display_installed_toolchains(
+            &installed_toolchains,
+            &active_toolchain,
+            &config,
+            &registry,
+            printer,
+        )?;
     }
 
     if show_available && !available_releases.is_empty() {
@@ -68,72 +73,13 @@ pub fn execute(
     Ok(())
 }
 
-/// Collect installed toolchains from the toolchains directory
-fn collect_installed_toolchains(
-    toolchains_dir: &std::path::Path,
-) -> Result<
-    Vec<(
-        String,
-        String,
-        std::path::PathBuf,
-        Option<lemma_toolchain::ToolchainDesc>,
-    )>,
-> {
-    let entries = fs::read_dir(toolchains_dir).with_context(|| {
-        format!(
-            "Failed to read toolchains directory: {}",
-            toolchains_dir.display()
-        )
-    })?;
-
-    let mut toolchains = Vec::new();
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-
-        // Skip non-directories and temp directories
-        if !path.is_dir() {
-            continue;
-        }
-
-        let dir_name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_string();
-
-        // Skip temp directories (ending with .tmp)
-        if dir_name.ends_with(".tmp") {
-            continue;
-        }
-
-        // Parse the directory name to get the canonical toolchain name and desc
-        let (name, desc) = match lemma_toolchain::ToolchainDesc::from_directory_name(&dir_name) {
-            Ok(desc) => {
-                let name = desc.to_string();
-                (name, Some(desc))
-            }
-            Err(_) => (dir_name.clone(), None), // Fallback to directory name if parsing fails
-        };
-
-        toolchains.push((name, dir_name, path, desc));
-    }
-
-    // Sort toolchains by name
-    toolchains.sort_by(|a, b| a.0.cmp(&b.0));
-
-    Ok(toolchains)
-}
-
 /// Fetch available releases from the release server
 fn fetch_available_releases(
     lean_downloads_json_url: Option<&str>,
     config: &Config,
 ) -> Result<Vec<(String, String)>> {
     let client = DownloadClient::new()?;
-    let base_url = lean_downloads_json_url
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| config.lean_release_url());
+    let base_url = config.resolve_release_url(lean_downloads_json_url);
     let release_client = ReleaseServerClient::new(client, base_url);
 
     let index = release_client.fetch_index()?;
@@ -167,20 +113,31 @@ fn fetch_available_releases(
 
 /// Display installed toolchains
 fn display_installed_toolchains(
-    toolchains: &[(
-        String,
-        String,
-        std::path::PathBuf,
-        Option<lemma_toolchain::ToolchainDesc>,
-    )],
+    toolchains: &[lemma_config::InstalledToolchain],
     active_toolchain: &Option<String>,
     config: &Config,
+    registry: &ToolchainRegistry,
     printer: &Printer,
 ) -> Result<()> {
-    for (name, _dir_name, _path, _desc) in toolchains {
+    for tc in toolchains {
+        let name = &tc.name;
+
         // Check if this toolchain is active and/or default
-        let is_active = active_toolchain.as_ref() == Some(name);
-        let is_default = config.default_toolchain.as_ref() == Some(name);
+        let is_active = if let Some(ref active_name) = active_toolchain {
+            if let Some(ref desc) = tc.desc {
+                registry.is_active(desc, active_name)
+            } else {
+                active_name == name
+            }
+        } else {
+            false
+        };
+
+        let is_default = if let Some(ref desc) = tc.desc {
+            registry.is_default(desc, config)
+        } else {
+            config.default_toolchain.as_ref() == Some(name)
+        };
 
         // Build status string
         let status = match (is_active, is_default) {

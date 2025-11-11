@@ -50,7 +50,7 @@ fn fetch_mathlib(
     printer: &Printer,
 ) -> Result<()> {
     let _ = settings;
-    use crate::sparse_cache::mathlib::MathlibCacheFetcher;
+    use lemma_sparse_cache::mathlib::MathlibCacheFetcher;
 
     let fetcher = MathlibCacheFetcher::new()?;
 

@@ -294,7 +294,7 @@ fn format_bytes(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sparse_cache::r2_client::{DependencyIndex, ModuleInfo};
+    use crate::r2_client::{DependencyIndex, ModuleInfo};
     use std::collections::HashMap;
 
     fn sample_index() -> DependencyIndex {

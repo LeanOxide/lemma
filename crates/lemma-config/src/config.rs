@@ -569,6 +569,28 @@ impl Config {
             .cloned()
             .unwrap_or_else(|| "https://release.lean-lang.org".to_string())
     }
+
+    /// Resolve the Lean release URL with precedence
+    ///
+    /// Priority order:
+    /// 1. Explicit override parameter (from CLI --lean-release-json-url)
+    /// 2. Environment variable LEMMA_RELEASE_URL
+    /// 3. Config file release_url
+    /// 4. Default: https://release.lean-lang.org
+    ///
+    /// This centralizes release URL resolution logic that was previously
+    /// scattered across multiple commands.
+    pub fn resolve_release_url(&self, override_url: Option<&str>) -> String {
+        // Priority 1: Explicit override from CLI
+        if let Some(url) = override_url {
+            return url.to_string();
+        }
+
+        // Priority 2 & 3: Environment variable (via config loading) or config file
+        // Note: The environment variable is already checked during config loading
+        // and takes precedence over the config file value
+        self.lean_release_url()
+    }
 }
 
 // ============================================================================

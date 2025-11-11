@@ -910,6 +910,7 @@ dependencies = [
  "lemma-download",
  "lemma-install",
  "lemma-output",
+ "lemma-sparse-cache",
  "lemma-static",
  "lemma-toolchain",
  "proptest",
@@ -947,6 +948,7 @@ dependencies = [
  "lemma-static",
  "lemma-toolchain",
  "serde",
+ "tempfile",
  "toml 0.8.23",
  "tracing",
 ]
@@ -1001,7 +1003,6 @@ version = "0.1.5"
 dependencies = [
  "colored",
  "indicatif",
- "lemma-config",
 ]
 
 [[package]]
@@ -1010,6 +1011,24 @@ version = "0.1.5"
 dependencies = [
  "target-lexicon",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "lemma-sparse-cache"
+version = "0.1.5"
+dependencies = [
+ "anyhow",
+ "colored",
+ "lemma-download",
+ "lemma-install",
+ "lemma-static",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tracing",
 ]
 
 [[package]]

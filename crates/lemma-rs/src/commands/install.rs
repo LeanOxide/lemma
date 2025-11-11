@@ -19,10 +19,7 @@ pub fn execute(
         settings.lemma_home.display()
     ))?;
 
-    let installer = match lean_downloads_json_url {
-        Some(url) => Installer::with_url(url.to_string())?,
-        None => Installer::new()?,
-    };
+    let installer = Installer::with_override_url(lean_downloads_json_url)?;
 
     installer.install(toolchain, force)?;
 

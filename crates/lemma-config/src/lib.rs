@@ -192,11 +192,13 @@
 //!    - Both live in the same file but have different semantics
 
 pub mod config;
+pub mod registry;
 pub mod resolution;
 pub mod settings;
 
 // Re-export commonly used types
 pub use config::{ColorChoice, Config, GlobalConfig, PathsConfig};
+pub use registry::{InstalledToolchain, ToolchainRegistry};
 pub use resolution::{
     find_tool_binary, resolve_toolchain, resolve_toolchain_or_fail, resolve_toolchain_with_source,
 };

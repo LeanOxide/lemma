@@ -28,5 +28,8 @@ clap = { workspace = true, features = ["derive", "env"] }
 # Terminal utilities
 colored.workspace = true
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true

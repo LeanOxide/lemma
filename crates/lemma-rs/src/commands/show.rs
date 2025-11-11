@@ -2,11 +2,9 @@
 
 use anyhow::{Context, Result};
 use colored::Colorize;
-use std::fs;
 use std::io::Write;
 
-use lemma_config::Config;
-use lemma_config::GlobalSettings;
+use lemma_config::{Config, GlobalSettings, ToolchainRegistry};
 use lemma_output::Printer;
 use lemma_toolchain as toolchain;
 
@@ -46,84 +44,49 @@ pub fn execute(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     };
     writeln!(printer.stdout(), "{}", separator)?;
 
-    let toolchains_dir = Config::toolchains_dir()?;
-    let mut has_toolchains = false;
+    // Create toolchain registry
+    let registry = ToolchainRegistry::new(&Config::lemma_home()?);
+    let installed_toolchains = registry.list_installed()?;
+    let has_toolchains = !installed_toolchains.is_empty();
 
-    if toolchains_dir.exists() {
-        let mut entries: Vec<_> = fs::read_dir(&toolchains_dir)?
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().is_dir())
-            .collect();
+    if has_toolchains {
+        for tc in &installed_toolchains {
+            let name = &tc.name;
 
-        entries.sort_by_key(|e| e.file_name());
+            // Build status indicators (active, default)
+            let mut status_parts = Vec::new();
 
-        if !entries.is_empty() {
-            has_toolchains = true;
-
-            for entry in entries {
-                if let Some(dir_name) = entry.file_name().to_str() {
-                    // Parse directory name to get canonical toolchain name
-                    let name = match lemma_toolchain::ToolchainDesc::from_directory_name(dir_name) {
-                        Ok(desc) => desc.to_string(),
-                        Err(_) => dir_name.to_string(),
-                    };
-
-                    // Build status indicators (active, default)
-                    let mut status_parts = Vec::new();
-
-                    // Check if active
-                    let is_active = if let Some((active_tc, _)) = &active_toolchain {
-                        if active_tc == &name {
-                            true
-                        } else {
-                            // Check fallback
-                            if let Ok(lean_path) = lemma_config::find_tool_binary(active_tc, "lean")
-                            {
-                                if let Some(bin_dir) = lean_path.parent() {
-                                    if let Some(tc_path) = bin_dir.parent() {
-                                        if let (Ok(entry_canonical), Ok(tc_canonical)) =
-                                            (entry.path().canonicalize(), tc_path.canonicalize())
-                                        {
-                                            entry_canonical == tc_canonical
-                                        } else {
-                                            false
-                                        }
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                    } else {
-                        false
-                    };
-
-                    if is_active {
-                        status_parts.push("active");
-                    }
-
-                    // Check if default
-                    let is_default = config
-                        .default_toolchain
-                        .as_ref()
-                        .map(|d| d == &name)
-                        .unwrap_or(false);
-
-                    if is_default {
-                        status_parts.push("default");
-                    }
-
-                    // Print with status
-                    if status_parts.is_empty() {
-                        writeln!(printer.stdout(), "{}", name)?;
-                    } else {
-                        writeln!(printer.stdout(), "{} ({})", name, status_parts.join(", "))?;
-                    }
+            // Check if active
+            let is_active = if let Some((ref active_name, _)) = active_toolchain {
+                if let Some(ref desc) = tc.desc {
+                    registry.is_active(desc, active_name)
+                } else {
+                    active_name == name
                 }
+            } else {
+                false
+            };
+
+            if is_active {
+                status_parts.push("active");
+            }
+
+            // Check if default
+            let is_default = if let Some(ref desc) = tc.desc {
+                registry.is_default(desc, &config)
+            } else {
+                config.default_toolchain.as_ref() == Some(name)
+            };
+
+            if is_default {
+                status_parts.push("default");
+            }
+
+            // Print with status
+            if status_parts.is_empty() {
+                writeln!(printer.stdout(), "{}", name)?;
+            } else {
+                writeln!(printer.stdout(), "{} ({})", name, status_parts.join(", "))?;
             }
         }
     }

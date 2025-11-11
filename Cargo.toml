@@ -20,6 +20,7 @@ lemma-platform = { path = "crates/lemma-platform" }
 lemma-download = { path = "crates/lemma-download" }
 lemma-install = { path = "crates/lemma-install" }
 lemma-output = { path = "crates/lemma-output" }
+lemma-sparse-cache = { path = "crates/lemma-sparse-cache" }
 
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"

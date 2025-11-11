@@ -29,24 +29,6 @@
 //! printer.hint("You can customize this with --config").unwrap();
 //! ```
 //!
-//! # Integration with Settings
-//!
-//! The [`Printer`] is typically created from [`lemma_config::GlobalSettings`]:
-//!
-//! ```rust,ignore
-//! use lemma_config::GlobalSettings;
-//! use lemma_output::Printer;
-//!
-//! fn my_command(settings: &GlobalSettings) -> Result<(), Box<dyn std::error::Error>> {
-//!     let printer = Printer::from_settings(settings);
-//!
-//!     printer.status("Doing something...")?;
-//!     // ... command logic
-//!     printer.success("Done!")?;
-//!
-//!     Ok(())
-//! }
-//! ```
 
 use colored::*;
 use std::io::{self, Write};
@@ -104,27 +86,6 @@ impl Printer {
         }
     }
 
-    /// Create a printer from global settings
-    ///
-    /// This is the typical way to create a printer in command implementations.
-    ///
-    /// ```rust,ignore
-    /// use lemma_config::GlobalSettings;
-    /// use lemma_output::Printer;
-    ///
-    /// fn execute(settings: &GlobalSettings) -> Result<(), Box<dyn std::error::Error>> {
-    ///     let printer = Printer::from_settings(settings);
-    ///     printer.status("Running command...")?;
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn from_settings(settings: &lemma_config::GlobalSettings) -> Self {
-        Self::new(
-            settings.is_quiet(),
-            settings.is_verbose(),
-            settings.use_colors(),
-        )
-    }
 
     /// Print a status message (=> Installing...)
     ///

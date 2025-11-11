@@ -25,8 +25,16 @@ pub struct Installer {
 impl Installer {
     /// Create a new installer with default release URL
     pub fn new() -> Result<Self> {
+        Self::with_override_url(None)
+    }
+
+    /// Create a new installer with an optional override URL
+    ///
+    /// Uses centralized URL resolution from Config::resolve_release_url
+    pub fn with_override_url(override_url: Option<&str>) -> Result<Self> {
         let config = Config::load()?;
-        Self::with_url(config.lean_release_url())
+        let url = config.resolve_release_url(override_url);
+        Self::with_url(url)
     }
 
     /// Create a new installer with a custom release URL

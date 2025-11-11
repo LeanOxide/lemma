@@ -99,12 +99,6 @@ impl GlobalSettings {
         self.verbose > 0
     }
 
-    /// Get verbosity level for detailed operations.
-    #[allow(dead_code)]
-    pub fn verbosity_level(&self) -> u8 {
-        self.verbose
-    }
-
     /// Check if color output should be enabled.
     ///
     /// Takes into account the color choice and whether we're in a TTY.

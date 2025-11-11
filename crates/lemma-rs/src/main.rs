@@ -25,10 +25,8 @@
 //!
 //! ### Local modules:
 //! - `commands`: Command implementations (install, update, show, etc.)
-//! - `sparse_cache`: Sparse cache implementation for dependency management
 
 mod commands;
-mod sparse_cache;
 
 use anyhow::Result;
 use clap::Parser;
