@@ -58,16 +58,41 @@ impl BuildContext {
     /// 4. Execute compilation tasks in parallel
     /// 5. Link executables and libraries
     pub async fn build(&self) -> Result<()> {
-        // TODO: Phase 1 - Implement module discovery
-        // TODO: Phase 2 - Implement build planning
-        // TODO: Phase 3 - Implement cache checking
+        // Phase 1: Discover all modules
+        let modules = self.module_resolver.discover_modules()?;
+
+        if modules.is_empty() {
+            return Err(Error::ModuleResolution(
+                "No Lean modules found in project".to_string(),
+            ));
+        }
+
+        // Phase 2: Create build plan (topologically sorted)
+        let plan =
+            crate::plan::BuildPlan::from_modules(modules, &self.module_resolver, &self.lakefile)?;
+
+        // Phase 3: Check cache to determine what needs rebuilding
+        let build_dir = self.project_dir.join(&self.lakefile.build_dir);
+        let modules_to_build = self
+            .cache
+            .modules_needing_rebuild(&plan.modules, &build_dir)?;
+
+        if modules_to_build.is_empty() {
+            // Nothing to build
+            return Ok(());
+        }
+
         // TODO: Phase 4 - Implement job scheduling
         // TODO: Phase 5 - Implement compilation
         // TODO: Phase 6 - Implement linking
 
-        Err(Error::Other(
-            "Build functionality not yet implemented. This is Phase 0.".to_string(),
-        ))
+        Err(Error::Other(format!(
+            "Build functionality partially implemented (Phases 1-3 complete). \
+             {} module(s) need rebuilding: {:?}. \
+             Compilation and linking not yet implemented.",
+            modules_to_build.len(),
+            modules_to_build
+        )))
     }
 
     /// Clean the build directory

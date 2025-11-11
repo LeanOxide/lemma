@@ -65,16 +65,28 @@ pub struct Lakefile {
     pub lean_libs: Vec<PathBuf>,
 
     /// Additional lean compiler flags (optional)
-    #[serde(rename = "moreLeanArgs", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "moreLeanArgs",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub more_lean_args: Vec<String>,
 
     /// Additional link flags for executables (optional)
-    #[serde(rename = "moreLinkArgs", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "moreLinkArgs",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub more_link_args: Vec<String>,
 
     /// Default targets to build (optional)
     /// If empty, builds all libraries and executables
-    #[serde(rename = "defaultTargets", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "defaultTargets",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub default_targets: Vec<String>,
 
     /// Custom build options (optional, for extensibility)
@@ -104,7 +116,11 @@ pub struct LibraryTarget {
     pub src_dir: Option<PathBuf>,
 
     /// Additional lean compiler flags for this library
-    #[serde(rename = "moreLeanArgs", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "moreLeanArgs",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub more_lean_args: Vec<String>,
 
     /// Whether to export C bindings (default: true)
@@ -137,11 +153,19 @@ pub struct ExecutableTarget {
     pub support_interpreter: bool,
 
     /// Additional lean compiler flags for this executable
-    #[serde(rename = "moreLeanArgs", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "moreLeanArgs",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub more_lean_args: Vec<String>,
 
     /// Additional link flags for this executable
-    #[serde(rename = "moreLinkArgs", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "moreLinkArgs",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub more_link_args: Vec<String>,
 }
 

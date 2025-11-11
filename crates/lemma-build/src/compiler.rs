@@ -76,7 +76,10 @@ mod tests {
     #[test]
     fn test_create_driver() {
         let driver = CompilationDriver::new(std::path::PathBuf::from("/usr/bin/lean"));
-        assert_eq!(driver.lean_binary, std::path::PathBuf::from("/usr/bin/lean"));
+        assert_eq!(
+            driver.lean_binary,
+            std::path::PathBuf::from("/usr/bin/lean")
+        );
         assert!(driver.flags.is_empty());
     }
 

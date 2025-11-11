@@ -95,22 +95,19 @@ fn execute_lake_wrapper(
             tc
         }
         None => {
-            anyhow::bail!(
-                "No toolchain found. Install one with `lemma lean install stable`"
-            );
+            anyhow::bail!("No toolchain found. Install one with `lemma lean install stable`");
         }
     };
 
     // Find the lake binary in the toolchain
-    let lake_binary = lemma_config::find_tool_binary(&toolchain_name, "lake").with_context(
-        || {
+    let lake_binary =
+        lemma_config::find_tool_binary(&toolchain_name, "lake").with_context(|| {
             format!(
                 "Failed to find 'lake' in toolchain '{}'. \
                  Ensure the toolchain is properly installed.",
                 toolchain_name
             )
-        },
-    )?;
+        })?;
 
     // Build the lake command
     let mut cmd = Command::new(&lake_binary);

@@ -3,7 +3,6 @@
 //! This crate provides types and parsers for Lake project configuration files.
 //! It supports both `lakefile.toml` and (eventually) `lakefile.lean` formats.
 
-
 pub mod error;
 pub mod parser;
 pub mod types;

@@ -93,8 +93,7 @@ where
         self.add_node_if_missing(from.clone());
         self.add_node_if_missing(to.clone());
 
-        if let (Some(&from_idx), Some(&to_idx)) =
-            (self.node_map.get(&from), self.node_map.get(&to))
+        if let (Some(&from_idx), Some(&to_idx)) = (self.node_map.get(&from), self.node_map.get(&to))
         {
             self.graph.add_edge(from_idx, to_idx, ());
         }
