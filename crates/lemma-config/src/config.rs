@@ -10,7 +10,6 @@
 //! ## Preferences (User-configurable)
 //! - Global settings (verbosity, color)
 //! - Path overrides
-//! - Network settings (timeout, proxies)
 //! - Mirror URLs
 //!
 //! ## Configuration Files
@@ -60,7 +59,7 @@ pub enum ColorChoice {
 /// - Can be set in any config file (system, user, or project)
 /// - Merged from all sources with proper precedence
 /// - Can be overridden by environment variables or CLI flags
-/// - Examples: verbosity, colors, network timeouts
+/// - Examples: verbosity, colors
 ///
 /// ## Configuration Sources
 ///
@@ -101,11 +100,6 @@ pub enum ColorChoice {
 /// [paths]
 /// home = "/custom/lemma/home"
 ///
-/// [network]
-/// timeout = 60
-/// retries = 5
-/// http_proxy = "http://proxy.example.com:8080"
-///
 /// lean_release = "https://mirror.example.com/lean"
 /// ```
 ///
@@ -122,13 +116,6 @@ pub enum ColorChoice {
 /// // Check default toolchain (state)
 /// if let Some(default) = &config.default_toolchain {
 ///     println!("Default toolchain: {}", default);
-/// }
-///
-/// // Check network timeout (preference)
-/// if let Some(network) = &config.network {
-///     if let Some(timeout) = network.timeout {
-///         println!("Network timeout: {}s", timeout);
-///     }
 /// }
 /// # Ok::<(), anyhow::Error>(())
 /// ```
@@ -180,10 +167,6 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub paths: Option<PathsConfig>,
 
-    /// Network settings
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<NetworkConfig>,
-
     /// Lean release server URL (overrides default https://release.lean-lang.org)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lean_release: Option<String>,
@@ -198,7 +181,6 @@ impl Default for Config {
             path_setup_shown: false,
             global: None,
             paths: None,
-            network: None,
             lean_release: None,
         }
     }
@@ -229,8 +211,6 @@ impl Config {
     /// - `LEMMA_GLOBAL__VERBOSE` - Verbosity level (0-2)
     /// - `LEMMA_GLOBAL__COLOR` - Color output (always/never/auto)
     /// - `LEMMA_PATHS__HOME` - Custom home path
-    /// - `LEMMA_NETWORK__TIMEOUT` - Network timeout in seconds
-    /// - `LEMMA_NETWORK__RETRIES` - Number of retries for failed requests
     pub fn load() -> Result<Self> {
         // Build merged config using the config crate for preference merging
         let mut builder = config::Config::builder();
@@ -293,7 +273,6 @@ impl Config {
         // LEMMA_GLOBAL__VERBOSE -> global.verbose
         // LEMMA_GLOBAL__COLOR -> global.color
         // LEMMA_PATHS__HOME -> paths.home
-        // LEMMA_NETWORK__TIMEOUT -> network.timeout
         //
         // Note: LEMMA_HOME is handled separately in lemma_home() as it's needed
         // before config loading to determine the config file location.
@@ -645,27 +624,6 @@ pub struct PathsConfig {
     pub toolchains: Option<PathBuf>,
 }
 
-/// Network configuration options
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct NetworkConfig {
-    /// Connection timeout in seconds
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeout: Option<u64>,
-
-    /// Number of retries for failed requests
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub retries: Option<u32>,
-
-    /// HTTP proxy URL
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_proxy: Option<String>,
-
-    /// HTTPS proxy URL
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub https_proxy: Option<String>,
-}
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -683,7 +641,6 @@ mod tests {
         assert!(!config.path_setup_shown);
         assert!(config.global.is_none());
         assert!(config.paths.is_none());
-        assert!(config.network.is_none());
         assert!(config.lean_release.is_none());
     }
 
@@ -715,10 +672,6 @@ color = "auto"
 [paths]
 home = "/custom/path"
 
-[network]
-timeout = 30
-retries = 3
-
 [mirrors]
 lean_release = "https://mirror.example.com/lean"
 "#;
@@ -743,7 +696,6 @@ lean_release = "https://mirror.example.com/lean"
             config.paths.as_ref().unwrap().home,
             Some(PathBuf::from("/custom/path"))
         );
-        assert_eq!(config.network.as_ref().unwrap().timeout, Some(30));
     }
 
     #[test]
@@ -772,7 +724,6 @@ lean_release = "https://mirror.example.com/lean"
         std::env::set_var("LEMMA_GLOBAL__VERBOSE", "2");
         std::env::set_var("LEMMA_GLOBAL__COLOR", "always");
         std::env::set_var("LEMMA_MIRRORS__LEAN_RELEASE", "https://test.mirror.com");
-        std::env::set_var("LEMMA_NETWORK__TIMEOUT", "120");
 
         // Note: We can't easily test Config::load() here as it reads from actual files
         // and depends on the filesystem state. The environment variable handling
@@ -782,6 +733,5 @@ lean_release = "https://mirror.example.com/lean"
         std::env::remove_var("LEMMA_GLOBAL__VERBOSE");
         std::env::remove_var("LEMMA_GLOBAL__COLOR");
         std::env::remove_var("LEMMA_MIRRORS__LEAN_RELEASE");
-        std::env::remove_var("LEMMA_NETWORK__TIMEOUT");
     }
 }

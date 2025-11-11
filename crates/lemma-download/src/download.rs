@@ -1,7 +1,7 @@
 //! Download client with retry logic and progress reporting
 //!
-//! - Uses environment variables for proxy (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)
-//! - Automatic retry with exponential backoff
+//! - Automatic retry with exponential backoff (hardcoded: 3 retries)
+//! - Connection timeout: 30 seconds (hardcoded)
 //! - Download resumption for partial downloads
 //! - Progress reporting
 
@@ -32,56 +32,24 @@ pub struct DownloadClient {
 }
 
 impl DownloadClient {
-    /// Create a new download client with default settings
+    /// Create a new download client with hardcoded settings
+    ///
+    /// Uses sensible defaults:
+    /// - Connection timeout: 30 seconds
+    /// - Max retries: 3
+    /// - Standard proxy environment variables (HTTP_PROXY, HTTPS_PROXY)
     pub fn new() -> Result<Self> {
-        Self::with_settings(DEFAULT_CONNECT_TIMEOUT_SECS, DEFAULT_MAX_RETRIES, None, None)
-    }
-
-    /// Create a download client from global settings
-    pub fn from_settings(settings: &lemma_config::GlobalSettings) -> Result<Self> {
-        Self::with_settings(
-            settings.network_timeout,
-            settings.network_retries,
-            settings.http_proxy.clone(),
-            settings.https_proxy.clone(),
-        )
-    }
-
-    /// Create a download client with specific network settings
-    fn with_settings(
-        timeout_secs: u64,
-        max_retries: u32,
-        http_proxy: Option<String>,
-        https_proxy: Option<String>,
-    ) -> Result<Self> {
-        let mut builder = Client::builder()
-            .connect_timeout(Duration::from_secs(timeout_secs))
-            .timeout(Duration::from_secs(timeout_secs))
+        let client = Client::builder()
+            .connect_timeout(Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS))
+            .timeout(Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS))
             .user_agent(format!("lemma/{}", env!("CARGO_PKG_VERSION")))
-            .redirect(reqwest::redirect::Policy::limited(10));
-
-        // Add proxies if specified
-        if let Some(proxy_url) = http_proxy {
-            builder = builder.proxy(
-                reqwest::Proxy::http(&proxy_url)
-                    .context("Failed to configure HTTP proxy")?,
-            );
-        }
-
-        if let Some(proxy_url) = https_proxy {
-            builder = builder.proxy(
-                reqwest::Proxy::https(&proxy_url)
-                    .context("Failed to configure HTTPS proxy")?,
-            );
-        }
-
-        let client = builder
+            .redirect(reqwest::redirect::Policy::limited(10))
             .build()
             .context("Failed to create HTTP client")?;
 
         Ok(Self {
             client,
-            max_retries,
+            max_retries: DEFAULT_MAX_RETRIES,
         })
     }
 
