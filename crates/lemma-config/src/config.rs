@@ -87,9 +87,9 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<NetworkConfig>,
 
-    /// Mirror settings (includes lean_release URL)
+    /// Lean release server URL (overrides default https://release.lean-lang.org)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mirrors: Option<MirrorsConfig>,
+    pub lean_release: Option<String>,
 }
 
 impl Default for Config {
@@ -102,7 +102,7 @@ impl Default for Config {
             global: None,
             paths: None,
             network: None,
-            mirrors: None,
+            lean_release: None,
         }
     }
 }
@@ -488,9 +488,9 @@ impl Config {
     /// Checks mirrors.lean_release in config, falls back to default.
     /// Can be overridden by LEMMA_RELEASE_URL environment variable.
     pub fn lean_release_url(&self) -> String {
-        self.mirrors
+        self.lean_release
             .as_ref()
-            .and_then(|m| m.lean_release.clone())
+            .cloned()
             .unwrap_or_else(|| "https://release.lean-lang.org".to_string())
     }
 }
@@ -569,23 +569,6 @@ pub struct NetworkConfig {
     pub https_proxy: Option<String>,
 }
 
-/// Mirror configuration options
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct MirrorsConfig {
-    /// Lean release server URL (overrides default https://release.lean-lang.org)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lean_release: Option<String>,
-
-    /// GitHub releases mirror URL
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub github: Option<String>,
-
-    /// Custom download mirror URL
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub download: Option<String>,
-}
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -604,7 +587,7 @@ mod tests {
         assert!(config.global.is_none());
         assert!(config.paths.is_none());
         assert!(config.network.is_none());
-        assert!(config.mirrors.is_none());
+        assert!(config.lean_release.is_none());
     }
 
     #[test]
@@ -664,25 +647,14 @@ lean_release = "https://mirror.example.com/lean"
             Some(PathBuf::from("/custom/path"))
         );
         assert_eq!(config.network.as_ref().unwrap().timeout, Some(30));
-        assert_eq!(
-            config.mirrors.as_ref().unwrap().lean_release,
-            Some("https://mirror.example.com/lean".to_string())
-        );
     }
 
     #[test]
     fn test_lean_release_url() {
-        let mut config = Config::default();
+        let config = Config::default();
 
         // Default URL
         assert_eq!(config.lean_release_url(), "https://release.lean-lang.org");
-
-        // Custom mirror
-        config.mirrors = Some(MirrorsConfig {
-            lean_release: Some("https://custom.mirror.com".to_string()),
-            ..Default::default()
-        });
-        assert_eq!(config.lean_release_url(), "https://custom.mirror.com");
     }
 
     #[test]
