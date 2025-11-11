@@ -430,3 +430,51 @@ pub static INIT_HELP: &str = r"DISCUSSION:
         $ lemma init mylib --lib        # Create 'mylib' library
         $ lemma init --bare             # Minimal setup
         $ lemma init --path ./projects/myapp myapp";
+
+pub static BUILD_HELP: &str = r"DISCUSSION:
+    Build the current Lean project using Lake. This command wraps the
+    `lake build` command from your active toolchain, automatically
+    detecting the appropriate toolchain based on your project settings.
+
+    By default, lemma will use the active toolchain determined by:
+    1. The --toolchain flag if specified
+    2. The LEMMA_TOOLCHAIN environment variable
+    3. Directory override (set with `lemma override set`)
+    4. The lean-toolchain file in the project
+    5. The default toolchain
+
+    You can specify build targets such as specific modules, libraries,
+    or executables. If no targets are specified, Lake will build the
+    default targets defined in your lakefile.
+
+    USAGE:
+
+        $ lemma build                   # Build default targets
+        $ lemma build MyModule          # Build specific module
+        $ lemma build exe:mytool        # Build specific executable
+        $ lemma build lib:mylib         # Build specific library
+
+    FLAGS:
+
+        -t, --toolchain <TOOLCHAIN>
+            Override the toolchain to use for building
+
+        --path <PATH>
+            Path to the Lean project (defaults to current directory)
+
+    EXAMPLES:
+
+        $ lemma build
+        Build the current project with active toolchain
+
+        $ lemma build MyModule OtherModule
+        Build specific modules
+
+        $ lemma build --toolchain v4.24.0
+        Build with a specific toolchain
+
+        $ lemma build --path ./myproject
+        Build a project in a different directory
+
+        $ lemma build -- --verbose
+        Pass --verbose flag to lake";

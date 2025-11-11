@@ -219,6 +219,22 @@ pub enum Commands {
         no_readme: bool,
     },
 
+    /// Build the current Lean project
+    #[command(after_long_help = help::BUILD_HELP)]
+    Build {
+        /// Toolchain to use for building (defaults to active toolchain)
+        #[arg(short, long)]
+        toolchain: Option<String>,
+
+        /// Project path (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Build targets and additional arguments to pass to lake
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
     /// Modify the lemma installation
     #[command(after_long_help = help::SELF_HELP)]
     #[command(name = "self")]

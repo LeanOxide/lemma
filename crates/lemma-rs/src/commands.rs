@@ -3,6 +3,7 @@
 //! This module contains all command implementations, organized into
 //! separate files for better maintainability.
 
+pub mod build;
 pub mod cache;
 pub mod completions;
 pub mod default;
@@ -82,6 +83,18 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
             no_readme,
         } => init::execute(
             name, path, bare, std, exe, lib, no_readme, &settings, &printer,
+        ),
+
+        Commands::Build {
+            toolchain,
+            path,
+            args,
+        } => build::execute(
+            toolchain.as_deref(),
+            path.as_deref(),
+            &args,
+            &settings,
+            &printer,
         ),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
