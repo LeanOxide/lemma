@@ -271,10 +271,24 @@ impl BuildContext {
             }
         };
 
-        // Calculate total jobs including linking
+        // Calculate total jobs including linking (respecting defaultTargets)
+        let should_build_all = self.lakefile.default_targets.is_empty();
+        let default_targets_set: std::collections::HashSet<&str> =
+            self.lakefile.default_targets.iter().map(|s| s.as_str()).collect();
+
+        let executables_to_build = if should_build_all {
+            self.lakefile.executables.len()
+        } else {
+            self.lakefile.executables.iter()
+                .filter(|exe| default_targets_set.contains(exe.name.as_str()))
+                .count()
+        };
+
+        // Note: We don't generate .a files for libraries (matching lake behavior)
+        // So libraries don't add to the linking job count
+
         let total_jobs_including_linking = modules_to_build.len()
-            + self.lakefile.executables.len()
-            + self.lakefile.libraries.len();
+            + executables_to_build;
 
         // Create multi-progress for managing multiple progress bars
         let multi_progress = Arc::new(MultiProgress::new());
@@ -304,9 +318,14 @@ impl BuildContext {
 
         // Phase 6: Link executables and libraries
         // Use the dependency graph from Phase 2 (already cloned in Phase 4)
+        // Note: should_build_all and default_targets_set were already computed above
 
-        // Link all executables defined in the lakefile
+        // Link executables (only those in defaultTargets if specified)
         for executable in &self.lakefile.executables {
+            // Skip if not in defaultTargets (unless we're building all)
+            if !should_build_all && !default_targets_set.contains(executable.name.as_str()) {
+                continue;
+            }
             let output_path = build_dir.join("bin").join(&executable.name);
 
             let start = std::time::Instant::now();
@@ -320,17 +339,70 @@ impl BuildContext {
             let exe_modules = match self.collect_transitive_dependencies_with_graph(root_module_name, &all_modules, &dep_graph) {
                 Ok(modules) => modules,
                 Err(_) => {
-                    // If root module not found and executable has custom srcDir, it's likely
-                    // a single-file executable that wasn't discovered in the main module scan
-                    // For now, skip linking such executables (they would need separate compilation)
-                    eprintln!(
-                        "Warning: Skipping executable '{}' - root module '{}' not found (custom srcDir: {:?})",
-                        executable.name,
-                        root_module_name,
-                        executable.src_dir
-                    );
-                    main_pb.inc(1);
-                    continue;
+                    // If root module not found and executable has custom srcDir,
+                    // we need to discover and compile modules from that directory
+                    if let Some(ref custom_src_dir) = executable.src_dir {
+                        // Create a temporary resolver for the custom srcDir
+                        let temp_lakefile = lemma_lakefile::Lakefile {
+                            name: self.lakefile.name.clone(),
+                            src_dir: custom_src_dir.clone(),
+                            build_dir: self.lakefile.build_dir.clone(),
+                            lean_options: self.lakefile.lean_options.clone(),
+                            ..Default::default()
+                        };
+
+                        let temp_resolver = crate::module::ModuleResolver::new(&self.project_dir, &temp_lakefile)?;
+                        let custom_modules = temp_resolver.discover_modules()?;
+
+                        // Verify the root module exists in custom modules
+                        if !custom_modules.iter().any(|m| m.name == root_module_name) {
+                            return Err(Error::ModuleResolution(format!(
+                                "Root module '{}' not found in custom srcDir '{}'",
+                                root_module_name, custom_src_dir.display()
+                            )));
+                        }
+
+                        // Compile the custom modules
+                        for module in &custom_modules {
+                            driver.compile_module(module, &build_dir).await?;
+                        }
+
+                        // Collect dependencies from the main project
+                        // Custom modules may import modules from the main project
+                        let mut exe_modules_with_deps = Vec::new();
+
+                        // First, add all main project modules that custom modules depend on
+                        for custom_mod in &custom_modules {
+                            for import in &custom_mod.imports {
+                                // If this import is in the main project, include its transitive deps
+                                if all_modules.iter().any(|m| &m.name == import) {
+                                    match self.collect_transitive_dependencies_with_graph(import, &all_modules, &dep_graph) {
+                                        Ok(mut deps) => {
+                                            for dep in deps {
+                                                if !exe_modules_with_deps.iter().any(|m: &Module| m.name == dep.name) {
+                                                    exe_modules_with_deps.push(dep);
+                                                }
+                                            }
+                                        }
+                                        Err(_) => {} // Skip if not found
+                                    }
+                                }
+                            }
+                        }
+
+                        // Then add custom modules themselves
+                        exe_modules_with_deps.extend(custom_modules);
+
+                        exe_modules_with_deps
+                    } else {
+                        eprintln!(
+                            "Warning: Skipping executable '{}' - root module '{}' not found",
+                            executable.name,
+                            root_module_name
+                        );
+                        main_pb.inc(1);
+                        continue;
+                    }
                 }
             };
 
@@ -343,49 +415,9 @@ impl BuildContext {
             main_pb.inc(1);
         }
 
-        // Link all libraries defined in the lakefile
-        for library in &self.lakefile.libraries {
-            let lib_name = format!("lib{}.a", library.name);
-            let output_path = build_dir.join("lib").join(&lib_name);
-
-            let start = std::time::Instant::now();
-
-            // For libraries, we need to include all modules that match the library's definition
-            let lib_modules = if !library.globs.is_empty() {
-                // If globs are specified, include all matching modules and their dependencies
-                use regex::Regex;
-                let mut lib_modules = Vec::new();
-                for glob in &library.globs {
-                    // Convert glob to regex (simple conversion: "+" -> ".+", "*" -> ".*")
-                    let regex_pattern = glob.replace("+", ".+").replace("*", ".*");
-                    if let Ok(re) = Regex::new(&format!("^{}$", regex_pattern)) {
-                        for module in &all_modules {
-                            if re.is_match(&module.name) {
-                                // Collect this module and its dependencies
-                                let deps = self.collect_transitive_dependencies_with_graph(&module.name, &all_modules, &dep_graph)?;
-                                for dep in deps {
-                                    if !lib_modules.iter().any(|m: &Module| m.name == dep.name) {
-                                        lib_modules.push(dep);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                lib_modules
-            } else {
-                // Otherwise, use all modules (or filter by root if specified)
-                all_modules.to_vec()
-            };
-
-            driver
-                .link_library(&library.name, &lib_modules, &output_path)
-                .await?;
-            let elapsed = start.elapsed().as_millis();
-
-            main_pb.set_message(format!("Running {} ({}ms)", library.name, elapsed));
-            main_pb.inc(1);
-        }
+        // Note: Lake doesn't generate .a static libraries by default
+        // Libraries are represented by their .olean files only
+        // Static library generation can be added as an optional feature later if needed
 
         // Finish progress bar
         main_pb.finish_with_message(format!(
