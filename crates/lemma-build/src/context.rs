@@ -85,6 +85,10 @@ impl BuildContext {
 
         // Phase 4: Execute jobs in parallel using the scheduler
         let concurrency = num_cpus::get();
+
+        // Save modules before they're moved into the scheduler
+        let all_modules = plan.modules.clone();
+
         let mut scheduler = crate::scheduler::JobScheduler::new(
             plan.modules
                 .into_iter()
@@ -107,13 +111,18 @@ impl BuildContext {
             lean_binary,
             self.project_dir.join(&self.lakefile.src_dir),
             build_dir.clone(),
+            self.lakefile.name.clone(),
         );
         let driver = std::sync::Arc::new(driver);
 
+        // Clone for use in closure
+        let driver_for_compile = std::sync::Arc::clone(&driver);
+        let build_dir_for_compile = build_dir.clone();
+
         // Define the compilation job function
         let job_fn = move |module: crate::module::Module| {
-            let driver = std::sync::Arc::clone(&driver);
-            let build_dir = build_dir.clone();
+            let driver = std::sync::Arc::clone(&driver_for_compile);
+            let build_dir = build_dir_for_compile.clone();
             async move {
                 // Compile the module
                 driver.compile_module(&module, &build_dir).await?;
@@ -125,7 +134,28 @@ impl BuildContext {
         scheduler.execute_all(job_fn).await?;
 
         // TODO: Phase 5 - Update build cache with new hashes
-        // TODO: Phase 6 - Implement linking
+
+        // Phase 6: Link executables and libraries
+        // Link all executables defined in the lakefile
+        for executable in &self.lakefile.executables {
+            let output_path = build_dir.join("bin").join(&executable.name);
+
+            // For now, link all modules (TODO: filter by executable.root)
+            driver
+                .link_executable(&executable.name, &all_modules, &output_path)
+                .await?;
+        }
+
+        // Link all libraries defined in the lakefile
+        for library in &self.lakefile.libraries {
+            let lib_name = format!("lib{}.a", library.name);
+            let output_path = build_dir.join("lib").join(&lib_name);
+
+            // For now, link all modules (TODO: filter by library.root)
+            driver
+                .link_library(&library.name, &all_modules, &output_path)
+                .await?;
+        }
 
         Ok(())
     }

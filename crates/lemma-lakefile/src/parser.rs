@@ -57,11 +57,11 @@ description = "A test project"
 license = "MIT"
 leanVersion = "v4.24.0"
 
-[[lib]]
+[[lean_lib]]
 name = "MyLib"
 root = "MyLib.lean"
 
-[[exe]]
+[[lean_exe]]
 name = "myexe"
 root = "Main.lean"
 

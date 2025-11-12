@@ -9,12 +9,14 @@ use std::path::{Path, PathBuf};
 pub fn execute(
     path: Option<&str>,
     native: bool,
+    clear: bool,
+    out_dir: Option<&str>,
     targets: &[String],
     settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
     if native {
-        execute_native_build(path, targets, settings, printer)
+        execute_native_build(path, clear, out_dir, targets, settings, printer)
     } else {
         execute_lake_wrapper(path, targets, settings, printer)
     }
@@ -23,6 +25,8 @@ pub fn execute(
 /// Execute build using the native lemma build system
 fn execute_native_build(
     path: Option<&str>,
+    clear: bool,
+    out_dir: Option<&str>,
     _targets: &[String],
     _settings: &GlobalSettings,
     printer: &Printer,
@@ -39,21 +43,36 @@ fn execute_native_build(
     // Validate that this is a Lean project
     validate_lean_project(&project_dir)?;
 
+    // Determine build directory
+    let build_dir = if let Some(out) = out_dir {
+        PathBuf::from(out)
+    } else {
+        project_dir.join(".lake").join("build")
+    };
+
+    // Clear build directory if requested
+    if clear {
+        if build_dir.exists() {
+            printer.status(format!("Clearing build directory: {}", build_dir.display()))?;
+            std::fs::remove_dir_all(&build_dir)
+                .context("Failed to clear build directory")?;
+        }
+    }
+
     // Create a Tokio runtime to run the async build
-    let runtime = tokio::runtime::Runtime::new()
-        .context("Failed to create async runtime")?;
+    let runtime = tokio::runtime::Runtime::new().context("Failed to create async runtime")?;
 
     runtime.block_on(async {
-        // Create the build context
-        printer.status("Loading project configuration...")?;
-        let context = lemma_build::BuildContext::from_directory(&project_dir)
+        let mut context = lemma_build::BuildContext::from_directory(&project_dir)
             .context("Failed to create build context")?;
 
-        printer.status(format!("Building project: {}", context.lakefile.name))?;
+        // Override build directory if custom out_dir was specified
+        if let Some(out) = out_dir {
+            context.lakefile.build_dir = PathBuf::from(out);
+        }
+
         printer.hint("Native build system: Phases 1-5 complete (compilation ready)")?;
 
-        // Execute the build
-        printer.status("Discovering modules and analyzing dependencies...")?;
         match context.build().await {
             Ok(()) => {
                 printer.success("Build completed successfully")?;
@@ -63,7 +82,9 @@ fn execute_native_build(
                 // Check if this is a "not yet implemented" error for linking
                 let err_msg = e.to_string();
                 if err_msg.contains("Linking not yet implemented") {
-                    printer.warning("Compilation succeeded, but linking is not yet implemented (Phase 6)")?;
+                    printer.warning(
+                        "Compilation succeeded, but linking is not yet implemented (Phase 6)",
+                    )?;
                     printer.hint("All .olean files have been generated successfully.")?;
                     printer.hint("Use `lemma build` (without --native) to link with Lake.")?;
                     Ok(())

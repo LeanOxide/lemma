@@ -49,11 +49,11 @@ pub struct Lakefile {
     pub packages_dir: PathBuf,
 
     /// Library targets
-    #[serde(rename = "lib", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(rename = "lean_lib", skip_serializing_if = "Vec::is_empty", default)]
     pub libraries: Vec<LibraryTarget>,
 
     /// Executable targets
-    #[serde(rename = "exe", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(rename = "lean_exe", skip_serializing_if = "Vec::is_empty", default)]
     pub executables: Vec<ExecutableTarget>,
 
     /// Dependencies
@@ -259,7 +259,7 @@ name = "test"
         let toml = r#"
 name = "test"
 
-[[lib]]
+[[lean_lib]]
 name = "MyLib"
         "#;
 
@@ -273,7 +273,7 @@ name = "MyLib"
         let toml = r#"
 name = "test"
 
-[[exe]]
+[[lean_exe]]
 name = "myexe"
 root = "Main.lean"
         "#;

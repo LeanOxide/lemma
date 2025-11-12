@@ -230,6 +230,14 @@ pub enum Commands {
         #[arg(long)]
         native: bool,
 
+        /// Clear the build directory before building
+        #[arg(long)]
+        clear: bool,
+
+        /// Custom output directory for build artifacts (defaults to .lake/build)
+        #[arg(long, value_name = "DIR")]
+        out_dir: Option<String>,
+
         /// Build targets (e.g., module names, executable names)
         targets: Vec<String>,
     },

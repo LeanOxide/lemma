@@ -88,8 +88,18 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
         Commands::Build {
             path,
             native,
+            clear,
+            out_dir,
             targets,
-        } => build::execute(path.as_deref(), native, &targets, &settings, &printer),
+        } => build::execute(
+            path.as_deref(),
+            native,
+            clear,
+            out_dir.as_deref(),
+            &targets,
+            &settings,
+            &printer,
+        ),
 
         Commands::Self_ { command } => handle_self_command(command, &settings, &printer),
     }

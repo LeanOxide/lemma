@@ -230,7 +230,6 @@ fn init_git(path: &Path, printer: &Printer) -> Result<()> {
 
     if let Ok(output) = output {
         if output.status.success() {
-            // Already in a git repository
             return Ok(());
         }
     }
@@ -242,9 +241,7 @@ fn init_git(path: &Path, printer: &Printer) -> Result<()> {
         .status();
 
     match status {
-        Ok(status) if status.success() => {
-            printer.status("Initialized git repository")?;
-        }
+        Ok(status) if status.success() => {}
         _ => {
             printer.warning("Failed to initialize git repository")?;
         }
