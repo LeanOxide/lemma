@@ -128,21 +128,20 @@ impl CompilationDriver {
         let package_lib_path = self.build_dir.join("lib").join(&self.package_name);
 
         // Get Lean stdlib path (usually <lean_binary_dir>/../lib/lean)
-        let lean_stdlib_path = self.lean_binary
+        let lean_stdlib_path = self
+            .lean_binary
             .parent()
             .and_then(|p| p.parent())
             .map(|p| p.join("lib").join("lean"));
 
         // Construct LEAN_PATH: package lib + lean stdlib
         let lean_path = if let Some(ref stdlib) = lean_stdlib_path {
-            format!("{}:{}",
-                package_lib_path.display(),
-                stdlib.display())
+            format!("{}:{}", package_lib_path.display(), stdlib.display())
         } else {
             package_lib_path.display().to_string()
         };
 
-        cmd.env("LEAN_PATH", lean_path);
+        cmd.env("LEAN_PATH", &lean_path);
 
         // Add the source directory to LEAN_SRC_PATH
         cmd.env("LEAN_SRC_PATH", self.src_dir.to_str().unwrap_or(""));
@@ -167,11 +166,11 @@ impl CompilationDriver {
         // Add the module source file
         cmd.arg(&module.path);
 
-        // Configure stdio
+        // Configure stdio - use piped to capture output and avoid mixing outputs in parallel builds
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
 
-        // Execute the lean compiler
+        // Execute the lean compiler using .output() to avoid pipe buffer deadlock
         let output = cmd.output().await.map_err(|e| {
             Error::Compilation(format!(
                 "Failed to execute lean compiler for module '{}': {}",
@@ -181,29 +180,37 @@ impl CompilationDriver {
 
         // Check if compilation succeeded
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-
-            let error_msg = if !stderr.is_empty() {
-                stderr.to_string()
-            } else if !stdout.is_empty() {
-                stdout.to_string()
-            } else {
-                format!("Compilation failed with exit code: {:?}", output.status.code())
-            };
-
+            // Print stderr on failure for debugging
+            if !output.stderr.is_empty() {
+                eprintln!(
+                    "[COMPILER] Module '{}' stderr:\n{}",
+                    module.name,
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
             return Err(Error::Compilation(format!(
-                "Failed to compile module '{}': {}",
-                module.name, error_msg
+                "Failed to compile module '{}' with exit code: {:?}",
+                module.name,
+                output.status.code()
             )));
         }
 
-        // Verify that the .olean file was created
-        if !olean_path.exists() {
-            return Err(Error::Compilation(format!(
-                "Compilation succeeded but .olean file not found at {}",
-                olean_path.display()
-            )));
+        // Verify that the .olean file was created and has content
+        match std::fs::metadata(&olean_path) {
+            Ok(metadata) => {
+                if metadata.len() == 0 {
+                    return Err(Error::Compilation(format!(
+                        "Compilation succeeded but .olean file is empty at {}",
+                        olean_path.display()
+                    )));
+                }
+            }
+            Err(_) => {
+                return Err(Error::Compilation(format!(
+                    "Compilation succeeded but .olean file not found at {}",
+                    olean_path.display()
+                )));
+            }
         }
 
         // Verify that the .c file was created
@@ -220,7 +227,8 @@ impl CompilationDriver {
 
         // Get Lean include directory (usually in same directory as lean binary)
         // This contains lean/lean.h and other headers needed for compilation
-        let lean_include = self.lean_binary
+        let lean_include = self
+            .lean_binary
             .parent()
             .and_then(|p| p.parent())
             .map(|p| p.join("include"));
@@ -238,12 +246,12 @@ impl CompilationDriver {
         cmd.arg("-o");
         cmd.arg(&obj_path);
 
-        // Configure stdio
-        cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
+        // Configure stdio - inherit to avoid pipe buffer deadlock
+        cmd.stdout(Stdio::inherit());
+        cmd.stderr(Stdio::inherit());
 
         // Execute leanc
-        let output = cmd.output().await.map_err(|e| {
+        let status = cmd.status().await.map_err(|e| {
             Error::Compilation(format!(
                 "Failed to execute leanc for module '{}': {}",
                 module.name, e
@@ -251,21 +259,11 @@ impl CompilationDriver {
         })?;
 
         // Check if C compilation succeeded
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-
-            let error_msg = if !stderr.is_empty() {
-                stderr.to_string()
-            } else if !stdout.is_empty() {
-                stdout.to_string()
-            } else {
-                format!("C compilation failed with exit code: {:?}", output.status.code())
-            };
-
+        if !status.success() {
             return Err(Error::Compilation(format!(
-                "Failed to compile C code for module '{}': {}",
-                module.name, error_msg
+                "Failed to compile C code for module '{}' with exit code: {:?}",
+                module.name,
+                status.code()
             )));
         }
 
@@ -414,12 +412,7 @@ impl CompilationDriver {
     /// Link a static library
     ///
     /// This creates a .a archive file from object files using ar.
-    pub async fn link_library(
-        &self,
-        name: &str,
-        modules: &[Module],
-        output: &Path,
-    ) -> Result<()> {
+    pub async fn link_library(&self, name: &str, modules: &[Module], output: &Path) -> Result<()> {
         // Collect all object files
         let mut object_files = Vec::new();
         for module in modules {
@@ -553,7 +546,10 @@ mod tests {
         );
 
         let output_dir = driver.get_lib_output_dir(&module);
-        assert_eq!(output_dir, PathBuf::from(".lake/build/lib/mypackage/Foo/Bar"));
+        assert_eq!(
+            output_dir,
+            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar")
+        );
     }
 
     #[test]
@@ -572,7 +568,10 @@ mod tests {
         );
 
         let olean_path = driver.get_olean_path(&module);
-        assert_eq!(olean_path, PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.olean"));
+        assert_eq!(
+            olean_path,
+            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.olean")
+        );
     }
 
     #[test]
@@ -629,7 +628,10 @@ mod tests {
         );
 
         let ilean_path = driver.get_ilean_path(&module);
-        assert_eq!(ilean_path, PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.ilean"));
+        assert_eq!(
+            ilean_path,
+            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.ilean")
+        );
     }
 
     #[test]

@@ -120,6 +120,10 @@ impl JobScheduler {
         // Get all job names that need to be executed
         let job_names: Vec<String> = self.jobs.keys().cloned().collect();
 
+        // Create a set of job names for fast lookup
+        // This is used to filter out external dependencies that aren't part of this build
+        let job_names_set: HashSet<String> = self.jobs.keys().cloned().collect();
+
         // Spawn tasks for each job
         for job_name in job_names {
             let job_fn = Arc::clone(&job_fn);
@@ -132,7 +136,14 @@ impl JobScheduler {
 
             // Clone the job data we need
             let module = self.jobs[&job_name].module.clone();
-            let dependencies = self.jobs[&job_name].dependencies.clone();
+            let all_dependencies = self.jobs[&job_name].dependencies.clone();
+
+            // Filter dependencies to only include those that are part of this build
+            // External dependencies (e.g., Std, Init, etc.) are assumed to be already built
+            let dependencies: Vec<String> = all_dependencies
+                .into_iter()
+                .filter(|dep| job_names_set.contains(dep))
+                .collect();
 
             let handle = tokio::spawn(async move {
                 // Wait for dependencies to complete
@@ -143,6 +154,7 @@ impl JobScheduler {
                     // Check if any dependency failed
                     for dep in &dependencies {
                         if failed_set.contains(dep) {
+                            eprintln!("[SCHEDULER] Skipping module '{}' because dependency '{}' failed", job_name, dep);
                             return Err(Error::Other(format!(
                                 "Dependency '{}' failed, skipping '{}'",
                                 dep, job_name
@@ -152,6 +164,15 @@ impl JobScheduler {
 
                     // Check if all dependencies completed
                     let all_deps_complete = dependencies.iter().all(|dep| completed_set.contains(dep));
+
+                    // Debug: Print waiting status (disabled for less noise)
+                    // if !all_deps_complete {
+                    //     eprintln!("[SCHEDULER] Module '{}' waiting for: {:?} (completed: {:?})",
+                    //         job_name,
+                    //         dependencies.iter().filter(|d| !completed_set.contains(*d)).collect::<Vec<_>>(),
+                    //         completed_set.len()
+                    //     );
+                    // }
 
                     drop(completed_set);
                     drop(failed_set);
@@ -171,7 +192,7 @@ impl JobScheduler {
                 let start_time = std::time::Instant::now();
 
                 // Execute the job
-                let result = job_fn(module).await;
+                let result = job_fn(module.clone()).await;
 
                 // Calculate elapsed time
                 let elapsed = start_time.elapsed().as_millis();
@@ -185,6 +206,7 @@ impl JobScheduler {
                         Ok(())
                     }
                     Err(e) => {
+                        eprintln!("[SCHEDULER] Module '{}' FAILED: {}", job_name, e);
                         failed.lock().await.insert(job_name.clone());
                         Err(e)
                     }

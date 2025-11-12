@@ -48,8 +48,8 @@ impl ModuleResolver {
         let src_dir = project_dir.join(&lakefile.src_dir);
 
         // Compile regex for parsing imports
-        // Matches: "import Foo.Bar" or "import Foo.Bar.Baz"
-        let import_regex = Regex::new(r"^\s*import\s+([\w.]+)").map_err(|e| {
+        // Matches: "import Foo.Bar", "meta import Foo", "public meta import Foo", etc.
+        let import_regex = Regex::new(r"^\s*(?:public\s+)?(?:meta\s+)?import\s+([\w.]+)").map_err(|e| {
             Error::ModuleResolution(format!("Failed to compile import regex: {}", e))
         })?;
 
@@ -106,6 +106,7 @@ impl ModuleResolver {
 
         let reader = BufReader::new(file_handle);
         let mut imports = Vec::new();
+        let mut in_block_comment = false;
 
         for line_result in reader.lines() {
             let line = line_result.map_err(|e| {
@@ -113,9 +114,30 @@ impl ModuleResolver {
             })?;
 
             // Stop at the first non-import, non-comment, non-blank line
-            // In Lean, imports must come at the beginning of the file
+            // In Lean, imports must come at the beginning of the file (but after module/section keywords)
             let trimmed = line.trim();
+
+            // Handle block comments
+            if trimmed.starts_with("/-") {
+                in_block_comment = true;
+            }
+            if in_block_comment {
+                if trimmed.ends_with("-/") || trimmed.contains("-/") {
+                    in_block_comment = false;
+                }
+                continue;
+            }
+
             if trimmed.is_empty() || trimmed.starts_with("--") {
+                continue;
+            }
+
+            // Skip Lean keywords that can appear before imports
+            if trimmed == "module"
+                || trimmed.starts_with("module ")
+                || trimmed.contains("section")
+                || trimmed.contains("namespace")
+                || trimmed.starts_with("@[") {
                 continue;
             }
 

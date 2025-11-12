@@ -86,12 +86,53 @@ impl BuildContext {
             ))
         })?;
 
-        let driver = crate::compiler::CompilationDriver::new(
+        let mut driver = crate::compiler::CompilationDriver::new(
             lean_binary,
             self.project_dir.join(&self.lakefile.src_dir),
             build_dir.clone(),
             self.lakefile.name.clone(),
         );
+
+        // Add leanOptions as -D flags
+        if let Some(ref lean_options) = self.lakefile.lean_options {
+            // Flatten nested tables into dot-separated keys
+            fn flatten_options(prefix: &str, table: &toml::map::Map<String, toml::Value>, flags: &mut Vec<String>) {
+                for (key, value) in table {
+                    let full_key = if prefix.is_empty() {
+                        key.clone()
+                    } else {
+                        format!("{}.{}", prefix, key)
+                    };
+
+                    match value {
+                        toml::Value::Boolean(b) => {
+                            flags.push(format!("-D{}={}", full_key, b));
+                        }
+                        toml::Value::String(s) => {
+                            flags.push(format!("-D{}={}", full_key, s));
+                        }
+                        toml::Value::Integer(i) => {
+                            flags.push(format!("-D{}={}", full_key, i));
+                        }
+                        toml::Value::Table(nested) => {
+                            // Recursively flatten nested tables
+                            flatten_options(&full_key, nested, flags);
+                        }
+                        _ => {
+                            eprintln!("[BUILD] Skipping unsupported leanOption type: {} = {:?}", full_key, value);
+                        }
+                    }
+                }
+            }
+
+            let mut flags = Vec::new();
+            flatten_options("", lean_options, &mut flags);
+
+            for flag in flags {
+                driver.add_flag(flag);
+            }
+        }
+
         let driver = std::sync::Arc::new(driver);
 
         let facet_builder =
@@ -164,12 +205,53 @@ impl BuildContext {
             ))
         })?;
 
-        let driver = CompilationDriver::new(
+        let mut driver = CompilationDriver::new(
             lean_binary,
             self.project_dir.join(&self.lakefile.src_dir),
             build_dir.clone(),
             self.lakefile.name.clone(),
         );
+
+        // Add leanOptions as -D flags
+        if let Some(ref lean_options) = self.lakefile.lean_options {
+            // Flatten nested tables into dot-separated keys
+            fn flatten_options(prefix: &str, table: &toml::map::Map<String, toml::Value>, flags: &mut Vec<String>) {
+                for (key, value) in table {
+                    let full_key = if prefix.is_empty() {
+                        key.clone()
+                    } else {
+                        format!("{}.{}", prefix, key)
+                    };
+
+                    match value {
+                        toml::Value::Boolean(b) => {
+                            flags.push(format!("-D{}={}", full_key, b));
+                        }
+                        toml::Value::String(s) => {
+                            flags.push(format!("-D{}={}", full_key, s));
+                        }
+                        toml::Value::Integer(i) => {
+                            flags.push(format!("-D{}={}", full_key, i));
+                        }
+                        toml::Value::Table(nested) => {
+                            // Recursively flatten nested tables
+                            flatten_options(&full_key, nested, flags);
+                        }
+                        _ => {
+                            eprintln!("[BUILD] Skipping unsupported leanOption type: {} = {:?}", full_key, value);
+                        }
+                    }
+                }
+            }
+
+            let mut flags = Vec::new();
+            flatten_options("", lean_options, &mut flags);
+
+            for flag in flags {
+                driver.add_flag(flag);
+            }
+        }
+
         let driver = std::sync::Arc::new(driver);
 
         // Clone for use in closure
@@ -264,10 +346,6 @@ impl BuildContext {
     /// This computes transitive hashes for all modules and updates the cache
     /// so that future incremental builds can skip unchanged modules.
     fn update_cache_after_build(&self, modules: &[Module]) -> Result<()> {
-        eprintln!(
-            "[DEBUG] Updating build cache with {} modules",
-            modules.len()
-        );
 
         // Compute transitive hashes for all modules
         let transitive_hashes = self.cache.compute_all_transitive_hashes(modules)?;
@@ -302,10 +380,6 @@ impl BuildContext {
 
         // Save the updated cache to disk
         updated_cache.save(&self.project_dir)?;
-        eprintln!(
-            "[DEBUG] Cache saved to {}",
-            self.project_dir.join(".lake/build_cache.json").display()
-        );
 
         Ok(())
     }

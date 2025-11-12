@@ -89,6 +89,15 @@ pub struct Lakefile {
     )]
     pub default_targets: Vec<String>,
 
+    /// Lean compiler options (optional)
+    /// These are passed as -D flags to the lean compiler
+    /// Example: {"experimental.module": true, "linter.missingDocs": true}
+    #[serde(
+        rename = "leanOptions",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub lean_options: Option<toml::map::Map<String, toml::Value>>,
+
     /// Custom build options (optional, for extensibility)
     #[serde(flatten)]
     pub custom: HashMap<String, toml::Value>,
