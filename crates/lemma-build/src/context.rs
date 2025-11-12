@@ -66,7 +66,8 @@ impl BuildContext {
         }
 
         // Phase 2: Parse target specifications
-        let target_parser = crate::target::TargetSpec::new(&self.lakefile, &self.project_dir, &modules);
+        let target_parser =
+            crate::target::TargetSpec::new(&self.lakefile, &self.project_dir, &modules);
         let targets = target_parser.parse_multiple(target_specs)?;
 
         if targets.is_empty() {
@@ -93,7 +94,8 @@ impl BuildContext {
         );
         let driver = std::sync::Arc::new(driver);
 
-        let facet_builder = crate::facets::FacetBuilder::new(driver, build_dir.clone(), modules.clone());
+        let facet_builder =
+            crate::facets::FacetBuilder::new(driver, build_dir.clone(), modules.clone());
 
         // Build each target
         for target in &targets {
@@ -130,18 +132,11 @@ impl BuildContext {
 
         // Phase 3: Check cache to determine what needs rebuilding
         let build_dir = self.project_dir.join(&self.lakefile.build_dir);
-        let modules_to_build = self
-            .cache
-            .modules_needing_rebuild(&plan.modules, &build_dir, &self.lakefile.name)?;
-
-        eprintln!("[DEBUG] Total modules: {}", plan.modules.len());
-        eprintln!("[DEBUG] Modules needing rebuild: {}", modules_to_build.len());
-        if !modules_to_build.is_empty() {
-            eprintln!("[DEBUG] Modules to rebuild: {:?}", modules_to_build);
-        }
+        let modules_to_build =
+            self.cache
+                .modules_needing_rebuild(&plan.modules, &build_dir, &self.lakefile.name)?;
 
         if modules_to_build.is_empty() {
-            eprintln!("[DEBUG] Cache hit! Nothing to build.");
             return Ok(());
         }
 
@@ -269,7 +264,10 @@ impl BuildContext {
     /// This computes transitive hashes for all modules and updates the cache
     /// so that future incremental builds can skip unchanged modules.
     fn update_cache_after_build(&self, modules: &[Module]) -> Result<()> {
-        eprintln!("[DEBUG] Updating build cache with {} modules", modules.len());
+        eprintln!(
+            "[DEBUG] Updating build cache with {} modules",
+            modules.len()
+        );
 
         // Compute transitive hashes for all modules
         let transitive_hashes = self.cache.compute_all_transitive_hashes(modules)?;
@@ -287,10 +285,8 @@ impl BuildContext {
                 // Also update file hash for the source file
                 match updated_cache.hash_file(&module.path) {
                     Ok(file_hash) => {
-                        updated_cache.update_file_hash(
-                            module.path.to_string_lossy().to_string(),
-                            file_hash,
-                        );
+                        updated_cache
+                            .update_file_hash(module.path.to_string_lossy().to_string(), file_hash);
                     }
                     Err(e) => {
                         // Log error but don't fail the build
@@ -306,7 +302,10 @@ impl BuildContext {
 
         // Save the updated cache to disk
         updated_cache.save(&self.project_dir)?;
-        eprintln!("[DEBUG] Cache saved to {}", self.project_dir.join(".lake/build_cache.json").display());
+        eprintln!(
+            "[DEBUG] Cache saved to {}",
+            self.project_dir.join(".lake/build_cache.json").display()
+        );
 
         Ok(())
     }
