@@ -75,11 +75,15 @@ impl CompilationDriver {
 
     /// Get the C file path for a module
     ///
-    /// Lake structure: `.lake/build/ir/Module.c`
+    /// Lake structure: `.lake/build/ir/Module/Nested.c` (hierarchical)
     fn get_c_path(&self, module: &Module) -> PathBuf {
-        self.build_dir
-            .join("ir")
-            .join(format!("{}.c", module.name))
+        let parts: Vec<&str> = module.name.split('.').collect();
+        let mut path = self.build_dir.join("ir");
+        for part in parts {
+            path.push(part);
+        }
+        path.set_extension("c");
+        path
     }
 
     /// Get the ilean file path for a module
@@ -101,17 +105,19 @@ impl CompilationDriver {
     /// 1. Invoke lean to generate .olean, .ilean, and .c files
     /// 2. Invoke leanc to compile .c to .o (object file)
     pub async fn compile_module(&self, module: &Module, _output_dir: &Path) -> Result<()> {
-        // Create output directories for artifacts
-        // Lake structure: .lake/build/lib/<package>/ and .lake/build/ir/
-        let lib_output_dir = self.get_lib_output_dir(module);
-        let ir_output_dir = self.build_dir.join("ir");
-        std::fs::create_dir_all(&lib_output_dir)?;
-        std::fs::create_dir_all(&ir_output_dir)?;
-
         let olean_path = self.get_olean_path(module);
         let ilean_path = self.get_ilean_path(module);
         let c_path = self.get_c_path(module);
         let obj_path = self.get_object_path(module);
+
+        // Create output directories for artifacts
+        // Lake structure: .lake/build/lib/<package>/ (hierarchical) and .lake/build/ir/ (hierarchical)
+        if let Some(parent) = olean_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        if let Some(parent) = c_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
         // Step 1: Run lean to generate .olean, .ilean, and .c files
         let mut cmd = Command::new(&self.lean_binary);
@@ -294,16 +300,19 @@ impl CompilationDriver {
         Ok(leanc_path)
     }
 
-    /// Get object file path for a compiled module
-    ///
-    /// Example: "Foo.Bar" -> "build/lib/Foo/Bar.o"
     /// Get the object file path for a module
     ///
-    /// Lake structure: `.lake/build/ir/Module.c.o.export`
+    /// Lake structure: `.lake/build/ir/Module/Nested.c.o.export` (hierarchical)
     fn get_object_path(&self, module: &Module) -> PathBuf {
-        self.build_dir
-            .join("ir")
-            .join(format!("{}.c.o.export", module.name))
+        let parts: Vec<&str> = module.name.split('.').collect();
+        let mut path = self.build_dir.join("ir");
+        for part in parts {
+            path.push(part);
+        }
+        // Add .c.o.export extension
+        let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+        path.set_file_name(format!("{}.c.o.export", filename));
+        path
     }
 
     /// Link an executable
@@ -582,7 +591,7 @@ mod tests {
         );
 
         let obj_path = driver.get_object_path(&module);
-        assert_eq!(obj_path, PathBuf::from(".lake/build/ir/Foo.Bar.c.o.export"));
+        assert_eq!(obj_path, PathBuf::from(".lake/build/ir/Foo/Bar.c.o.export"));
     }
 
     #[test]
@@ -601,7 +610,7 @@ mod tests {
         );
 
         let c_path = driver.get_c_path(&module);
-        assert_eq!(c_path, PathBuf::from(".lake/build/ir/Foo.Bar.c"));
+        assert_eq!(c_path, PathBuf::from(".lake/build/ir/Foo/Bar.c"));
     }
 
     #[test]
