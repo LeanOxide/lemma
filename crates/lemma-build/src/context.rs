@@ -301,14 +301,40 @@ impl BuildContext {
         self.update_cache_after_build(&all_modules)?;
 
         // Phase 6: Link executables and libraries
+        // Build the dependency graph once for all linking operations
+        let dep_graph = self.module_resolver.build_dependency_graph(&all_modules)?;
+
         // Link all executables defined in the lakefile
         for executable in &self.lakefile.executables {
             let output_path = build_dir.join("bin").join(&executable.name);
 
             let start = std::time::Instant::now();
-            // For now, link all modules (TODO: filter by executable.root)
+
+            // Determine the root module for this executable
+            let root_module_name = executable.root.as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or(&executable.name);
+
+            // Try to find modules for this executable
+            let exe_modules = match self.collect_transitive_dependencies_with_graph(root_module_name, &all_modules, &dep_graph) {
+                Ok(modules) => modules,
+                Err(_) => {
+                    // If root module not found and executable has custom srcDir, it's likely
+                    // a single-file executable that wasn't discovered in the main module scan
+                    // For now, skip linking such executables (they would need separate compilation)
+                    eprintln!(
+                        "Warning: Skipping executable '{}' - root module '{}' not found (custom srcDir: {:?})",
+                        executable.name,
+                        root_module_name,
+                        executable.src_dir
+                    );
+                    main_pb.inc(1);
+                    continue;
+                }
+            };
+
             driver
-                .link_executable(&executable.name, &all_modules, &output_path)
+                .link_executable(&executable.name, &exe_modules, &output_path)
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
@@ -322,9 +348,37 @@ impl BuildContext {
             let output_path = build_dir.join("lib").join(&lib_name);
 
             let start = std::time::Instant::now();
-            // For now, link all modules (TODO: filter by library.root)
+
+            // For libraries, we need to include all modules that match the library's definition
+            let lib_modules = if !library.globs.is_empty() {
+                // If globs are specified, include all matching modules and their dependencies
+                use regex::Regex;
+                let mut lib_modules = Vec::new();
+                for glob in &library.globs {
+                    // Convert glob to regex (simple conversion: "+" -> ".+", "*" -> ".*")
+                    let regex_pattern = glob.replace("+", ".+").replace("*", ".*");
+                    if let Ok(re) = Regex::new(&format!("^{}$", regex_pattern)) {
+                        for module in &all_modules {
+                            if re.is_match(&module.name) {
+                                // Collect this module and its dependencies
+                                let deps = self.collect_transitive_dependencies_with_graph(&module.name, &all_modules, &dep_graph)?;
+                                for dep in deps {
+                                    if !lib_modules.iter().any(|m: &Module| m.name == dep.name) {
+                                        lib_modules.push(dep);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                lib_modules
+            } else {
+                // Otherwise, use all modules (or filter by root if specified)
+                all_modules.to_vec()
+            };
+
             driver
-                .link_library(&library.name, &all_modules, &output_path)
+                .link_library(&library.name, &lib_modules, &output_path)
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
@@ -339,6 +393,53 @@ impl BuildContext {
         ));
 
         Ok(())
+    }
+
+    /// Collect all modules that a given root module depends on (transitively)
+    ///
+    /// Uses the provided dependency graph to find all transitive dependencies.
+    /// This avoids rebuilding the graph for each query.
+    fn collect_transitive_dependencies_with_graph(
+        &self,
+        root_module_name: &str,
+        all_modules: &[Module],
+        graph: &lemma_graph::DependencyGraph<String>,
+    ) -> Result<Vec<Module>> {
+        use std::collections::HashMap;
+
+        // Check if the root module exists in the graph
+        if !graph.contains(&root_module_name.to_string()) {
+            return Err(Error::ModuleResolution(format!(
+                "Root module '{}' not found in project",
+                root_module_name
+            )));
+        }
+
+        // Get all transitive dependencies from the graph
+        let dep_names = graph.transitive_dependencies(&root_module_name.to_string())?;
+
+        // Build a map from module name to module for quick lookup
+        let module_map: HashMap<String, &Module> = all_modules
+            .iter()
+            .map(|m| (m.name.clone(), m))
+            .collect();
+
+        // Convert module names to Module objects, including the root module itself
+        let mut result = Vec::new();
+
+        // Add dependencies first (they're already in dependency order from the graph)
+        for dep_name in dep_names {
+            if let Some(module) = module_map.get(&dep_name) {
+                result.push((*module).clone());
+            }
+        }
+
+        // Add the root module last (it depends on all the others)
+        if let Some(root_module) = module_map.get(root_module_name) {
+            result.push((*root_module).clone());
+        }
+
+        Ok(result)
     }
 
     /// Update the build cache after a successful build
