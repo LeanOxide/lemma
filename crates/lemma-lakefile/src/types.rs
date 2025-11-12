@@ -139,16 +139,23 @@ pub struct ExecutableTarget {
     /// Executable name (required)
     pub name: String,
 
-    /// Root module for this executable (required)
-    /// Example: "Main.lean" or "src/Main.lean"
-    pub root: PathBuf,
+    /// Root module for this executable (optional, defaults to name)
+    /// This is a module name, NOT a file path
+    /// Example: "Main" or "Foo.Bar"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
 
-    /// Source directory relative to project root (optional)
+    /// Source directory relative to project root (optional, defaults to ".")
+    /// This is passed to `lean` as the `-R` option
     #[serde(rename = "srcDir", skip_serializing_if = "Option::is_none")]
     pub src_dir: Option<PathBuf>,
 
-    /// Libraries to link against (optional)
-    /// Can reference local library targets or external libraries
+    /// The name of the binary executable (optional, defaults to name with '.' replaced by '-')
+    #[serde(rename = "exeName", skip_serializing_if = "Option::is_none")]
+    pub exe_name: Option<String>,
+
+    /// Enable interpreter support (optional, defaults to false)
+    /// Enables the executable to interpret Lean files by exposing symbols
     #[serde(rename = "supportInterpreter", default = "default_false")]
     pub support_interpreter: bool,
 
@@ -275,12 +282,32 @@ name = "test"
 
 [[lean_exe]]
 name = "myexe"
-root = "Main.lean"
+root = "Main"
         "#;
 
         let lakefile: Lakefile = toml::from_str(toml).unwrap();
         assert_eq!(lakefile.executables.len(), 1);
         assert_eq!(lakefile.executables[0].name, "myexe");
+        assert_eq!(lakefile.executables[0].root.as_deref(), Some("Main"));
+    }
+
+    #[test]
+    fn test_executable_target_optional_root() {
+        let toml = r#"
+name = "test"
+
+[[lean_exe]]
+name = "test"
+srcDir = "scripts"
+supportInterpreter = true
+        "#;
+
+        let lakefile: Lakefile = toml::from_str(toml).unwrap();
+        assert_eq!(lakefile.executables.len(), 1);
+        assert_eq!(lakefile.executables[0].name, "test");
+        assert_eq!(lakefile.executables[0].root, None); // defaults to name
+        assert_eq!(lakefile.executables[0].src_dir, Some(PathBuf::from("scripts")));
+        assert_eq!(lakefile.executables[0].support_interpreter, true);
     }
 
     #[test]

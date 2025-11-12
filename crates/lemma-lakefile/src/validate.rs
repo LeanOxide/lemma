@@ -124,12 +124,14 @@ fn validate_executable_target(exe: &ExecutableTarget) -> Result<()> {
         ));
     }
 
-    // Executable must have a root file
-    if exe.root.as_os_str().is_empty() {
-        return Err(Error::InvalidField(
-            "exe.root".to_string(),
-            "executable must specify a root module".to_string(),
-        ));
+    // Validate root module if specified (it's optional and defaults to name)
+    if let Some(ref root) = exe.root {
+        if root.is_empty() {
+            return Err(Error::InvalidField(
+                "exe.root".to_string(),
+                "root module name cannot be empty if specified".to_string(),
+            ));
+        }
     }
 
     Ok(())
@@ -185,12 +187,27 @@ version = "not-a-version"
         let content = r#"
 name = "test"
 
-[[lib]]
+[[lean_lib]]
 name = "MyLib"
 
-[[exe]]
+[[lean_exe]]
 name = "MyLib"
-root = "Main.lean"
+root = "Main"
+        "#;
+
+        let result = parse_toml(content);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exe_with_empty_root() {
+        // Empty root string should fail validation
+        let content = r#"
+name = "test"
+
+[[lean_exe]]
+name = "myexe"
+root = ""
         "#;
 
         let result = parse_toml(content);
@@ -199,15 +216,17 @@ root = "Main.lean"
 
     #[test]
     fn test_exe_without_root() {
+        // Missing root is OK - it defaults to name
         let content = r#"
 name = "test"
 
-[[exe]]
+[[lean_exe]]
 name = "myexe"
-root = ""
         "#;
 
         let result = parse_toml(content);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        let lakefile = result.unwrap();
+        assert_eq!(lakefile.executables[0].root, None);
     }
 }
