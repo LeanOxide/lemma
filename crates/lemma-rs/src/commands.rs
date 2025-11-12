@@ -57,8 +57,8 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
             which::execute(&binary, toolchain.as_deref(), &settings, &printer)
         }
 
-        Commands::Run { toolchain, command } => {
-            run::execute(&toolchain, &command, &settings, &printer)
+        Commands::Run { path, bin, args } => {
+            run::execute(path.as_deref(), bin.as_deref(), &args, &settings, &printer)
         }
 
         Commands::Completions { shell } => completions::execute(shell, &settings, &printer),

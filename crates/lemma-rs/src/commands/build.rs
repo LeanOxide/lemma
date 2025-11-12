@@ -55,9 +55,7 @@ fn execute_native_build(
     // Clear build directory if requested
     if clear {
         if build_dir.exists() {
-            printer.status(format!("Clearing build directory: {}", build_dir.display()))?;
-            std::fs::remove_dir_all(&build_dir)
-                .context("Failed to clear build directory")?;
+            std::fs::remove_dir_all(&build_dir).context("Failed to clear build directory")?;
         }
     }
 
@@ -74,9 +72,7 @@ fn execute_native_build(
         }
 
         match context.build().await {
-            Ok(()) => {
-                Ok(())
-            }
+            Ok(()) => Ok(()),
             Err(e) => {
                 // Check if this is a "not yet implemented" error for linking
                 let err_msg = e.to_string();

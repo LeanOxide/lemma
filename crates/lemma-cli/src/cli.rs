@@ -141,15 +141,20 @@ pub enum Commands {
         toolchain: Option<String>,
     },
 
-    /// Run a command with a toolchain
+    /// Build and run the project's executable
     #[command(after_long_help = help::RUN_HELP)]
     Run {
-        /// Toolchain to use (e.g., stable, v4.24.0)
-        toolchain: String,
+        /// Project path (defaults to current directory)
+        #[arg(long)]
+        path: Option<String>,
 
-        /// Command and arguments to run
+        /// Binary name to run (defaults to first executable in lakefile)
+        #[arg(long)]
+        bin: Option<String>,
+
+        /// Arguments to pass to the binary
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        command: Vec<String>,
+        args: Vec<String>,
     },
 
     /// Generate tab-completion scripts for your shell
