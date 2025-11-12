@@ -125,14 +125,34 @@ impl JobScheduler {
         let job_fn = Arc::new(job_fn);
         let mut handles = Vec::new();
 
-        // Get all job names that need to be executed
-        let job_names: Vec<String> = self.jobs.keys().cloned().collect();
+        // Get job names in topological order if graph is available
+        let job_names: Vec<String> = if let Some(ref graph) = self.dependency_graph {
+            // Use topological sort for better scheduling
+            // This ensures dependencies are processed before dependents
+            match graph.topological_sort() {
+                Ok(sorted) => {
+                    // Filter to only include jobs we're actually building
+                    sorted
+                        .into_iter()
+                        .filter(|name| self.jobs.contains_key(name))
+                        .collect()
+                }
+                Err(_) => {
+                    // Fallback if topological sort fails (e.g., cycle detected)
+                    self.jobs.keys().cloned().collect()
+                }
+            }
+        } else {
+            // No graph available, use arbitrary order
+            self.jobs.keys().cloned().collect()
+        };
 
         // Create a set of job names for fast lookup
         // This is used to filter out external dependencies that aren't part of this build
         let job_names_set: HashSet<String> = self.jobs.keys().cloned().collect();
 
-        // Spawn tasks for each job
+        // Spawn tasks for each job in topological order
+        // This reduces waiting time as dependencies are more likely to be ready
         for job_name in job_names {
             let job_fn = Arc::clone(&job_fn);
             let progress_fn = Arc::clone(&progress_fn);

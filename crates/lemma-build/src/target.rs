@@ -407,8 +407,9 @@ mod tests {
             }],
             executables: vec![ExecutableTarget {
                 name: "myexe".to_string(),
-                root: PathBuf::from("Main.lean"),
+                root: Some("Main".to_string()),
                 src_dir: None,
+                exe_name: None,
                 support_interpreter: false,
                 more_lean_args: vec![],
                 more_link_args: vec![],
