@@ -32,6 +32,10 @@ pub enum Error {
     #[error("Linking failed: {0}")]
     Linking(String),
 
+    /// Invalid target specification
+    #[error("Invalid target: {0}")]
+    InvalidTarget(String),
+
     /// IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

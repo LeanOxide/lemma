@@ -32,17 +32,21 @@ pub mod cache;
 pub mod compiler;
 pub mod context;
 pub mod error;
+pub mod facets;
 pub mod module;
 pub mod plan;
 pub mod scheduler;
+pub mod target;
 
 pub use cache::BuildCache;
 pub use compiler::CompilationDriver;
 pub use context::BuildContext;
 pub use error::{Error, Result};
+pub use facets::FacetBuilder;
 pub use module::{Module, ModuleResolver};
 pub use plan::BuildPlan;
 pub use scheduler::{BuildJob, JobScheduler, JobState, JobStats};
+pub use target::{BuildTarget, Facet, TargetSpec};
 
 /// Build a Lean project from the given directory
 ///

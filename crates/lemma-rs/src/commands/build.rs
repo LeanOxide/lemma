@@ -27,11 +27,11 @@ fn execute_native_build(
     path: Option<&str>,
     clear: bool,
     out_dir: Option<&str>,
-    _targets: &[String],
-    _settings: &GlobalSettings,
+    targets: &[String],
+    settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
-    if _settings.is_verbose() {
+    if settings.is_verbose() {
         printer.hint("Using native lemma build system (experimental)")?;
     }
 
@@ -71,7 +71,17 @@ fn execute_native_build(
             context.lakefile.build_dir = PathBuf::from(out);
         }
 
-        match context.build().await {
+        // Use the new build_targets method if targets are specified
+        let result = if targets.is_empty() {
+            context.build().await
+        } else {
+            if settings.is_verbose() {
+                printer.hint(format!("Building targets: {}", targets.join(", ")))?;
+            }
+            context.build_targets(targets).await
+        };
+
+        match result {
             Ok(()) => Ok(()),
             Err(e) => {
                 // Check if this is a "not yet implemented" error for linking

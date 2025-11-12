@@ -52,6 +52,57 @@ impl BuildContext {
         })
     }
 
+    /// Execute the build with specific targets
+    ///
+    /// This builds only the specified targets and their dependencies.
+    pub async fn build_targets(&self, target_specs: &[String]) -> Result<()> {
+        // Phase 1: Discover all modules
+        let modules = self.module_resolver.discover_modules()?;
+
+        if modules.is_empty() {
+            return Err(Error::ModuleResolution(
+                "No Lean modules found in project".to_string(),
+            ));
+        }
+
+        // Phase 2: Parse target specifications
+        let target_parser = crate::target::TargetSpec::new(&self.lakefile, &self.project_dir, &modules);
+        let targets = target_parser.parse_multiple(target_specs)?;
+
+        if targets.is_empty() {
+            return Err(Error::InvalidTarget("No targets specified".to_string()));
+        }
+
+        // Phase 3: Build the targets using FacetBuilder
+        let build_dir = self.project_dir.join(&self.lakefile.build_dir);
+
+        // Find the lean binary
+        let lean_binary = which::which("lean").map_err(|e| {
+            Error::Other(format!(
+                "Could not find 'lean' binary in PATH. \
+                 Please ensure Lean is installed and available. Error: {}",
+                e
+            ))
+        })?;
+
+        let driver = crate::compiler::CompilationDriver::new(
+            lean_binary,
+            self.project_dir.join(&self.lakefile.src_dir),
+            build_dir.clone(),
+            self.lakefile.name.clone(),
+        );
+        let driver = std::sync::Arc::new(driver);
+
+        let facet_builder = crate::facets::FacetBuilder::new(driver, build_dir, modules);
+
+        // Build each target
+        for target in &targets {
+            facet_builder.build(target).await?;
+        }
+
+        Ok(())
+    }
+
     /// Execute the build
     ///
     /// This is the main entry point that orchestrates the entire build process:
