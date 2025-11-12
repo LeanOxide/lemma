@@ -144,7 +144,7 @@ impl BuildContext {
         let main_pb = multi_progress.add(ProgressBar::new(total_jobs_including_linking as u64));
         main_pb.set_style(
             ProgressStyle::default_spinner()
-                .template("{spinner} {pos}/{len} {msg}")
+                .template("{spinner} [{pos}/{len}] {msg}")
                 .unwrap(),
         );
 
@@ -153,7 +153,7 @@ impl BuildContext {
         // Define progress callback
         let progress_fn =
             move |module_name: String, current: usize, _total: usize, elapsed_ms: u128| {
-                main_pb_clone.set_message(format!("Built {} ({}ms)", module_name, elapsed_ms));
+                main_pb_clone.set_message(format!("Running {} ({}ms)", module_name, elapsed_ms));
                 main_pb_clone.set_position(current as u64);
             };
 
@@ -174,7 +174,7 @@ impl BuildContext {
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
-            main_pb.set_message(format!("Built {}:exe ({}ms)", executable.name, elapsed));
+            main_pb.set_message(format!("Running {} ({}ms)", executable.name, elapsed));
             main_pb.inc(1);
         }
 
@@ -190,7 +190,7 @@ impl BuildContext {
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
-            main_pb.set_message(format!("Built {}:staticLib ({}ms)", library.name, elapsed));
+            main_pb.set_message(format!("Running {} ({}ms)", library.name, elapsed));
             main_pb.inc(1);
         }
 
