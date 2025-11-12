@@ -1025,6 +1025,7 @@ dependencies = [
  "blake3",
  "fs-err",
  "futures",
+ "indicatif",
  "lemma-config",
  "lemma-graph",
  "lemma-lakefile",

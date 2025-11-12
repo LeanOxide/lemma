@@ -4,8 +4,10 @@ use crate::cache::BuildCache;
 use crate::compiler::CompilationDriver;
 use crate::error::{Error, Result};
 use crate::module::ModuleResolver;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lemma_lakefile::Lakefile;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// The main build context that orchestrates the entire build process
 ///
@@ -135,16 +137,25 @@ impl BuildContext {
             + self.lakefile.executables.len()
             + self.lakefile.libraries.len();
 
+        // Create multi-progress for managing multiple progress bars
+        let multi_progress = Arc::new(MultiProgress::new());
+
+        // Create main progress bar
+        let main_pb = multi_progress.add(ProgressBar::new(total_jobs_including_linking as u64));
+        main_pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} {pos}/{len} {msg}")
+                .unwrap(),
+        );
+
+        let main_pb_clone = main_pb.clone();
+
         // Define progress callback
-        let progress_fn = move |module_name: String, current: usize, _total: usize, elapsed_ms: u128| {
-            eprintln!(
-                "ℹ [{}/{}] Built {} ({}ms)",
-                current,
-                total_jobs_including_linking,
-                module_name,
-                elapsed_ms
-            );
-        };
+        let progress_fn =
+            move |module_name: String, current: usize, _total: usize, elapsed_ms: u128| {
+                main_pb_clone.set_message(format!("Built {} ({}ms)", module_name, elapsed_ms));
+                main_pb_clone.set_position(current as u64);
+            };
 
         // Execute all compilation jobs
         scheduler.execute_all(job_fn, progress_fn).await?;
@@ -152,14 +163,9 @@ impl BuildContext {
         // TODO: Phase 5 - Update build cache with new hashes
 
         // Phase 6: Link executables and libraries
-        let total_link_jobs = self.lakefile.executables.len() + self.lakefile.libraries.len();
-        let compilation_jobs = modules_to_build.len();
-        let mut current_job = compilation_jobs;
-
         // Link all executables defined in the lakefile
         for executable in &self.lakefile.executables {
             let output_path = build_dir.join("bin").join(&executable.name);
-            current_job += 1;
 
             let start = std::time::Instant::now();
             // For now, link all modules (TODO: filter by executable.root)
@@ -168,20 +174,14 @@ impl BuildContext {
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
-            eprintln!(
-                "ℹ [{}/{}] Built {}:exe ({}ms)",
-                current_job,
-                compilation_jobs + total_link_jobs,
-                executable.name,
-                elapsed
-            );
+            main_pb.set_message(format!("Built {}:exe ({}ms)", executable.name, elapsed));
+            main_pb.inc(1);
         }
 
         // Link all libraries defined in the lakefile
         for library in &self.lakefile.libraries {
             let lib_name = format!("lib{}.a", library.name);
             let output_path = build_dir.join("lib").join(&lib_name);
-            current_job += 1;
 
             let start = std::time::Instant::now();
             // For now, link all modules (TODO: filter by library.root)
@@ -190,22 +190,15 @@ impl BuildContext {
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
-            eprintln!(
-                "ℹ [{}/{}] Built {}:staticLib ({}ms)",
-                current_job,
-                compilation_jobs + total_link_jobs,
-                library.name,
-                elapsed
-            );
+            main_pb.set_message(format!("Built {}:staticLib ({}ms)", library.name, elapsed));
+            main_pb.inc(1);
         }
 
-        // Print summary
-        if total_jobs_including_linking > 0 {
-            eprintln!(
-                "Build completed successfully ({} jobs).",
-                total_jobs_including_linking
-            );
-        }
+        // Finish progress bar
+        main_pb.finish_with_message(format!(
+            "Build completed successfully ({} jobs)",
+            total_jobs_including_linking
+        ));
 
         Ok(())
     }
