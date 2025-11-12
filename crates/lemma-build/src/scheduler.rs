@@ -7,6 +7,7 @@ use crate::error::{Error, Result};
 use crate::module::Module;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{Mutex, Semaphore};
 
 /// State of a build job
@@ -66,6 +67,10 @@ pub struct JobScheduler {
     failed: Arc<Mutex<HashSet<String>>>,
     /// Semaphore to limit concurrency
     semaphore: Arc<Semaphore>,
+    /// Total number of jobs
+    total_jobs: usize,
+    /// Counter for completed jobs (for progress)
+    completed_count: Arc<AtomicUsize>,
 }
 
 impl JobScheduler {
@@ -73,6 +78,7 @@ impl JobScheduler {
     ///
     /// The concurrency parameter limits how many jobs can run in parallel.
     pub fn new(modules: Vec<Module>, concurrency: usize) -> Self {
+        let total_jobs = modules.len();
         let jobs: HashMap<String, BuildJob> = modules
             .into_iter()
             .map(|module| {
@@ -86,6 +92,8 @@ impl JobScheduler {
             completed: Arc::new(Mutex::new(HashSet::new())),
             failed: Arc::new(Mutex::new(HashSet::new())),
             semaphore: Arc::new(Semaphore::new(concurrency)),
+            total_jobs,
+            completed_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -93,11 +101,19 @@ impl JobScheduler {
     ///
     /// This is the main entry point. It will spawn tasks for all jobs
     /// and wait for them to complete.
-    pub async fn execute_all<F, Fut>(&mut self, job_fn: F) -> Result<()>
+    ///
+    /// The `progress_fn` is called after each job completes with:
+    /// - module name
+    /// - current job number (1-indexed)
+    /// - total jobs
+    /// - elapsed time in milliseconds
+    pub async fn execute_all<F, Fut, P>(&mut self, job_fn: F, progress_fn: P) -> Result<()>
     where
         F: Fn(Module) -> Fut + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+        P: Fn(String, usize, usize, u128) + Send + Sync + 'static,
     {
+        let progress_fn = Arc::new(progress_fn);
         let job_fn = Arc::new(job_fn);
         let mut handles = Vec::new();
 
@@ -107,9 +123,12 @@ impl JobScheduler {
         // Spawn tasks for each job
         for job_name in job_names {
             let job_fn = Arc::clone(&job_fn);
+            let progress_fn = Arc::clone(&progress_fn);
             let completed = Arc::clone(&self.completed);
             let failed = Arc::clone(&self.failed);
             let semaphore = Arc::clone(&self.semaphore);
+            let completed_count = Arc::clone(&self.completed_count);
+            let total_jobs = self.total_jobs;
 
             // Clone the job data we need
             let module = self.jobs[&job_name].module.clone();
@@ -148,13 +167,21 @@ impl JobScheduler {
                 // Acquire semaphore permit (limits concurrency)
                 let _permit = semaphore.acquire().await.unwrap();
 
+                // Track start time
+                let start_time = std::time::Instant::now();
+
                 // Execute the job
                 let result = job_fn(module).await;
+
+                // Calculate elapsed time
+                let elapsed = start_time.elapsed().as_millis();
 
                 // Update state based on result
                 match result {
                     Ok(()) => {
                         completed.lock().await.insert(job_name.clone());
+                        let current = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
+                        progress_fn(job_name.clone(), current, total_jobs, elapsed);
                         Ok(())
                     }
                     Err(e) => {
@@ -277,7 +304,9 @@ mod tests {
             }
         };
 
-        scheduler.execute_all(job_fn).await.unwrap();
+        let progress_fn = |_name: String, _current: usize, _total: usize, _elapsed: u128| {};
+
+        scheduler.execute_all(job_fn, progress_fn).await.unwrap();
 
         assert_eq!(counter.load(Ordering::SeqCst), 2);
         let stats = scheduler.get_stats().await;
@@ -310,7 +339,9 @@ mod tests {
             }
         };
 
-        scheduler.execute_all(job_fn).await.unwrap();
+        let progress_fn = |_name: String, _current: usize, _total: usize, _elapsed: u128| {};
+
+        scheduler.execute_all(job_fn, progress_fn).await.unwrap();
 
         let order = execution_order.lock().await;
         assert_eq!(order.len(), 3);
@@ -345,7 +376,9 @@ mod tests {
             }
         };
 
-        let result = scheduler.execute_all(job_fn).await;
+        let progress_fn = |_name: String, _current: usize, _total: usize, _elapsed: u128| {};
+
+        let result = scheduler.execute_all(job_fn, progress_fn).await;
         assert!(result.is_err());
 
         let stats = scheduler.get_stats().await;

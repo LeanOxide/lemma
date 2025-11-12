@@ -130,31 +130,81 @@ impl BuildContext {
             }
         };
 
+        // Calculate total jobs including linking
+        let total_jobs_including_linking = modules_to_build.len()
+            + self.lakefile.executables.len()
+            + self.lakefile.libraries.len();
+
+        // Define progress callback
+        let progress_fn = move |module_name: String, current: usize, _total: usize, elapsed_ms: u128| {
+            eprintln!(
+                "ℹ [{}/{}] Built {} ({}ms)",
+                current,
+                total_jobs_including_linking,
+                module_name,
+                elapsed_ms
+            );
+        };
+
         // Execute all compilation jobs
-        scheduler.execute_all(job_fn).await?;
+        scheduler.execute_all(job_fn, progress_fn).await?;
 
         // TODO: Phase 5 - Update build cache with new hashes
 
         // Phase 6: Link executables and libraries
+        let total_link_jobs = self.lakefile.executables.len() + self.lakefile.libraries.len();
+        let compilation_jobs = modules_to_build.len();
+        let mut current_job = compilation_jobs;
+
         // Link all executables defined in the lakefile
         for executable in &self.lakefile.executables {
             let output_path = build_dir.join("bin").join(&executable.name);
+            current_job += 1;
 
+            let start = std::time::Instant::now();
             // For now, link all modules (TODO: filter by executable.root)
             driver
                 .link_executable(&executable.name, &all_modules, &output_path)
                 .await?;
+            let elapsed = start.elapsed().as_millis();
+
+            eprintln!(
+                "ℹ [{}/{}] Built {}:exe ({}ms)",
+                current_job,
+                compilation_jobs + total_link_jobs,
+                executable.name,
+                elapsed
+            );
         }
 
         // Link all libraries defined in the lakefile
         for library in &self.lakefile.libraries {
             let lib_name = format!("lib{}.a", library.name);
             let output_path = build_dir.join("lib").join(&lib_name);
+            current_job += 1;
 
+            let start = std::time::Instant::now();
             // For now, link all modules (TODO: filter by library.root)
             driver
                 .link_library(&library.name, &all_modules, &output_path)
                 .await?;
+            let elapsed = start.elapsed().as_millis();
+
+            eprintln!(
+                "ℹ [{}/{}] Built {}:staticLib ({}ms)",
+                current_job,
+                compilation_jobs + total_link_jobs,
+                library.name,
+                elapsed
+            );
+        }
+
+        // Print summary
+        if total_jobs_including_linking > 0 {
+            eprintln!(
+                "Build completed successfully ({} jobs).",
+                total_jobs_including_linking
+            );
         }
 
         Ok(())

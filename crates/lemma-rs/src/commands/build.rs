@@ -31,7 +31,9 @@ fn execute_native_build(
     _settings: &GlobalSettings,
     printer: &Printer,
 ) -> Result<()> {
-    printer.status("Using native lemma build system (experimental)")?;
+    if _settings.is_verbose() {
+        printer.hint("Using native lemma build system (experimental)")?;
+    }
 
     // Determine the project directory
     let project_dir = if let Some(p) = path {
@@ -71,11 +73,8 @@ fn execute_native_build(
             context.lakefile.build_dir = PathBuf::from(out);
         }
 
-        printer.hint("Native build system: Phases 1-5 complete (compilation ready)")?;
-
         match context.build().await {
             Ok(()) => {
-                printer.success("Build completed successfully")?;
                 Ok(())
             }
             Err(e) => {
