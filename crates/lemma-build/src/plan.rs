@@ -10,6 +10,10 @@ pub struct BuildPlan {
     /// Modules to build, in topological order (dependencies first)
     pub modules: Vec<Module>,
 
+    /// Dependency graph for the modules
+    /// This is stored to avoid rebuilding it multiple times
+    pub dependency_graph: lemma_graph::DependencyGraph<String>,
+
     /// Executables to link (from lakefile)
     pub executables: Vec<String>,
 
@@ -22,6 +26,7 @@ impl BuildPlan {
     pub fn new() -> Self {
         Self {
             modules: Vec::new(),
+            dependency_graph: lemma_graph::DependencyGraph::new(),
             executables: Vec::new(),
             libraries: Vec::new(),
         }
@@ -67,6 +72,7 @@ impl BuildPlan {
 
         Ok(Self {
             modules: sorted_modules,
+            dependency_graph: graph,
             executables,
             libraries,
         })
@@ -104,11 +110,16 @@ mod tests {
 
     #[test]
     fn test_build_plan_task_count() {
+        let mut graph = lemma_graph::DependencyGraph::new();
+        graph.add_node_if_missing("A".to_string());
+        graph.add_node_if_missing("B".to_string());
+
         let plan = BuildPlan {
             modules: vec![
                 Module::new("A".to_string(), PathBuf::from("A.lean"), vec![]),
                 Module::new("B".to_string(), PathBuf::from("B.lean"), vec![]),
             ],
+            dependency_graph: graph,
             executables: vec!["main".to_string()],
             libraries: vec!["mylib".to_string()],
         };

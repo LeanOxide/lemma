@@ -61,6 +61,8 @@ impl BuildJob {
 pub struct JobScheduler {
     /// All jobs to execute
     jobs: HashMap<String, BuildJob>,
+    /// Dependency graph for efficient dependency queries
+    dependency_graph: Option<lemma_graph::DependencyGraph<String>>,
     /// Set of completed job names
     completed: Arc<Mutex<HashSet<String>>>,
     /// Set of failed job names
@@ -77,7 +79,12 @@ impl JobScheduler {
     /// Create a new job scheduler
     ///
     /// The concurrency parameter limits how many jobs can run in parallel.
-    pub fn new(modules: Vec<Module>, concurrency: usize) -> Self {
+    /// The dependency_graph parameter is used for efficient dependency queries.
+    pub fn new(
+        modules: Vec<Module>,
+        concurrency: usize,
+        dependency_graph: Option<lemma_graph::DependencyGraph<String>>,
+    ) -> Self {
         let total_jobs = modules.len();
         let jobs: HashMap<String, BuildJob> = modules
             .into_iter()
@@ -89,6 +96,7 @@ impl JobScheduler {
 
         Self {
             jobs,
+            dependency_graph,
             completed: Arc::new(Mutex::new(HashSet::new())),
             failed: Arc::new(Mutex::new(HashSet::new())),
             semaphore: Arc::new(Semaphore::new(concurrency)),
@@ -136,7 +144,15 @@ impl JobScheduler {
 
             // Clone the job data we need
             let module = self.jobs[&job_name].module.clone();
-            let all_dependencies = self.jobs[&job_name].dependencies.clone();
+
+            // Get dependencies - use graph if available, otherwise fall back to job's dependency list
+            let all_dependencies = if let Some(ref graph) = self.dependency_graph {
+                // Use graph to query dependencies
+                graph.dependencies(&job_name).unwrap_or(vec![])
+            } else {
+                // Fall back to dependencies stored in the job
+                self.jobs[&job_name].dependencies.clone()
+            };
 
             // Filter dependencies to only include those that are part of this build
             // External dependencies (e.g., Std, Init, etc.) are assumed to be already built
@@ -314,7 +330,7 @@ mod tests {
             Module::new("B".to_string(), PathBuf::from("B.lean"), vec![]),
         ];
 
-        let mut scheduler = JobScheduler::new(modules, 2);
+        let mut scheduler = JobScheduler::new(modules, 2, None);
         let counter = Arc::new(AtomicUsize::new(0));
 
         let counter_clone = Arc::clone(&counter);
@@ -348,7 +364,7 @@ mod tests {
             ),
         ];
 
-        let mut scheduler = JobScheduler::new(modules, 2);
+        let mut scheduler = JobScheduler::new(modules, 2, None);
         let execution_order = Arc::new(Mutex::new(Vec::new()));
 
         let order_clone = Arc::clone(&execution_order);
@@ -388,7 +404,7 @@ mod tests {
             Module::new("B".to_string(), PathBuf::from("B.lean"), vec!["A".to_string()]),
         ];
 
-        let mut scheduler = JobScheduler::new(modules, 2);
+        let mut scheduler = JobScheduler::new(modules, 2, None);
 
         let job_fn = move |module: Module| async move {
             if module.name == "A" {

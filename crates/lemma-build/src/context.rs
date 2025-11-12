@@ -184,8 +184,9 @@ impl BuildContext {
         // Phase 4: Execute jobs in parallel using the scheduler
         let concurrency = num_cpus::get();
 
-        // Save modules before they're moved into the scheduler
+        // Save modules and dependency graph before they're moved
         let all_modules = plan.modules.clone();
+        let dep_graph = plan.dependency_graph.clone();
 
         let mut scheduler = crate::scheduler::JobScheduler::new(
             plan.modules
@@ -193,6 +194,7 @@ impl BuildContext {
                 .filter(|m| modules_to_build.contains(&m.name))
                 .collect(),
             concurrency,
+            Some(dep_graph.clone()),
         );
 
         // Phase 5: Set up compilation driver
@@ -301,8 +303,7 @@ impl BuildContext {
         self.update_cache_after_build(&all_modules)?;
 
         // Phase 6: Link executables and libraries
-        // Build the dependency graph once for all linking operations
-        let dep_graph = self.module_resolver.build_dependency_graph(&all_modules)?;
+        // Use the dependency graph from Phase 2 (already cloned in Phase 4)
 
         // Link all executables defined in the lakefile
         for executable in &self.lakefile.executables {
