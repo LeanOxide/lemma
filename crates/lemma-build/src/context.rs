@@ -3,7 +3,7 @@
 use crate::cache::BuildCache;
 use crate::compiler::CompilationDriver;
 use crate::error::{Error, Result};
-use crate::module::ModuleResolver;
+use crate::module::{Module, ModuleResolver};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lemma_lakefile::Lakefile;
 use std::path::{Path, PathBuf};
@@ -93,12 +93,15 @@ impl BuildContext {
         );
         let driver = std::sync::Arc::new(driver);
 
-        let facet_builder = crate::facets::FacetBuilder::new(driver, build_dir, modules);
+        let facet_builder = crate::facets::FacetBuilder::new(driver, build_dir.clone(), modules.clone());
 
         // Build each target
         for target in &targets {
             facet_builder.build(target).await?;
         }
+
+        // Phase 4: Update build cache with new hashes
+        self.update_cache_after_build(&modules)?;
 
         Ok(())
     }
@@ -129,10 +132,16 @@ impl BuildContext {
         let build_dir = self.project_dir.join(&self.lakefile.build_dir);
         let modules_to_build = self
             .cache
-            .modules_needing_rebuild(&plan.modules, &build_dir)?;
+            .modules_needing_rebuild(&plan.modules, &build_dir, &self.lakefile.name)?;
+
+        eprintln!("[DEBUG] Total modules: {}", plan.modules.len());
+        eprintln!("[DEBUG] Modules needing rebuild: {}", modules_to_build.len());
+        if !modules_to_build.is_empty() {
+            eprintln!("[DEBUG] Modules to rebuild: {:?}", modules_to_build);
+        }
 
         if modules_to_build.is_empty() {
-            // Nothing to build
+            eprintln!("[DEBUG] Cache hit! Nothing to build.");
             return Ok(());
         }
 
@@ -211,7 +220,8 @@ impl BuildContext {
         // Execute all compilation jobs
         scheduler.execute_all(job_fn, progress_fn).await?;
 
-        // TODO: Phase 5 - Update build cache with new hashes
+        // Phase 5: Update build cache with new hashes
+        self.update_cache_after_build(&all_modules)?;
 
         // Phase 6: Link executables and libraries
         // Link all executables defined in the lakefile
@@ -250,6 +260,53 @@ impl BuildContext {
             "Build completed successfully ({} jobs)",
             total_jobs_including_linking
         ));
+
+        Ok(())
+    }
+
+    /// Update the build cache after a successful build
+    ///
+    /// This computes transitive hashes for all modules and updates the cache
+    /// so that future incremental builds can skip unchanged modules.
+    fn update_cache_after_build(&self, modules: &[Module]) -> Result<()> {
+        eprintln!("[DEBUG] Updating build cache with {} modules", modules.len());
+
+        // Compute transitive hashes for all modules
+        let transitive_hashes = self.cache.compute_all_transitive_hashes(modules)?;
+
+        // Create a mutable copy of the cache to update
+        let mut updated_cache = self.cache.clone();
+
+        // Update artifact hashes for each module
+        for module in modules {
+            if let Some(&trans_hash) = transitive_hashes.get(&module.name) {
+                // Update hash for the .olean artifact (primary artifact)
+                let artifact_key = format!("{}.olean", module.name);
+                updated_cache.update_artifact_hash(artifact_key, trans_hash);
+
+                // Also update file hash for the source file
+                match updated_cache.hash_file(&module.path) {
+                    Ok(file_hash) => {
+                        updated_cache.update_file_hash(
+                            module.path.to_string_lossy().to_string(),
+                            file_hash,
+                        );
+                    }
+                    Err(e) => {
+                        // Log error but don't fail the build
+                        eprintln!(
+                            "Warning: Failed to hash source file {}: {}",
+                            module.path.display(),
+                            e
+                        );
+                    }
+                }
+            }
+        }
+
+        // Save the updated cache to disk
+        updated_cache.save(&self.project_dir)?;
+        eprintln!("[DEBUG] Cache saved to {}", self.project_dir.join(".lake/build_cache.json").display());
 
         Ok(())
     }

@@ -163,6 +163,7 @@ impl BuildCache {
         &self,
         modules: &[Module],
         build_dir: &Path,
+        package_name: &str,
     ) -> Result<Vec<String>> {
         let transitive_hashes = self.compute_all_transitive_hashes(modules)?;
         let mut needs_rebuild = Vec::new();
@@ -171,7 +172,7 @@ impl BuildCache {
             let trans_hash = transitive_hashes[&module.name];
 
             // Check if artifact exists
-            let artifact_path = Self::artifact_path(build_dir, &module.name);
+            let artifact_path = Self::artifact_path(build_dir, &module.name, package_name);
             if !artifact_path.exists() {
                 needs_rebuild.push(module.name.clone());
                 continue;
@@ -189,10 +190,10 @@ impl BuildCache {
 
     /// Get the artifact path for a module
     ///
-    /// Example: "Foo.Bar" -> "build/lib/Foo/Bar.olean"
-    fn artifact_path(build_dir: &Path, module_name: &str) -> PathBuf {
+    /// Example: "Foo.Bar" with package "mypackage" -> "build/lib/mypackage/Foo/Bar.olean"
+    fn artifact_path(build_dir: &Path, module_name: &str, package_name: &str) -> PathBuf {
         let parts: Vec<&str> = module_name.split('.').collect();
-        let mut path = build_dir.join("lib");
+        let mut path = build_dir.join("lib").join(package_name);
         for part in parts {
             path.push(part);
         }
@@ -331,6 +332,7 @@ mod tests {
     fn test_modules_needing_rebuild() {
         let temp_dir = TempDir::new().unwrap();
         let build_dir = temp_dir.path().join("build");
+        let package_name = "testpkg";
 
         let a_file = temp_dir.path().join("A.lean");
         let b_file = temp_dir.path().join("B.lean");
@@ -346,15 +348,15 @@ mod tests {
         let cache = BuildCache::new();
 
         // Initially, all modules need rebuilding (no artifacts)
-        let needs_rebuild = cache.modules_needing_rebuild(&modules, &build_dir).unwrap();
+        let needs_rebuild = cache.modules_needing_rebuild(&modules, &build_dir, package_name).unwrap();
         assert_eq!(needs_rebuild.len(), 2);
         assert!(needs_rebuild.contains(&"A".to_string()));
         assert!(needs_rebuild.contains(&"B".to_string()));
 
-        // Create artifacts
-        fs::create_dir_all(build_dir.join("lib")).unwrap();
-        fs::write(build_dir.join("lib/A.olean"), "artifact").unwrap();
-        fs::write(build_dir.join("lib/B.olean"), "artifact").unwrap();
+        // Create artifacts with package name in path
+        fs::create_dir_all(build_dir.join("lib").join(package_name)).unwrap();
+        fs::write(build_dir.join("lib").join(package_name).join("A.olean"), "artifact").unwrap();
+        fs::write(build_dir.join("lib").join(package_name).join("B.olean"), "artifact").unwrap();
 
         // Update cache with current hashes
         let mut updated_cache = BuildCache::new();
@@ -364,7 +366,7 @@ mod tests {
 
         // Now nothing needs rebuilding
         let needs_rebuild = updated_cache
-            .modules_needing_rebuild(&modules, &build_dir)
+            .modules_needing_rebuild(&modules, &build_dir, package_name)
             .unwrap();
         assert_eq!(needs_rebuild.len(), 0);
 
@@ -373,7 +375,7 @@ mod tests {
 
         // Both A and B should need rebuilding (B transitively)
         let needs_rebuild = updated_cache
-            .modules_needing_rebuild(&modules, &build_dir)
+            .modules_needing_rebuild(&modules, &build_dir, package_name)
             .unwrap();
         assert_eq!(needs_rebuild.len(), 2);
         assert!(needs_rebuild.contains(&"A".to_string()));
@@ -403,20 +405,21 @@ mod tests {
     #[test]
     fn test_artifact_path() {
         let build_dir = PathBuf::from("/project/build");
+        let package_name = "mypackage";
 
         assert_eq!(
-            BuildCache::artifact_path(&build_dir, "Main"),
-            PathBuf::from("/project/build/lib/Main.olean")
+            BuildCache::artifact_path(&build_dir, "Main", package_name),
+            PathBuf::from("/project/build/lib/mypackage/Main.olean")
         );
 
         assert_eq!(
-            BuildCache::artifact_path(&build_dir, "Foo.Bar"),
-            PathBuf::from("/project/build/lib/Foo/Bar.olean")
+            BuildCache::artifact_path(&build_dir, "Foo.Bar", package_name),
+            PathBuf::from("/project/build/lib/mypackage/Foo/Bar.olean")
         );
 
         assert_eq!(
-            BuildCache::artifact_path(&build_dir, "A.B.C"),
-            PathBuf::from("/project/build/lib/A/B/C.olean")
+            BuildCache::artifact_path(&build_dir, "A.B.C", package_name),
+            PathBuf::from("/project/build/lib/mypackage/A/B/C.olean")
         );
     }
 }
