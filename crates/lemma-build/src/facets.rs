@@ -309,7 +309,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_module_build_dir() {
+    fn test_get_olean_path() {
         let driver = Arc::new(CompilationDriver::new(
             PathBuf::from("lean"),
             PathBuf::from("src"),
@@ -328,10 +328,37 @@ mod tests {
             vec![],
         );
 
-        let build_dir = builder.get_module_build_dir(&module);
+        let olean_path = builder.get_olean_path(&module);
         assert_eq!(
-            build_dir,
-            PathBuf::from(".lake/build/lib/Foo/Bar")
+            olean_path,
+            PathBuf::from(".lake/build/lib/Foo/Bar/Baz.olean")
+        );
+    }
+
+    #[test]
+    fn test_get_c_path() {
+        let driver = Arc::new(CompilationDriver::new(
+            PathBuf::from("lean"),
+            PathBuf::from("src"),
+            PathBuf::from(".lake/build"),
+            "test".to_string(),
+        ));
+        let builder = FacetBuilder::new(
+            driver,
+            PathBuf::from(".lake/build"),
+            vec![],
+        );
+
+        let module = Module::new(
+            "Foo.Bar".to_string(),
+            PathBuf::from("Foo/Bar.lean"),
+            vec![],
+        );
+
+        let c_path = builder.get_c_path(&module);
+        assert_eq!(
+            c_path,
+            PathBuf::from(".lake/build/ir/Foo/Bar.c")
         );
     }
 }
