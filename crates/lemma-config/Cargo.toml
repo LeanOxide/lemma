@@ -19,6 +19,9 @@ toml.workspace = true
 # Path utilities
 dirs.workspace = true
 
+# Binary resolution
+which = "7.0"
+
 # Logging
 tracing.workspace = true
 

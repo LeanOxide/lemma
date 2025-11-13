@@ -1038,7 +1038,6 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "walkdir",
- "which",
 ]
 
 [[package]]
@@ -1066,6 +1065,7 @@ dependencies = [
  "tempfile",
  "toml 0.8.23",
  "tracing",
+ "which",
 ]
 
 [[package]]

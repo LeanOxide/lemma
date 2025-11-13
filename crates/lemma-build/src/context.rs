@@ -77,14 +77,15 @@ impl BuildContext {
         // Phase 3: Build the targets using FacetBuilder
         let build_dir = self.project_dir.join(&self.lakefile.build_dir);
 
-        // Find the lean binary
-        let lean_binary = which::which("lean").map_err(|e| {
+        // Resolve the active toolchain and get the lean binary
+        let binaries = lemma_config::ToolchainBinaries::resolve(None).map_err(|e| {
             Error::Other(format!(
-                "Could not find 'lean' binary in PATH. \
-                 Please ensure Lean is installed and available. Error: {}",
+                "Could not resolve Lean toolchain binaries. \
+                 Please ensure a Lean toolchain is installed. Error: {}",
                 e
             ))
         })?;
+        let lean_binary = binaries.lean;
 
         let mut driver = crate::compiler::CompilationDriver::new(
             lean_binary,
@@ -143,7 +144,7 @@ impl BuildContext {
         let driver = std::sync::Arc::new(driver);
 
         let facet_builder =
-            crate::facets::FacetBuilder::new(driver, build_dir.clone(), modules.clone());
+            crate::facets::FacetBuilder::new(driver, build_dir.clone(), modules.clone())?;
 
         // Build each target
         for target in &targets {
@@ -212,14 +213,15 @@ impl BuildContext {
         );
 
         // Phase 5: Set up compilation driver
-        // Find the lean binary (assume it's in PATH for now; TODO: use lemma-toolchain)
-        let lean_binary = which::which("lean").map_err(|e| {
+        // Resolve the active toolchain and get the lean binary
+        let binaries = lemma_config::ToolchainBinaries::resolve(None).map_err(|e| {
             Error::Other(format!(
-                "Could not find 'lean' binary in PATH. \
-                 Please ensure Lean is installed and available. Error: {}",
+                "Could not resolve Lean toolchain binaries. \
+                 Please ensure a Lean toolchain is installed. Error: {}",
                 e
             ))
         })?;
+        let lean_binary = binaries.lean;
 
         let mut driver = CompilationDriver::new(
             lean_binary,

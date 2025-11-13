@@ -60,10 +60,10 @@ impl ModuleResolver {
         })
     }
 
-    /// Find the lean binary in the system
+    /// Find the lean binary from the active toolchain
     fn find_lean_binary() -> Option<PathBuf> {
-        // Try to find lean in PATH
-        which::which("lean").ok()
+        // Try to resolve from toolchain
+        lemma_config::ToolchainBinaries::lean_binary(None).ok()
     }
 
     /// Discover all modules in the project
