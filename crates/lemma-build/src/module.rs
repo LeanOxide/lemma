@@ -2,9 +2,12 @@
 
 use crate::error::{Error, Result};
 use lemma_lakefile::Lakefile;
-use regex::Regex;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use walkdir::WalkDir;
+
+/// Embedded Lean script for extracting imports using Lean's native parser
+const EXTRACT_IMPORTS_SCRIPT: &str = include_str!("../scripts/extract_imports.lean");
 
 /// A Lean module (a .lean source file)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -38,8 +41,8 @@ pub struct ModuleResolver {
     /// Source directory
     src_dir: PathBuf,
 
-    /// Regex for parsing import statements
-    import_regex: Regex,
+    /// Path to the lean binary (for parsing imports)
+    lean_binary: Option<PathBuf>,
 }
 
 impl ModuleResolver {
@@ -47,18 +50,20 @@ impl ModuleResolver {
     pub fn new(project_dir: &Path, lakefile: &Lakefile) -> Result<Self> {
         let src_dir = project_dir.join(&lakefile.src_dir);
 
-        // Compile regex for parsing imports
-        // Matches: "import Foo.Bar", "meta import Foo", "public meta import Foo", etc.
-        let import_regex =
-            Regex::new(r"^\s*(?:public\s+)?(?:meta\s+)?import\s+([\w.]+)").map_err(|e| {
-                Error::ModuleResolution(format!("Failed to compile import regex: {}", e))
-            })?;
+        // Try to find the lean binary for native import parsing
+        let lean_binary = Self::find_lean_binary();
 
         Ok(Self {
             project_dir: project_dir.to_path_buf(),
             src_dir,
-            import_regex,
+            lean_binary,
         })
+    }
+
+    /// Find the lean binary in the system
+    fn find_lean_binary() -> Option<PathBuf> {
+        // Try to find lean in PATH
+        which::which("lean").ok()
     }
 
     /// Discover all modules in the project
@@ -93,12 +98,77 @@ impl ModuleResolver {
         Ok(modules)
     }
 
-    /// Parse imports from a .lean file
+    /// Parse imports from a .lean file using Lean's native parser
     ///
-    /// This extracts all `import Foo.Bar` statements from the file.
-    /// Uses buffered reading for better performance on large files,
-    /// since imports only appear at the beginning.
+    /// This uses Lean's `parseImports'` function via a helper script to accurately
+    /// extract all import statements, handling all edge cases correctly.
     pub fn parse_imports(&self, file: &Path) -> Result<Vec<String>> {
+        // Try native Lean parsing first
+        if let Some(ref lean_binary) = self.lean_binary {
+            match self.parse_imports_with_lean(file, lean_binary) {
+                Ok(imports) => return Ok(imports),
+                Err(e) => {
+                    // If Lean parsing fails, log the error and fall back
+                    eprintln!(
+                        "Warning: Lean-based import parsing failed for {}: {}. Falling back to simple parsing.",
+                        file.display(),
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fallback to simple parsing if Lean binary not available
+        self.parse_imports_fallback(file)
+    }
+
+    /// Parse imports using Lean's native parser (most accurate)
+    fn parse_imports_with_lean(&self, file: &Path, lean_binary: &Path) -> Result<Vec<String>> {
+        // Write the script to a temporary file
+        let temp_dir = std::env::temp_dir();
+        let script_path = temp_dir.join("lemma_extract_imports.lean");
+        std::fs::write(&script_path, EXTRACT_IMPORTS_SCRIPT).map_err(|e| {
+            Error::ModuleResolution(format!("Failed to write import extraction script: {}", e))
+        })?;
+
+        // Run: lean --run extract_imports.lean <file>
+        let output = Command::new(lean_binary)
+            .arg("--run")
+            .arg(&script_path)
+            .arg(file)
+            .output()
+            .map_err(|e| {
+                Error::ModuleResolution(format!("Failed to execute lean for import parsing: {}", e))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(Error::ModuleResolution(format!(
+                "Lean import parsing failed for {}: {}",
+                file.display(),
+                stderr
+            )));
+        }
+
+        // Parse the output (one import per line)
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let imports: Vec<String> = stdout
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| line.trim().to_string())
+            // Filter out the implicit Init import that Lean adds automatically
+            // This matches the behavior of the old regex-based parser
+            .filter(|imp| imp != "Init")
+            .collect();
+
+        Ok(imports)
+    }
+
+    /// Fallback simple import parser (used when Lean binary not available)
+    ///
+    /// This is a simple line-by-line parser that handles basic import statements.
+    /// It's less accurate than Lean's parser but works without requiring Lean to be installed.
+    fn parse_imports_fallback(&self, file: &Path) -> Result<Vec<String>> {
         use std::io::{BufRead, BufReader};
 
         let file_handle = std::fs::File::open(file).map_err(|e| {
@@ -118,8 +188,6 @@ impl ModuleResolver {
                 ))
             })?;
 
-            // Stop at the first non-import, non-comment, non-blank line
-            // In Lean, imports must come at the beginning of the file (but after module/section keywords)
             let trimmed = line.trim();
 
             // Handle block comments
@@ -133,26 +201,29 @@ impl ModuleResolver {
                 continue;
             }
 
+            // Skip comments and empty lines
             if trimmed.is_empty() || trimmed.starts_with("--") {
                 continue;
             }
 
-            // Skip Lean keywords that can appear before imports
-            if trimmed == "module"
-                || trimmed.starts_with("module ")
-                || trimmed.contains("section")
-                || trimmed.contains("namespace")
-                || trimmed.starts_with("@[")
-            {
-                continue;
-            }
+            // Simple import pattern matching
+            // Handles: "import Foo.Bar", "import Foo", etc.
+            if let Some(import_start) = trimmed.strip_prefix("import ") {
+                // Extract module name (everything up to whitespace or end of line)
+                let module_name = import_start
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or(import_start)
+                    .trim();
 
-            if let Some(captures) = self.import_regex.captures(&line) {
-                if let Some(import) = captures.get(1) {
-                    imports.push(import.as_str().to_string());
+                if !module_name.is_empty() {
+                    imports.push(module_name.to_string());
                 }
-            } else {
-                // We've hit a non-import line, stop processing
+            } else if trimmed.starts_with("import") {
+                // Handle case without space: "importFoo" is invalid, but let's be safe
+                continue;
+            } else if !trimmed.is_empty() && !trimmed.starts_with("--") {
+                // Hit a non-import line, stop
                 break;
             }
         }
