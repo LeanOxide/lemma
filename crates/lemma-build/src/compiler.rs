@@ -99,8 +99,8 @@ impl CompilationDriver {
 
         // Set up LEAN_PATH environment variable
         // This tells the compiler where to find compiled dependencies
-        let mut lean_path_builder = crate::paths::LeanPathBuilder::new()
-            .add_project_lib(&self.paths);
+        let mut lean_path_builder =
+            crate::paths::LeanPathBuilder::new().add_project_lib(&self.paths);
 
         // Get Lean stdlib path (usually <lean_binary_dir>/../lib/lean)
         if let Some(stdlib_path) = self
@@ -510,10 +510,7 @@ mod tests {
         );
 
         let output_dir = driver.get_lib_output_dir(&module);
-        assert_eq!(
-            output_dir,
-            PathBuf::from(".lake/build/lib/lean/Foo/Bar")
-        );
+        assert_eq!(output_dir, PathBuf::from(".lake/build/lib/lean/Foo/Bar"));
     }
 
     #[test]

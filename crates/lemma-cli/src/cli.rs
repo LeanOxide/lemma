@@ -231,10 +231,6 @@ pub enum Commands {
         #[arg(long)]
         path: Option<String>,
 
-        /// Use the native lemma build system (experimental)
-        #[arg(long)]
-        native: bool,
-
         /// Clear the build directory before building
         #[arg(long)]
         clear: bool,

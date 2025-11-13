@@ -204,7 +204,7 @@ impl LeanPathBuilder {
                     .iter()
                     .map(|p| p.to_string_lossy())
                     .collect::<Vec<_>>()
-                    .join(":")
+                    .join(":"),
             )
         }
     }
@@ -242,20 +242,14 @@ mod tests {
 
         let paths = BuildPaths::new(project_dir.clone(), build_dir.clone());
 
-        assert_eq!(
-            paths.lib_dir(),
-            build_dir.join("lib").join("lean")
-        );
+        assert_eq!(paths.lib_dir(), build_dir.join("lib").join("lean"));
 
         assert_eq!(
             paths.olean_path("Foo.Bar"),
             build_dir.join("lib/lean/Foo/Bar.olean")
         );
 
-        assert_eq!(
-            paths.executable_path("myapp"),
-            build_dir.join("bin/myapp")
-        );
+        assert_eq!(paths.executable_path("myapp"), build_dir.join("bin/myapp"));
     }
 
     #[test]
@@ -282,10 +276,7 @@ mod tests {
     fn test_lean_path_with_system() {
         env::set_var("LEAN_PATH", "/usr/lib/lean");
 
-        let lean_path = LeanPathBuilder::new()
-            .add_system_path()
-            .build()
-            .unwrap();
+        let lean_path = LeanPathBuilder::new().add_system_path().build().unwrap();
 
         assert_eq!(lean_path, "/usr/lib/lean");
 
@@ -319,15 +310,9 @@ mod tests {
 
         let paths = BuildPaths::new(project_dir, build_dir.clone());
 
-        assert_eq!(
-            paths.ir_dir(),
-            build_dir.join("ir")
-        );
+        assert_eq!(paths.ir_dir(), build_dir.join("ir"));
 
-        assert_eq!(
-            paths.c_path("Foo.Bar"),
-            build_dir.join("ir/Foo/Bar.c")
-        );
+        assert_eq!(paths.c_path("Foo.Bar"), build_dir.join("ir/Foo/Bar.c"));
 
         assert_eq!(
             paths.object_path("Foo.Bar"),

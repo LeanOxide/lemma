@@ -69,7 +69,6 @@ pub fn execute(
 
     let build_result = crate::commands::build::execute(
         path,
-        true,  // use native build system
         false, // no clear
         None,  // no custom out-dir
         &[],   // no specific targets
