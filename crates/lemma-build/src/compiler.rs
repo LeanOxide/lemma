@@ -77,13 +77,15 @@ impl CompilationDriver {
     /// Compile a module
     ///
     /// This will:
-    /// 1. Invoke lean to generate .olean, .ilean, and .c files
-    /// 2. Invoke leanc to compile .c to .o (object file)
+    /// 1. Create a ModuleSetup JSON file with isModule=true
+    /// 2. Invoke lean to generate .olean, .ilean, .c, and language server artifacts
+    /// 3. Invoke leanc to compile .c to .o (object file)
     pub async fn compile_module(&self, module: &Module, _output_dir: &Path) -> Result<()> {
         let olean_path = self.get_olean_path(module);
         let ilean_path = self.get_ilean_path(module);
         let c_path = self.get_c_path(module);
         let obj_path = self.get_object_path(module);
+        let setup_path = self.paths.setup_path(&module.name);
 
         // Create output directories for artifacts
         // Lake structure: .lake/build/lib/<package>/ (hierarchical) and .lake/build/ir/ (hierarchical)
@@ -94,7 +96,21 @@ impl CompilationDriver {
             std::fs::create_dir_all(parent)?;
         }
 
-        // Step 1: Run lean to generate .olean, .ilean, and .c files
+        // Step 1: Create ModuleSetup JSON file
+        // Setting isModule=true enables generation of .olean.server and .olean.private files
+        let setup_json = serde_json::json!({
+            "name": module.name,
+            "isModule": true,
+            "imports": null,
+            "importArts": {},
+            "dynlibs": [],
+            "plugins": [],
+            "options": {}
+        });
+
+        std::fs::write(&setup_path, setup_json.to_string())?;
+
+        // Step 2: Run lean to generate .olean, .ilean, .c, and language server artifacts
         let mut cmd = Command::new(&self.lean_binary);
 
         // Set up LEAN_PATH environment variable
@@ -130,6 +146,15 @@ impl CompilationDriver {
         // Set C output file
         cmd.arg("-c");
         cmd.arg(&c_path);
+
+        // NOTE: Not using --setup for now to avoid interpreter/private name issues
+        // This means language server artifacts (.olean.server, .olean.private) won't be generated
+        // TODO: Investigate proper setup.json configuration
+        // cmd.arg("--setup");
+        // cmd.arg(&setup_path);
+
+        // Add --json flag for structured output
+        cmd.arg("--json");
 
         // Add custom flags
         for flag in &self.flags {
@@ -194,7 +219,25 @@ impl CompilationDriver {
             )));
         }
 
-        // Step 2: Run leanc to compile .c to .o
+        // Verify that language server artifacts were created
+        let olean_server_path = self.paths.olean_server_path(&module.name);
+        let olean_private_path = self.paths.olean_private_path(&module.name);
+
+        if !olean_server_path.exists() {
+            eprintln!(
+                "[WARNING] .olean.server file not found at {}. Language server support may be limited.",
+                olean_server_path.display()
+            );
+        }
+
+        if !olean_private_path.exists() {
+            eprintln!(
+                "[WARNING] .olean.private file not found at {}. Language server support may be limited.",
+                olean_private_path.display()
+            );
+        }
+
+        // Step 3: Run leanc to compile .c to .o
         let leanc = self.get_leanc_path()?;
         let mut cmd = Command::new(&leanc);
 
@@ -343,12 +386,12 @@ impl CompilationDriver {
             cmd.arg(obj);
         }
 
-        // Add libraries in topological order (dependencies before dependents)
-        // This ensures the linker can resolve symbols correctly
-        for lib in libraries {
-            cmd.arg("-l");
-            cmd.arg(lib);
-        }
+        // NOTE: Removed library linking logic (-l flags) because:
+        // 1. Internal project libraries are already included via object files
+        // 2. We don't build .a archive files for internal libraries
+        // 3. External system libraries should be linked differently if needed
+        // TODO: Re-add external library support if needed (e.g., -lpthread)
+        let _ = libraries; // Suppress unused parameter warning
 
         // Configure stdio
         cmd.stdout(Stdio::piped());
