@@ -1,7 +1,6 @@
 //! Override command - Manage directory-specific toolchain overrides
 
 use anyhow::{Context, Result};
-use colored::Colorize;
 use std::env;
 use std::path::PathBuf;
 
@@ -14,17 +13,17 @@ use lemma_toolchain::ToolchainDesc;
 pub fn execute(
     command: OverrideCommands,
     settings: &GlobalSettings,
-    #[allow(unused_variables)] printer: &Printer,
+    printer: &Printer,
 ) -> Result<()> {
     match command {
-        OverrideCommands::Set { toolchain, path } => set_override(&toolchain, path, settings),
-        OverrideCommands::Unset { path } => unset_override(path, settings),
-        OverrideCommands::List => list_overrides(settings),
+        OverrideCommands::Set { toolchain, path } => set_override(&toolchain, path, settings, printer),
+        OverrideCommands::Unset { path } => unset_override(path, settings, printer),
+        OverrideCommands::List => list_overrides(settings, printer),
     }
 }
 
 /// Set a directory override
-fn set_override(toolchain: &str, path: Option<String>, _settings: &GlobalSettings) -> Result<()> {
+fn set_override(toolchain: &str, path: Option<String>, settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let target_path = if let Some(p) = path {
         PathBuf::from(p)
     } else {
@@ -66,18 +65,16 @@ fn set_override(toolchain: &str, path: Option<String>, _settings: &GlobalSetting
         .canonicalize()
         .context("Failed to canonicalize path")?;
 
-    println!(
-        "{} Override set for directory: {}",
-        "✓".green().bold(),
-        canonical_path.display()
-    );
-    println!("   Toolchain: {}", canonical_name);
+    printer.success(format!("Override set for directory: {}", canonical_path.display()))?;
+    if settings.is_verbose() {
+        printer.hint(format!("Toolchain: {}", canonical_name))?;
+    }
 
     Ok(())
 }
 
 /// Remove a directory override
-fn unset_override(path: Option<String>, _settings: &GlobalSettings) -> Result<()> {
+fn unset_override(path: Option<String>, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let target_path = if let Some(p) = path {
         PathBuf::from(p)
     } else {
@@ -95,49 +92,36 @@ fn unset_override(path: Option<String>, _settings: &GlobalSettings) -> Result<()
             .canonicalize()
             .context("Failed to canonicalize path")?;
 
-        println!(
-            "{} Override removed for directory: {}",
-            "✓".green().bold(),
-            canonical_path.display()
-        );
+        printer.success(format!("Override removed for directory: {}", canonical_path.display()))?;
     } else {
         let canonical_path = target_path
             .canonicalize()
             .context("Failed to canonicalize path")?;
 
-        println!(
-            "{} No override found for directory: {}",
-            "=>".yellow().bold(),
-            canonical_path.display()
-        );
+        printer.warning(format!("No override found for directory: {}", canonical_path.display()))?;
     }
 
     Ok(())
 }
 
 /// List all directory overrides
-fn list_overrides(_settings: &GlobalSettings) -> Result<()> {
+fn list_overrides(_settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let config = Config::load()?;
 
     if config.overrides.is_empty() {
-        println!("{} No directory overrides configured", "=>".cyan().bold());
-        println!();
-        println!("Set an override with: lemma override set <toolchain>");
+        printer.hint("No directory overrides configured")?;
+        printer.hint("Set an override with: lemma override set <toolchain>")?;
         return Ok(());
     }
 
-    println!("{}", "Directory overrides".green().bold());
-    println!("{}", "-------------------".green().bold());
-    println!();
+    printer.header("Directory overrides")?;
 
     // Sort by path for consistent output
     let mut overrides: Vec<_> = config.overrides.iter().collect();
     overrides.sort_by_key(|(path, _)| path.as_str());
 
     for (path, toolchain) in overrides {
-        println!("  {} {}", "→".cyan(), path);
-        println!("    Toolchain: {}", toolchain);
-        println!();
+        printer.list_item(format!("{} → {}", path, toolchain))?;
     }
 
     Ok(())

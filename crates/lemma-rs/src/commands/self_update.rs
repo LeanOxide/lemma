@@ -1,7 +1,6 @@
 //! Self-update command - Update lemma itself
 
 use anyhow::{bail, Context, Result};
-use colored::Colorize;
 use lemma_config::GlobalSettings;
 use lemma_output::Printer;
 use serde::Deserialize;
@@ -40,45 +39,43 @@ fn get_available_version() -> Result<String> {
 }
 
 pub fn update(
-    _settings: &GlobalSettings,
-    #[allow(unused_variables)] printer: &Printer,
+    settings: &GlobalSettings,
+    printer: &Printer,
 ) -> Result<()> {
-    println!("{} Checking for updates...", "=>".cyan().bold());
+    printer.status("Checking for updates")?;
 
     // Get current version
     let current_version = env!("CARGO_PKG_VERSION");
-    println!("   Current version: {}", current_version);
+    if settings.is_verbose() {
+        printer.hint(format!("Current version: {}", current_version))?;
+    }
 
     // Fetch available version
     let available_version = get_available_version().context("Failed to check for updates")?;
-    println!("   Latest version: {}", available_version);
+    if settings.is_verbose() {
+        printer.hint(format!("Latest version: {}", available_version))?;
+    }
 
     // Check if update is needed
     if available_version == current_version {
-        println!();
-        println!(
-            "{} lemma is already up-to-date ({})",
-            "✓".green().bold(),
-            current_version
-        );
+        printer.success(format!("lemma is already up-to-date ({})", current_version))?;
         return Ok(());
     }
 
     // Detect platform
     let target = get_host_target()?;
-    println!("   Platform: {}", target);
+    if settings.is_verbose() {
+        printer.hint(format!("Platform: {}", target))?;
+    }
 
     // Check if we can determine the current executable
     let current_exe = env::current_exe().context("Failed to determine current executable path")?;
-    println!("   Executable: {}", current_exe.display());
+    if settings.is_verbose() {
+        printer.hint(format!("Executable: {}", current_exe.display()))?;
+    }
 
     // Download specific version
-    println!();
-    println!(
-        "{} Downloading version {}...",
-        "=>".cyan().bold(),
-        available_version
-    );
+    printer.status(format!("Downloading version {}", available_version))?;
     let download_client = DownloadClient::new()?;
     let temp_dir = Config::tmp_dir()?;
     fs::create_dir_all(&temp_dir).context("Failed to create temp directory")?;
@@ -97,14 +94,16 @@ pub fn update(
         "{}/releases/{}/{}",
         RELEASE_BASE_URL, available_version, archive_name
     );
-    println!("   From: {}", download_url);
+    if settings.is_verbose() {
+        printer.hint(format!("From: {}", download_url))?;
+    }
 
     download_client
         .download_file(&download_url, &download_path)
         .context(format!("Failed to download update from {}.", download_url))?;
 
     // Extract archive
-    println!("{} Extracting...", "=>".cyan().bold());
+    printer.status("Extracting")?;
     let extract_dir = temp_dir.join("lemma-update");
     if extract_dir.exists() {
         fs::remove_dir_all(&extract_dir).context("Failed to clean extraction directory")?;
@@ -114,24 +113,23 @@ pub fn update(
 
     // Find the new binary
     let new_binary = find_binary_in_dir(&extract_dir)?;
-    println!("   New binary: {}", new_binary.display());
+    if settings.is_verbose() {
+        printer.hint(format!("New binary: {}", new_binary.display()))?;
+    }
 
     // Replace current executable
-    println!("{} Installing update...", "=>".cyan().bold());
-    replace_binary(&new_binary, &current_exe)?;
+    printer.status("Installing update")?;
+    replace_binary(&new_binary, &current_exe, settings, printer)?;
 
     // Clean up
     let _ = fs::remove_file(&download_path);
     let _ = fs::remove_dir_all(&extract_dir);
 
-    println!();
-    println!("{} Successfully updated lemma!", "✓".green().bold());
-    println!(
-        "   {} → {}",
-        current_version,
-        available_version.green().bold()
-    );
-    println!("   Run 'lemma --version' to verify the update");
+    printer.success("Successfully updated lemma!")?;
+    if settings.is_verbose() {
+        printer.hint(format!("{} → {}", current_version, available_version))?;
+        printer.hint("Run 'lemma --version' to verify the update")?;
+    }
 
     Ok(())
 }
@@ -219,7 +217,7 @@ fn find_binary_in_dir(dir: &Path) -> Result<PathBuf> {
 
 /// Replace the current binary with the new one
 #[cfg(unix)]
-fn replace_binary(new_binary: &Path, current_exe: &Path) -> Result<()> {
+fn replace_binary(new_binary: &Path, current_exe: &Path, _settings: &GlobalSettings, _printer: &Printer) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
     // Make the new binary executable
@@ -256,7 +254,7 @@ fn replace_binary(new_binary: &Path, current_exe: &Path) -> Result<()> {
 
 /// Replace the current binary with the new one (Windows)
 #[cfg(windows)]
-fn replace_binary(new_binary: &Path, current_exe: &Path) -> Result<()> {
+fn replace_binary(new_binary: &Path, current_exe: &Path, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     // On Windows, we can't replace a running executable
     // We need to use a different strategy:
     // 1. Rename current exe to .old
@@ -273,12 +271,8 @@ fn replace_binary(new_binary: &Path, current_exe: &Path) -> Result<()> {
     // Try to rename current to backup
     // On Windows this might fail if the file is locked
     if let Err(e) = fs::rename(current_exe, &backup) {
-        eprintln!(
-            "{} Could not backup current executable: {}",
-            "Warning:".yellow().bold(),
-            e
-        );
-        eprintln!("   Attempting direct copy...");
+        printer.warning(format!("Could not backup current executable: {}", e))?;
+        printer.hint("Attempting direct copy")?;
 
         // Try direct copy instead
         fs::copy(new_binary, current_exe).context("Failed to replace executable")?;
@@ -287,12 +281,7 @@ fn replace_binary(new_binary: &Path, current_exe: &Path) -> Result<()> {
         fs::copy(new_binary, current_exe).context("Failed to install new executable")?;
     }
 
-    println!();
-    println!(
-        "{} You may need to restart your terminal or command prompt",
-        "Note:".yellow().bold()
-    );
-    println!("   for the update to take full effect.");
+    printer.hint("You may need to restart your terminal or command prompt for the update to take full effect")?;
 
     Ok(())
 }
@@ -315,19 +304,15 @@ pub fn cleanup_old_backups() -> Result<()> {
 /// Uninstall lemma and all toolchains
 pub fn uninstall(
     skip_confirm: bool,
-    _settings: &GlobalSettings,
-    #[allow(unused_variables)] printer: &Printer,
+    settings: &GlobalSettings,
+    printer: &Printer,
 ) -> Result<()> {
     use std::io::{self, Write};
 
-    println!();
-    println!("{} Uninstall lemma", "=>".red().bold());
-    println!();
-    println!("This will remove:");
-    println!("  - All installed Lean toolchains");
-    println!("  - All lemma proxy binaries");
-    println!("  - The entire ~/.lemma directory");
-    println!();
+    printer.header("Uninstall lemma")?;
+    printer.list_item("All installed Lean toolchains")?;
+    printer.list_item("All lemma proxy binaries")?;
+    printer.list_item("The entire ~/.lemma directory")?;
 
     if !skip_confirm {
         print!("Continue? (y/N): ");
@@ -337,20 +322,24 @@ pub fn uninstall(
         io::stdin().read_line(&mut input)?;
 
         if !input.trim().eq_ignore_ascii_case("y") {
-            println!("Uninstall cancelled.");
+            printer.hint("Uninstall cancelled")?;
             return Ok(());
         }
     }
 
     let lemma_home = Config::lemma_home()?;
 
-    println!("{} Removing lemma installation...", "=>".cyan().bold());
-    println!("   Directory: {}", lemma_home.display());
+    printer.status("Removing lemma installation")?;
+    if settings.is_verbose() {
+        printer.hint(format!("Directory: {}", lemma_home.display()))?;
+    }
 
     // Remove the entire .lemma directory
     if lemma_home.exists() {
         fs::remove_dir_all(&lemma_home).context("Failed to remove lemma home directory")?;
-        println!("   {} Removed ~/.lemma", "✓".green());
+        if settings.is_verbose() {
+            printer.hint("Removed ~/.lemma")?;
+        }
     }
 
     // Try to remove the current executable (best effort)
@@ -358,36 +347,28 @@ pub fn uninstall(
         // On Unix, we can't delete a running binary, so we just note it
         #[cfg(unix)]
         {
-            println!();
-            println!("{} Note:", "=>".yellow().bold());
-            println!(
-                "   The lemma executable at {} will remain",
+            printer.hint(format!(
+                "The lemma executable at {} will remain. You can manually delete it with: rm {}",
+                current_exe.display(),
                 current_exe.display()
-            );
-            println!("   You can manually delete it with:");
-            println!("   $ rm {}", current_exe.display());
+            ))?;
         }
 
         // On Windows, try to delete after we exit
         #[cfg(windows)]
         {
-            println!("   The lemma executable will be removed on next reboot");
+            printer.hint("The lemma executable will be removed on next reboot")?;
             // Schedule for deletion on reboot
             let _ = fs::rename(&current_exe, current_exe.with_extension("delete_me.exe"));
         }
     }
 
-    println!();
-    println!("{} Lemma has been uninstalled", "✓".green().bold());
+    printer.success("Lemma has been uninstalled")?;
 
     // Note about PATH
-    println!();
-    println!(
-        "{} Remember to remove ~/.lemma/bin from your PATH",
-        "Note:".yellow().bold()
-    );
-    println!("   Edit your shell profile (~/.bashrc, ~/.zshrc, etc.) and remove:");
-    println!("   export PATH=\"$HOME/.lemma/bin:$PATH\"");
+    printer.hint("Remember to remove ~/.lemma/bin from your PATH")?;
+    printer.hint("Edit your shell profile (~/.bashrc, ~/.zshrc, etc.) and remove:")?;
+    printer.hint("export PATH=\"$HOME/.lemma/bin:$PATH\"")?;
 
     Ok(())
 }

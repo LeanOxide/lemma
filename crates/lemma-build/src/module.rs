@@ -2,6 +2,7 @@
 
 use crate::error::{Error, Result};
 use lemma_lakefile::Lakefile;
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
@@ -69,57 +70,75 @@ impl ModuleResolver {
     /// Discover all modules in the project
     ///
     /// This will walk the source directory and find all .lean files,
-    /// parse their imports, and return a list of modules.
+    /// parse their imports in parallel, and return a list of modules.
     pub fn discover_modules(&self) -> Result<Vec<Module>> {
-        let mut modules = Vec::new();
-
-        // Walk the source directory and find all .lean files
-        for entry in WalkDir::new(&self.src_dir)
+        // Step 1: Collect all .lean file paths
+        let lean_files: Vec<PathBuf> = WalkDir::new(&self.src_dir)
             .follow_links(true)
             .into_iter()
             .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("lean") {
+                    Some(path.to_path_buf())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-            // Only process .lean files
-            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("lean") {
+        tracing::debug!("Discovering {} modules in parallel", lean_files.len());
+
+        // Step 2: Process files in parallel using rayon
+        let modules: Result<Vec<Module>> = lean_files
+            .par_iter()
+            .map(|path| {
                 // Convert file path to module name
                 let module_name = self.path_to_module_name(path)?;
 
-                // Parse imports from the file
+                // Parse imports from the file (this may invoke Lean or use fallback parser)
                 let imports = self.parse_imports(path)?;
 
                 // Create module
-                let module = Module::new(module_name, path.to_path_buf(), imports);
-                modules.push(module);
-            }
-        }
+                Ok(Module::new(module_name, path.clone(), imports))
+            })
+            .collect();
 
-        Ok(modules)
+        modules
     }
 
-    /// Parse imports from a .lean file using Lean's native parser
+    /// Parse imports from a .lean file
     ///
-    /// This uses Lean's `parseImports'` function via a helper script to accurately
-    /// extract all import statements, handling all edge cases correctly.
+    /// By default, uses a fast fallback parser that handles common import patterns.
+    /// Set LEMMA_USE_LEAN_PARSER=1 to use Lean's native parser for maximum accuracy
+    /// (slower, requires running `lean --run` for each file).
     pub fn parse_imports(&self, file: &Path) -> Result<Vec<String>> {
-        // Try native Lean parsing first
-        if let Some(ref lean_binary) = self.lean_binary {
-            match self.parse_imports_with_lean(file, lean_binary) {
-                Ok(imports) => return Ok(imports),
-                Err(e) => {
-                    // If Lean parsing fails, log the error and fall back
-                    eprintln!(
-                        "Warning: Lean-based import parsing failed for {}: {}. Falling back to simple parsing.",
-                        file.display(),
-                        e
-                    );
+        tracing::debug!("Parsing imports from: {}", file.display());
+
+        // Use fast fallback parser by default for better performance
+        // Only use Lean's native parser if explicitly requested via LEMMA_USE_LEAN_PARSER
+        if std::env::var("LEMMA_USE_LEAN_PARSER").is_ok() {
+            if let Some(ref lean_binary) = self.lean_binary {
+                match self.parse_imports_with_lean(file, lean_binary) {
+                    Ok(imports) => {
+                        tracing::debug!("Successfully parsed {} imports with Lean parser", imports.len());
+                        return Ok(imports);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Lean-based import parsing failed for {}: {}. Falling back to simple parsing",
+                            file.display(),
+                            e
+                        );
+                    }
                 }
             }
         }
 
-        // Fallback to simple parsing if Lean binary not available
-        self.parse_imports_fallback(file)
+        // Use the fallback parser (fast, no Lean invocation needed)
+        let result = self.parse_imports_fallback(file)?;
+        tracing::debug!("Successfully parsed {} imports with fallback parser", result.len());
+        Ok(result)
     }
 
     /// Parse imports using Lean's native parser (most accurate)

@@ -21,6 +21,7 @@ serde_json.workspace = true
 toml.workspace = true
 fs-err.workspace = true
 indicatif.workspace = true
+tracing.workspace = true
 
 # For hashing
 blake3 = "1.5"
@@ -32,6 +33,9 @@ num_cpus = "1.16"
 
 # For file walking
 walkdir = "2.5"
+
+# For parallel processing
+rayon.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

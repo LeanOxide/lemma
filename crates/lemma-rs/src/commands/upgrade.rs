@@ -1,7 +1,6 @@
 //! Upgrade command - Upgrade installed toolchains
 
 use anyhow::Result;
-use colored::Colorize;
 use std::fs;
 
 use lemma_config::Config;
@@ -12,19 +11,19 @@ use lemma_toolchain::ToolchainDesc;
 
 pub fn execute(
     toolchain: Option<&str>,
-    _settings: &GlobalSettings,
-    #[allow(unused_variables)] printer: &Printer,
+    settings: &GlobalSettings,
+    printer: &Printer,
 ) -> Result<()> {
     if let Some(name) = toolchain {
         // Upgrade specific toolchain
-        upgrade_toolchain(name)
+        upgrade_toolchain(name, settings, printer)
     } else {
         // Upgrade all upgradeable toolchains
-        upgrade_all_toolchains()
+        upgrade_all_toolchains(settings, printer)
     }
 }
 
-fn upgrade_toolchain(name: &str) -> Result<()> {
+fn upgrade_toolchain(name: &str, settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     let installer = Installer::new()?;
 
     // Parse the toolchain descriptor first to get canonical name
@@ -33,16 +32,12 @@ fn upgrade_toolchain(name: &str) -> Result<()> {
 
     // Check if toolchain is installed
     if !installer.is_installed(name)? {
-        println!(
-            "{} Toolchain '{}' is not installed",
-            "=>".yellow().bold(),
-            name
-        );
-        println!("   Use 'lemma toolchain install {}' to install it", name);
+        printer.warning(format!("Toolchain '{}' is not installed", name))?;
+        printer.hint(format!("Use 'lemma toolchain install {}' to install it", name))?;
         return Ok(());
     }
 
-    println!("{} Checking for upgrades: {}", "=>".cyan().bold(), name);
+    printer.status(format!("Checking for upgrades: {}", name))?;
 
     // Fetch the latest release information
     let release = installer.fetch_release(&toolchain_desc)?;
@@ -53,36 +48,34 @@ fn upgrade_toolchain(name: &str) -> Result<()> {
     // Compare versions
     if let Some(current) = current_hash {
         if current == release.name {
-            println!(
-                "{} Toolchain '{}' is already up to date ({})",
-                "✓".green().bold(),
-                name,
-                release.name
-            );
+            printer.success(format!("Toolchain '{}' is already up to date ({})", name, release.name))?;
             return Ok(());
         }
 
-        println!("   Current: {}", current);
-        println!("   Latest:  {}", release.name);
+        if settings.is_verbose() {
+            printer.hint(format!("Current: {}", current))?;
+            printer.hint(format!("Latest:  {}", release.name))?;
+        }
     } else {
-        println!("   Latest:  {}", release.name);
+        if settings.is_verbose() {
+            printer.hint(format!("Latest:  {}", release.name))?;
+        }
     }
 
     // Perform the upgrade
-    println!("{} Upgrading toolchain...", "=>".cyan().bold());
+    printer.status("Upgrading toolchain")?;
     installer.install(name, true)?;
 
     Ok(())
 }
 
-fn upgrade_all_toolchains() -> Result<()> {
-    println!("{} Upgrading all toolchains...", "=>".green().bold());
-    println!();
+fn upgrade_all_toolchains(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
+    printer.status("Upgrading all toolchains")?;
 
     let toolchains_dir = Config::toolchains_dir()?;
 
     if !toolchains_dir.exists() {
-        println!("{} No toolchains installed", "=>".yellow().bold());
+        printer.warning("No toolchains installed")?;
         return Ok(());
     }
 
@@ -94,7 +87,7 @@ fn upgrade_all_toolchains() -> Result<()> {
     entries.sort_by_key(|e| e.file_name());
 
     if entries.is_empty() {
-        println!("{} No toolchains installed", "=>".yellow().bold());
+        printer.warning("No toolchains installed")?;
         return Ok(());
     }
 
@@ -107,7 +100,9 @@ fn upgrade_all_toolchains() -> Result<()> {
 
             // Skip symlinks (linked toolchains)
             if path.is_symlink() {
-                println!("   Skipping {} (linked toolchain)", dir_name);
+                if settings.is_verbose() {
+                    printer.hint(format!("Skipping {} (linked toolchain)", dir_name))?;
+                }
                 skipped_count += 1;
                 continue;
             }
@@ -120,20 +115,24 @@ fn upgrade_all_toolchains() -> Result<()> {
 
             // Skip specific versions
             if is_specific_version(&name) {
-                println!("   Skipping {} (pinned version)", name);
+                if settings.is_verbose() {
+                    printer.hint(format!("Skipping {} (pinned version)", name))?;
+                }
                 skipped_count += 1;
                 continue;
             }
 
             // Check if upgrade is needed
-            println!("   Checking {}...", name.bold());
+            if settings.is_verbose() {
+                printer.hint(format!("Checking {}...", name))?;
+            }
             let installer = Installer::new()?;
 
             // Parse the toolchain descriptor
             let toolchain_desc = match ToolchainDesc::parse(&name) {
                 Ok(d) => d,
                 Err(e) => {
-                    println!("   {} Failed to parse {}: {}", "✗".red(), name, e);
+                    printer.error(format!("Failed to parse {}: {}", name, e))?;
                     continue;
                 }
             };
@@ -142,12 +141,7 @@ fn upgrade_all_toolchains() -> Result<()> {
             let release = match installer.fetch_release(&toolchain_desc) {
                 Ok(r) => r,
                 Err(e) => {
-                    println!(
-                        "   {} Failed to fetch release for {}: {}",
-                        "✗".red(),
-                        name,
-                        e
-                    );
+                    printer.error(format!("Failed to fetch release for {}: {}", name, e))?;
                     continue;
                 }
             };
@@ -158,13 +152,19 @@ fn upgrade_all_toolchains() -> Result<()> {
             // Compare versions
             if let Some(current) = current_hash {
                 if current == release.name {
-                    println!("   {} Already up to date ({})", "✓".green(), release.name);
+                    if settings.is_verbose() {
+                        printer.hint(format!("Already up to date ({})", release.name))?;
+                    }
                     skipped_count += 1;
                     continue;
                 }
-                println!("   Current: {} → Latest: {}", current, release.name);
+                if settings.is_verbose() {
+                    printer.hint(format!("Current: {} → Latest: {}", current, release.name))?;
+                }
             } else {
-                println!("   Latest: {}", release.name);
+                if settings.is_verbose() {
+                    printer.hint(format!("Latest: {}", release.name))?;
+                }
             }
 
             // Perform the upgrade
@@ -173,20 +173,17 @@ fn upgrade_all_toolchains() -> Result<()> {
                     updated_count += 1;
                 }
                 Err(e) => {
-                    println!("   {} Failed to upgrade {}: {}", "✗".red(), name, e);
+                    printer.error(format!("Failed to upgrade {}: {}", name, e))?;
                 }
             }
-            println!();
         }
     }
 
-    println!();
-    println!(
-        "{} Upgraded {} toolchain(s), skipped {}",
-        "✓".green().bold(),
+    printer.success(format!(
+        "Upgraded {} toolchain(s), skipped {}",
         updated_count,
         skipped_count
-    );
+    ))?;
 
     Ok(())
 }
