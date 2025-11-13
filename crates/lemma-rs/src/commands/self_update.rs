@@ -38,10 +38,7 @@ fn get_available_version() -> Result<String> {
     Ok(manifest.version)
 }
 
-pub fn update(
-    settings: &GlobalSettings,
-    printer: &Printer,
-) -> Result<()> {
+pub fn update(settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     printer.status("Checking for updates")?;
 
     // Get current version
@@ -217,7 +214,12 @@ fn find_binary_in_dir(dir: &Path) -> Result<PathBuf> {
 
 /// Replace the current binary with the new one
 #[cfg(unix)]
-fn replace_binary(new_binary: &Path, current_exe: &Path, _settings: &GlobalSettings, _printer: &Printer) -> Result<()> {
+fn replace_binary(
+    new_binary: &Path,
+    current_exe: &Path,
+    _settings: &GlobalSettings,
+    _printer: &Printer,
+) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
     // Make the new binary executable
@@ -254,7 +256,12 @@ fn replace_binary(new_binary: &Path, current_exe: &Path, _settings: &GlobalSetti
 
 /// Replace the current binary with the new one (Windows)
 #[cfg(windows)]
-fn replace_binary(new_binary: &Path, current_exe: &Path, _settings: &GlobalSettings, printer: &Printer) -> Result<()> {
+fn replace_binary(
+    new_binary: &Path,
+    current_exe: &Path,
+    _settings: &GlobalSettings,
+    printer: &Printer,
+) -> Result<()> {
     // On Windows, we can't replace a running executable
     // We need to use a different strategy:
     // 1. Rename current exe to .old
@@ -302,11 +309,7 @@ pub fn cleanup_old_backups() -> Result<()> {
 }
 
 /// Uninstall lemma and all toolchains
-pub fn uninstall(
-    skip_confirm: bool,
-    settings: &GlobalSettings,
-    printer: &Printer,
-) -> Result<()> {
+pub fn uninstall(skip_confirm: bool, settings: &GlobalSettings, printer: &Printer) -> Result<()> {
     use std::io::{self, Write};
 
     printer.header("Uninstall lemma")?;

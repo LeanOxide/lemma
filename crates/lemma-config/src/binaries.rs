@@ -75,11 +75,19 @@ impl ToolchainBinaries {
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn from_toolchain(toolchain_name: &str) -> Result<Self> {
-        let lean = find_tool_binary(toolchain_name, "lean")
-            .with_context(|| format!("Failed to find 'lean' binary in toolchain '{}'", toolchain_name))?;
+        let lean = find_tool_binary(toolchain_name, "lean").with_context(|| {
+            format!(
+                "Failed to find 'lean' binary in toolchain '{}'",
+                toolchain_name
+            )
+        })?;
 
-        let lake = find_tool_binary(toolchain_name, "lake")
-            .with_context(|| format!("Failed to find 'lake' binary in toolchain '{}'", toolchain_name))?;
+        let lake = find_tool_binary(toolchain_name, "lake").with_context(|| {
+            format!(
+                "Failed to find 'lake' binary in toolchain '{}'",
+                toolchain_name
+            )
+        })?;
 
         // leanc is optional - it might not be in the toolchain
         let leanc = find_tool_binary(toolchain_name, "leanc").ok();
@@ -154,7 +162,9 @@ mod tests {
             toolchain_name: "v4.24.0".to_string(),
             lean: PathBuf::from("/home/user/.lemma/toolchains/v4.24.0-linux/bin/lean"),
             lake: PathBuf::from("/home/user/.lemma/toolchains/v4.24.0-linux/bin/lake"),
-            leanc: Some(PathBuf::from("/home/user/.lemma/toolchains/v4.24.0-linux/bin/leanc")),
+            leanc: Some(PathBuf::from(
+                "/home/user/.lemma/toolchains/v4.24.0-linux/bin/leanc",
+            )),
         };
 
         assert_eq!(binaries.toolchain_name, "v4.24.0");

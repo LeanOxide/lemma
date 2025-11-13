@@ -21,15 +21,18 @@ pub struct FacetBuilder {
 
 impl FacetBuilder {
     /// Create a new facet builder
-    pub fn new(driver: Arc<CompilationDriver>, build_dir: PathBuf, modules: Vec<Module>) -> Result<Self> {
+    pub fn new(
+        driver: Arc<CompilationDriver>,
+        build_dir: PathBuf,
+        modules: Vec<Module>,
+    ) -> Result<Self> {
         // Resolve the C compiler once during initialization
-        let binaries = lemma_config::ToolchainBinaries::resolve(None).map_err(|e| {
-            Error::Other(format!("Failed to resolve toolchain binaries: {}", e))
-        })?;
+        let binaries = lemma_config::ToolchainBinaries::resolve(None)
+            .map_err(|e| Error::Other(format!("Failed to resolve toolchain binaries: {}", e)))?;
 
-        let c_compiler = binaries.find_c_compiler().map_err(|e| {
-            Error::Compilation(format!("Failed to find C compiler: {}", e))
-        })?;
+        let c_compiler = binaries
+            .find_c_compiler()
+            .map_err(|e| Error::Compilation(format!("Failed to find C compiler: {}", e)))?;
 
         Ok(Self {
             driver,

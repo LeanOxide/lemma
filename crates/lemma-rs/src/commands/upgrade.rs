@@ -33,7 +33,10 @@ fn upgrade_toolchain(name: &str, settings: &GlobalSettings, printer: &Printer) -
     // Check if toolchain is installed
     if !installer.is_installed(name)? {
         printer.warning(format!("Toolchain '{}' is not installed", name))?;
-        printer.hint(format!("Use 'lemma toolchain install {}' to install it", name))?;
+        printer.hint(format!(
+            "Use 'lemma toolchain install {}' to install it",
+            name
+        ))?;
         return Ok(());
     }
 
@@ -48,7 +51,10 @@ fn upgrade_toolchain(name: &str, settings: &GlobalSettings, printer: &Printer) -
     // Compare versions
     if let Some(current) = current_hash {
         if current == release.name {
-            printer.success(format!("Toolchain '{}' is already up to date ({})", name, release.name))?;
+            printer.success(format!(
+                "Toolchain '{}' is already up to date ({})",
+                name, release.name
+            ))?;
             return Ok(());
         }
 
@@ -181,8 +187,7 @@ fn upgrade_all_toolchains(settings: &GlobalSettings, printer: &Printer) -> Resul
 
     printer.success(format!(
         "Upgraded {} toolchain(s), skipped {}",
-        updated_count,
-        skipped_count
+        updated_count, skipped_count
     ))?;
 
     Ok(())

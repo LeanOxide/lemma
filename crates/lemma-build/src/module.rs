@@ -117,27 +117,30 @@ impl ModuleResolver {
 
         // Use fast fallback parser by default for better performance
         // Only use Lean's native parser if explicitly requested via LEMMA_USE_LEAN_PARSER
-        if std::env::var("LEMMA_USE_LEAN_PARSER").is_ok() {
-            if let Some(ref lean_binary) = self.lean_binary {
-                match self.parse_imports_with_lean(file, lean_binary) {
-                    Ok(imports) => {
-                        tracing::debug!("Successfully parsed {} imports with Lean parser", imports.len());
-                        return Ok(imports);
-                    }
-                    Err(e) => {
-                        tracing::warn!(
+        if let Some(ref lean_binary) = self.lean_binary {
+            match self.parse_imports_with_lean(file, lean_binary) {
+                Ok(imports) => {
+                    tracing::debug!(
+                        "Successfully parsed {} imports with Lean parser",
+                        imports.len()
+                    );
+                    return Ok(imports);
+                }
+                Err(e) => {
+                    tracing::warn!(
                             "Lean-based import parsing failed for {}: {}. Falling back to simple parsing",
                             file.display(),
                             e
                         );
-                    }
                 }
             }
         }
 
-        // Use the fallback parser (fast, no Lean invocation needed)
         let result = self.parse_imports_fallback(file)?;
-        tracing::debug!("Successfully parsed {} imports with fallback parser", result.len());
+        tracing::debug!(
+            "Successfully parsed {} imports with fallback parser",
+            result.len()
+        );
         Ok(result)
     }
 
