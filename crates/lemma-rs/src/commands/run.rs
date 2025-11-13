@@ -62,14 +62,14 @@ pub fn execute(
         lakefile.executables[0].name.clone()
     };
 
-    // Build the project first
+    // Build the project first using native build system
     if settings.is_verbose() {
         printer.hint(format!("Building project..."))?;
     }
 
     let build_result = crate::commands::build::execute(
         path,
-        true,  // not native
+        true,  // use native build system
         false, // no clear
         None,  // no custom out-dir
         &[],   // no specific targets

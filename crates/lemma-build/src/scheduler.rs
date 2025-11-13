@@ -6,9 +6,9 @@
 use crate::error::{Error, Result};
 use crate::module::Module;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::sync::{Mutex, Semaphore};
+use std::sync::Arc;
+use tokio::sync::{broadcast, Mutex, Semaphore};
 
 /// State of a build job
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,10 +50,7 @@ impl BuildJob {
     /// A job is ready if all its dependencies have completed successfully.
     pub fn is_ready(&self, completed: &HashSet<String>) -> bool {
         self.state == JobState::Pending
-            && self
-                .dependencies
-                .iter()
-                .all(|dep| completed.contains(dep))
+            && self.dependencies.iter().all(|dep| completed.contains(dep))
     }
 }
 
@@ -125,6 +122,10 @@ impl JobScheduler {
         let job_fn = Arc::new(job_fn);
         let mut handles = Vec::new();
 
+        // Create broadcast channel for job completion notifications
+        // Channel size of 1024 should be sufficient for most builds
+        let (notify_tx, _) = broadcast::channel(1024);
+
         // Get job names in topological order if graph is available
         let job_names: Vec<String> = if let Some(ref graph) = self.dependency_graph {
             // Use topological sort for better scheduling
@@ -161,6 +162,8 @@ impl JobScheduler {
             let semaphore = Arc::clone(&self.semaphore);
             let completed_count = Arc::clone(&self.completed_count);
             let total_jobs = self.total_jobs;
+            let notify_tx = notify_tx.clone();
+            let mut notify_rx = notify_tx.subscribe();
 
             // Clone the job data we need
             let module = self.jobs[&job_name].module.clone();
@@ -182,43 +185,36 @@ impl JobScheduler {
                 .collect();
 
             let handle = tokio::spawn(async move {
-                // Wait for dependencies to complete
+                // Wait for dependencies to complete using event-driven approach
                 loop {
-                    let completed_set = completed.lock().await;
-                    let failed_set = failed.lock().await;
+                    {
+                        let completed_set = completed.lock().await;
+                        let failed_set = failed.lock().await;
 
-                    // Check if any dependency failed
-                    for dep in &dependencies {
-                        if failed_set.contains(dep) {
-                            eprintln!("[SCHEDULER] Skipping module '{}' because dependency '{}' failed", job_name, dep);
-                            return Err(Error::Other(format!(
-                                "Dependency '{}' failed, skipping '{}'",
-                                dep, job_name
-                            )));
+                        // Check if any dependency failed
+                        for dep in &dependencies {
+                            if failed_set.contains(dep) {
+                                eprintln!("[SCHEDULER] Skipping module '{}' because dependency '{}' failed", job_name, dep);
+                                return Err(Error::Other(format!(
+                                    "Dependency '{}' failed, skipping '{}'",
+                                    dep, job_name
+                                )));
+                            }
                         }
+
+                        // Check if all dependencies completed
+                        let all_deps_complete =
+                            dependencies.iter().all(|dep| completed_set.contains(dep));
+
+                        if all_deps_complete {
+                            break;
+                        }
+                        // Drop locks before waiting
                     }
 
-                    // Check if all dependencies completed
-                    let all_deps_complete = dependencies.iter().all(|dep| completed_set.contains(dep));
-
-                    // Debug: Print waiting status (disabled for less noise)
-                    // if !all_deps_complete {
-                    //     eprintln!("[SCHEDULER] Module '{}' waiting for: {:?} (completed: {:?})",
-                    //         job_name,
-                    //         dependencies.iter().filter(|d| !completed_set.contains(*d)).collect::<Vec<_>>(),
-                    //         completed_set.len()
-                    //     );
-                    // }
-
-                    drop(completed_set);
-                    drop(failed_set);
-
-                    if all_deps_complete {
-                        break;
-                    }
-
-                    // Wait a bit before checking again
-                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    // Wait for any job to complete, then recheck dependencies
+                    // If the channel is closed or lagged, continue anyway to recheck
+                    let _ = notify_rx.recv().await;
                 }
 
                 // Acquire semaphore permit (limits concurrency)
@@ -239,11 +235,19 @@ impl JobScheduler {
                         completed.lock().await.insert(job_name.clone());
                         let current = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
                         progress_fn(job_name.clone(), current, total_jobs, elapsed);
+
+                        // Notify all waiting tasks that a job has completed
+                        // Ignore errors if there are no receivers
+                        let _ = notify_tx.send(());
                         Ok(())
                     }
                     Err(e) => {
                         eprintln!("[SCHEDULER] Module '{}' FAILED: {}", job_name, e);
                         failed.lock().await.insert(job_name.clone());
+
+                        // Notify all waiting tasks about the failure
+                        // This allows dependent tasks to fail fast
+                        let _ = notify_tx.send(());
                         Err(e)
                     }
                 }
@@ -376,7 +380,11 @@ mod tests {
     async fn test_scheduler_with_dependencies() {
         let modules = vec![
             Module::new("A".to_string(), PathBuf::from("A.lean"), vec![]),
-            Module::new("B".to_string(), PathBuf::from("B.lean"), vec!["A".to_string()]),
+            Module::new(
+                "B".to_string(),
+                PathBuf::from("B.lean"),
+                vec!["A".to_string()],
+            ),
             Module::new(
                 "C".to_string(),
                 PathBuf::from("C.lean"),
@@ -421,7 +429,11 @@ mod tests {
     async fn test_scheduler_error_handling() {
         let modules = vec![
             Module::new("A".to_string(), PathBuf::from("A.lean"), vec![]),
-            Module::new("B".to_string(), PathBuf::from("B.lean"), vec!["A".to_string()]),
+            Module::new(
+                "B".to_string(),
+                PathBuf::from("B.lean"),
+                vec!["A".to_string()],
+            ),
         ];
 
         let mut scheduler = JobScheduler::new(modules, 2, None);

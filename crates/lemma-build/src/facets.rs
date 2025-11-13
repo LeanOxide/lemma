@@ -57,74 +57,77 @@ impl FacetBuilder {
                     for import in &module.imports {
                         if let Some(dep_module) = self.modules.iter().find(|m| &m.name == import) {
                             // Recursively build dependency with LeanArts facet
-                            built.extend(self.build_module_facet(dep_module, &Facet::LeanArts).await?);
+                            built.extend(
+                                self.build_module_facet(dep_module, &Facet::LeanArts)
+                                    .await?,
+                            );
                         }
                     }
                     Ok(built)
                 }
 
-            Facet::LeanArts => {
-                // Build .olean, .ilean, and .c files
-                self.driver.compile_module(module, &self.build_dir).await?;
+                Facet::LeanArts => {
+                    // Build .olean, .ilean, and .c files
+                    self.driver.compile_module(module, &self.build_dir).await?;
 
-                Ok(vec![
-                    self.get_olean_path(module),
-                    self.get_ilean_path(module),
-                    self.get_c_path(module),
-                ])
-            }
+                    Ok(vec![
+                        self.get_olean_path(module),
+                        self.get_ilean_path(module),
+                        self.get_c_path(module),
+                    ])
+                }
 
-            Facet::Olean => {
-                // Build only .olean file
-                self.driver.compile_module(module, &self.build_dir).await?;
-                Ok(vec![self.get_olean_path(module)])
-            }
+                Facet::Olean => {
+                    // Build only .olean file
+                    self.driver.compile_module(module, &self.build_dir).await?;
+                    Ok(vec![self.get_olean_path(module)])
+                }
 
-            Facet::Ilean => {
-                // Build only .ilean file
-                self.driver.compile_module(module, &self.build_dir).await?;
-                Ok(vec![self.get_ilean_path(module)])
-            }
+                Facet::Ilean => {
+                    // Build only .ilean file
+                    self.driver.compile_module(module, &self.build_dir).await?;
+                    Ok(vec![self.get_ilean_path(module)])
+                }
 
-            Facet::C => {
-                // Build only .c file
-                self.driver.compile_module(module, &self.build_dir).await?;
-                Ok(vec![self.get_c_path(module)])
-            }
+                Facet::C => {
+                    // Build only .c file
+                    self.driver.compile_module(module, &self.build_dir).await?;
+                    Ok(vec![self.get_c_path(module)])
+                }
 
-            Facet::Bc => {
-                // Build LLVM bitcode file (requires LLVM backend)
-                // For now, return error as this requires LLVM support
-                Err(Error::Other(
-                    "LLVM bitcode generation not yet implemented".to_string(),
-                ))
-            }
+                Facet::Bc => {
+                    // Build LLVM bitcode file (requires LLVM backend)
+                    // For now, return error as this requires LLVM support
+                    Err(Error::Other(
+                        "LLVM bitcode generation not yet implemented".to_string(),
+                    ))
+                }
 
-            Facet::O | Facet::CO => {
-                // Build object file from C
-                self.driver.compile_module(module, &self.build_dir).await?;
-                let c_file = self.get_c_path(module);
-                let o_file = self.get_object_path(module);
+                Facet::O | Facet::CO => {
+                    // Build object file from C
+                    self.driver.compile_module(module, &self.build_dir).await?;
+                    let c_file = self.get_c_path(module);
+                    let o_file = self.get_object_path(module);
 
-                // Compile C to object file
-                self.compile_c_to_object(&c_file, &o_file).await?;
+                    // Compile C to object file
+                    self.compile_c_to_object(&c_file, &o_file).await?;
 
-                Ok(vec![o_file])
-            }
+                    Ok(vec![o_file])
+                }
 
-            Facet::BcO => {
-                // Build object file from LLVM bitcode
-                Err(Error::Other(
-                    "LLVM bitcode compilation not yet implemented".to_string(),
-                ))
-            }
+                Facet::BcO => {
+                    // Build object file from LLVM bitcode
+                    Err(Error::Other(
+                        "LLVM bitcode compilation not yet implemented".to_string(),
+                    ))
+                }
 
-            Facet::Dynlib => {
-                // Build shared library for dynamic loading
-                Err(Error::Other(
-                    "Dynamic library generation not yet implemented".to_string(),
-                ))
-            }
+                Facet::Dynlib => {
+                    // Build shared library for dynamic loading
+                    Err(Error::Other(
+                        "Dynamic library generation not yet implemented".to_string(),
+                    ))
+                }
 
                 _ => Err(Error::InvalidTarget(format!(
                     "Facet {:?} not supported for modules",
@@ -262,7 +265,11 @@ impl FacetBuilder {
         // Ensure parent directory exists
         if let Some(parent) = o_file.parent() {
             tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                Error::Compilation(format!("Failed to create directory {}: {}", parent.display(), e))
+                Error::Compilation(format!(
+                    "Failed to create directory {}: {}",
+                    parent.display(),
+                    e
+                ))
             })?;
         }
 
@@ -271,9 +278,7 @@ impl FacetBuilder {
             .or_else(|_| which::which("gcc"))
             .or_else(|_| which::which("clang"))
             .map_err(|_| {
-                Error::Compilation(
-                    "No C compiler found (tried leanc, gcc, clang)".to_string(),
-                )
+                Error::Compilation("No C compiler found (tried leanc, gcc, clang)".to_string())
             })?;
 
         let output = Command::new(&compiler)
@@ -316,11 +321,7 @@ mod tests {
             PathBuf::from(".lake/build"),
             "test".to_string(),
         ));
-        let builder = FacetBuilder::new(
-            driver,
-            PathBuf::from(".lake/build"),
-            vec![],
-        );
+        let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![]);
 
         let module = Module::new(
             "Foo.Bar.Baz".to_string(),
@@ -343,22 +344,11 @@ mod tests {
             PathBuf::from(".lake/build"),
             "test".to_string(),
         ));
-        let builder = FacetBuilder::new(
-            driver,
-            PathBuf::from(".lake/build"),
-            vec![],
-        );
+        let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![]);
 
-        let module = Module::new(
-            "Foo.Bar".to_string(),
-            PathBuf::from("Foo/Bar.lean"),
-            vec![],
-        );
+        let module = Module::new("Foo.Bar".to_string(), PathBuf::from("Foo/Bar.lean"), vec![]);
 
         let c_path = builder.get_c_path(&module);
-        assert_eq!(
-            c_path,
-            PathBuf::from(".lake/build/ir/Foo/Bar.c")
-        );
+        assert_eq!(c_path, PathBuf::from(".lake/build/ir/Foo/Bar.c"));
     }
 }

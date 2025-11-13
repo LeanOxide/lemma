@@ -348,15 +348,25 @@ mod tests {
         let cache = BuildCache::new();
 
         // Initially, all modules need rebuilding (no artifacts)
-        let needs_rebuild = cache.modules_needing_rebuild(&modules, &build_dir, package_name).unwrap();
+        let needs_rebuild = cache
+            .modules_needing_rebuild(&modules, &build_dir, package_name)
+            .unwrap();
         assert_eq!(needs_rebuild.len(), 2);
         assert!(needs_rebuild.contains(&"A".to_string()));
         assert!(needs_rebuild.contains(&"B".to_string()));
 
         // Create artifacts with package name in path
         fs::create_dir_all(build_dir.join("lib").join(package_name)).unwrap();
-        fs::write(build_dir.join("lib").join(package_name).join("A.olean"), "artifact").unwrap();
-        fs::write(build_dir.join("lib").join(package_name).join("B.olean"), "artifact").unwrap();
+        fs::write(
+            build_dir.join("lib").join(package_name).join("A.olean"),
+            "artifact",
+        )
+        .unwrap();
+        fs::write(
+            build_dir.join("lib").join(package_name).join("B.olean"),
+            "artifact",
+        )
+        .unwrap();
 
         // Update cache with current hashes
         let mut updated_cache = BuildCache::new();

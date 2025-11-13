@@ -96,7 +96,11 @@ impl BuildContext {
         // Add leanOptions as -D flags
         if let Some(ref lean_options) = self.lakefile.lean_options {
             // Flatten nested tables into dot-separated keys
-            fn flatten_options(prefix: &str, table: &toml::map::Map<String, toml::Value>, flags: &mut Vec<String>) {
+            fn flatten_options(
+                prefix: &str,
+                table: &toml::map::Map<String, toml::Value>,
+                flags: &mut Vec<String>,
+            ) {
                 for (key, value) in table {
                     let full_key = if prefix.is_empty() {
                         key.clone()
@@ -119,7 +123,10 @@ impl BuildContext {
                             flatten_options(&full_key, nested, flags);
                         }
                         _ => {
-                            eprintln!("[BUILD] Skipping unsupported leanOption type: {} = {:?}", full_key, value);
+                            eprintln!(
+                                "[BUILD] Skipping unsupported leanOption type: {} = {:?}",
+                                full_key, value
+                            );
                         }
                     }
                 }
@@ -177,7 +184,14 @@ impl BuildContext {
             self.cache
                 .modules_needing_rebuild(&plan.modules, &build_dir, &self.lakefile.name)?;
 
-        if modules_to_build.is_empty() {
+        // Check if executables need to be built (even if modules are cached)
+        let executables_exist = self
+            .lakefile
+            .executables
+            .iter()
+            .all(|exe| build_dir.join("bin").join(&exe.name).exists());
+
+        if modules_to_build.is_empty() && executables_exist {
             return Ok(());
         }
 
@@ -213,11 +227,14 @@ impl BuildContext {
             build_dir.clone(),
             self.lakefile.name.clone(),
         );
-
         // Add leanOptions as -D flags
         if let Some(ref lean_options) = self.lakefile.lean_options {
             // Flatten nested tables into dot-separated keys
-            fn flatten_options(prefix: &str, table: &toml::map::Map<String, toml::Value>, flags: &mut Vec<String>) {
+            fn flatten_options(
+                prefix: &str,
+                table: &toml::map::Map<String, toml::Value>,
+                flags: &mut Vec<String>,
+            ) {
                 for (key, value) in table {
                     let full_key = if prefix.is_empty() {
                         key.clone()
@@ -240,7 +257,10 @@ impl BuildContext {
                             flatten_options(&full_key, nested, flags);
                         }
                         _ => {
-                            eprintln!("[BUILD] Skipping unsupported leanOption type: {} = {:?}", full_key, value);
+                            eprintln!(
+                                "[BUILD] Skipping unsupported leanOption type: {} = {:?}",
+                                full_key, value
+                            );
                         }
                     }
                 }
@@ -273,13 +293,19 @@ impl BuildContext {
 
         // Calculate total jobs including linking (respecting defaultTargets)
         let should_build_all = self.lakefile.default_targets.is_empty();
-        let default_targets_set: std::collections::HashSet<&str> =
-            self.lakefile.default_targets.iter().map(|s| s.as_str()).collect();
+        let default_targets_set: std::collections::HashSet<&str> = self
+            .lakefile
+            .default_targets
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
         let executables_to_build = if should_build_all {
             self.lakefile.executables.len()
         } else {
-            self.lakefile.executables.iter()
+            self.lakefile
+                .executables
+                .iter()
                 .filter(|exe| default_targets_set.contains(exe.name.as_str()))
                 .count()
         };
@@ -287,8 +313,7 @@ impl BuildContext {
         // Note: We don't generate .a files for libraries (matching lake behavior)
         // So libraries don't add to the linking job count
 
-        let total_jobs_including_linking = modules_to_build.len()
-            + executables_to_build;
+        let total_jobs_including_linking = modules_to_build.len() + executables_to_build;
 
         // Create multi-progress for managing multiple progress bars
         let multi_progress = Arc::new(MultiProgress::new());
@@ -331,12 +356,18 @@ impl BuildContext {
             let start = std::time::Instant::now();
 
             // Determine the root module for this executable
-            let root_module_name = executable.root.as_ref()
+            let root_module_name = executable
+                .root
+                .as_ref()
                 .map(|s| s.as_str())
                 .unwrap_or(&executable.name);
 
             // Try to find modules for this executable
-            let exe_modules = match self.collect_transitive_dependencies_with_graph(root_module_name, &all_modules, &dep_graph) {
+            let exe_modules = match self.collect_transitive_dependencies_with_graph(
+                root_module_name,
+                &all_modules,
+                &dep_graph,
+            ) {
                 Ok(modules) => modules,
                 Err(_) => {
                     // If root module not found and executable has custom srcDir,
@@ -351,14 +382,16 @@ impl BuildContext {
                             ..Default::default()
                         };
 
-                        let temp_resolver = crate::module::ModuleResolver::new(&self.project_dir, &temp_lakefile)?;
+                        let temp_resolver =
+                            crate::module::ModuleResolver::new(&self.project_dir, &temp_lakefile)?;
                         let custom_modules = temp_resolver.discover_modules()?;
 
                         // Verify the root module exists in custom modules
                         if !custom_modules.iter().any(|m| m.name == root_module_name) {
                             return Err(Error::ModuleResolution(format!(
                                 "Root module '{}' not found in custom srcDir '{}'",
-                                root_module_name, custom_src_dir.display()
+                                root_module_name,
+                                custom_src_dir.display()
                             )));
                         }
 
@@ -376,10 +409,17 @@ impl BuildContext {
                             for import in &custom_mod.imports {
                                 // If this import is in the main project, include its transitive deps
                                 if all_modules.iter().any(|m| &m.name == import) {
-                                    match self.collect_transitive_dependencies_with_graph(import, &all_modules, &dep_graph) {
+                                    match self.collect_transitive_dependencies_with_graph(
+                                        import,
+                                        &all_modules,
+                                        &dep_graph,
+                                    ) {
                                         Ok(mut deps) => {
                                             for dep in deps {
-                                                if !exe_modules_with_deps.iter().any(|m: &Module| m.name == dep.name) {
+                                                if !exe_modules_with_deps
+                                                    .iter()
+                                                    .any(|m: &Module| m.name == dep.name)
+                                                {
                                                     exe_modules_with_deps.push(dep);
                                                 }
                                             }
@@ -397,8 +437,7 @@ impl BuildContext {
                     } else {
                         eprintln!(
                             "Warning: Skipping executable '{}' - root module '{}' not found",
-                            executable.name,
-                            root_module_name
+                            executable.name, root_module_name
                         );
                         main_pb.inc(1);
                         continue;
@@ -452,10 +491,8 @@ impl BuildContext {
         let dep_names = graph.transitive_dependencies(&root_module_name.to_string())?;
 
         // Build a map from module name to module for quick lookup
-        let module_map: HashMap<String, &Module> = all_modules
-            .iter()
-            .map(|m| (m.name.clone(), m))
-            .collect();
+        let module_map: HashMap<String, &Module> =
+            all_modules.iter().map(|m| (m.name.clone(), m)).collect();
 
         // Convert module names to Module objects, including the root module itself
         let mut result = Vec::new();
@@ -480,7 +517,6 @@ impl BuildContext {
     /// This computes transitive hashes for all modules and updates the cache
     /// so that future incremental builds can skip unchanged modules.
     fn update_cache_after_build(&self, modules: &[Module]) -> Result<()> {
-
         // Compute transitive hashes for all modules
         let transitive_hashes = self.cache.compute_all_transitive_hashes(modules)?;
 

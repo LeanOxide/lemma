@@ -49,9 +49,10 @@ impl ModuleResolver {
 
         // Compile regex for parsing imports
         // Matches: "import Foo.Bar", "meta import Foo", "public meta import Foo", etc.
-        let import_regex = Regex::new(r"^\s*(?:public\s+)?(?:meta\s+)?import\s+([\w.]+)").map_err(|e| {
-            Error::ModuleResolution(format!("Failed to compile import regex: {}", e))
-        })?;
+        let import_regex =
+            Regex::new(r"^\s*(?:public\s+)?(?:meta\s+)?import\s+([\w.]+)").map_err(|e| {
+                Error::ModuleResolution(format!("Failed to compile import regex: {}", e))
+            })?;
 
         Ok(Self {
             project_dir: project_dir.to_path_buf(),
@@ -110,7 +111,11 @@ impl ModuleResolver {
 
         for line_result in reader.lines() {
             let line = line_result.map_err(|e| {
-                Error::ModuleResolution(format!("Failed to read line from {}: {}", file.display(), e))
+                Error::ModuleResolution(format!(
+                    "Failed to read line from {}: {}",
+                    file.display(),
+                    e
+                ))
             })?;
 
             // Stop at the first non-import, non-comment, non-blank line
@@ -137,7 +142,8 @@ impl ModuleResolver {
                 || trimmed.starts_with("module ")
                 || trimmed.contains("section")
                 || trimmed.contains("namespace")
-                || trimmed.starts_with("@[") {
+                || trimmed.starts_with("@[")
+            {
                 continue;
             }
 

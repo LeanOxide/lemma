@@ -92,10 +92,7 @@ pub struct Lakefile {
     /// Lean compiler options (optional)
     /// These are passed as -D flags to the lean compiler
     /// Example: {"experimental.module": true, "linter.missingDocs": true}
-    #[serde(
-        rename = "leanOptions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "leanOptions", skip_serializing_if = "Option::is_none")]
     pub lean_options: Option<toml::map::Map<String, toml::Value>>,
 
     /// Custom build options (optional, for extensibility)
@@ -315,7 +312,10 @@ supportInterpreter = true
         assert_eq!(lakefile.executables.len(), 1);
         assert_eq!(lakefile.executables[0].name, "test");
         assert_eq!(lakefile.executables[0].root, None); // defaults to name
-        assert_eq!(lakefile.executables[0].src_dir, Some(PathBuf::from("scripts")));
+        assert_eq!(
+            lakefile.executables[0].src_dir,
+            Some(PathBuf::from("scripts"))
+        );
         assert_eq!(lakefile.executables[0].support_interpreter, true);
     }
 

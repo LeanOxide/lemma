@@ -96,23 +96,16 @@ impl Facet {
 #[derive(Debug, Clone)]
 pub enum BuildTarget {
     /// Build a specific module with a facet
-    Module {
-        module: Module,
-        facet: Facet,
-    },
+    Module { module: Module, facet: Facet },
     /// Build a library with a facet
     Library {
         library: LibraryTarget,
         facet: Facet,
     },
     /// Build an executable
-    Executable {
-        executable: ExecutableTarget,
-    },
+    Executable { executable: ExecutableTarget },
     /// Build all default targets of the package
-    Package {
-        facet: Option<Facet>,
-    },
+    Package { facet: Option<Facet> },
 }
 
 impl BuildTarget {
@@ -125,9 +118,7 @@ impl BuildTarget {
             BuildTarget::Library { library, facet } => {
                 format!("{}:{:?}", library.name, facet)
             }
-            BuildTarget::Executable { executable } => {
-                executable.name.clone()
-            }
+            BuildTarget::Executable { executable } => executable.name.clone(),
             BuildTarget::Package { facet } => {
                 if let Some(f) = facet {
                     format!("package:{:?}", f)
@@ -421,11 +412,7 @@ mod tests {
     fn create_test_modules() -> Vec<Module> {
         vec![
             Module::new("Main".to_string(), PathBuf::from("Main.lean"), vec![]),
-            Module::new(
-                "Foo.Bar".to_string(),
-                PathBuf::from("Foo/Bar.lean"),
-                vec![],
-            ),
+            Module::new("Foo.Bar".to_string(), PathBuf::from("Foo/Bar.lean"), vec![]),
         ]
     }
 
