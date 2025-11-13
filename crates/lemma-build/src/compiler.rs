@@ -213,6 +213,11 @@ impl CompilationDriver {
             }
         }
 
+        // Platform-specific: Enable symbol exports on Unix systems
+        // Windows handles exports differently via DLL mechanisms
+        #[cfg(not(target_os = "windows"))]
+        cmd.arg("-DLEAN_EXPORTING");
+
         // Compile C file to object file
         cmd.arg("-c");
         cmd.arg(&c_path);
@@ -273,7 +278,9 @@ impl CompilationDriver {
 
     /// Get the object file path for a module
     ///
-    /// Lake structure: `.lake/build/ir/Module/Nested.c.o.export` (hierarchical)
+    /// Lake structure (platform-specific):
+    /// - Unix/Linux/macOS: `.lake/build/ir/Module/Nested.c.o.export` (with exports)
+    /// - Windows: `.lake/build/ir/Module/Nested.c.o` (no explicit exports)
     fn get_object_path(&self, module: &Module) -> PathBuf {
         self.paths.object_path(&module.name)
     }
@@ -551,6 +558,10 @@ mod tests {
         );
 
         let obj_path = driver.get_object_path(&module);
+        // Platform-specific object path
+        #[cfg(target_os = "windows")]
+        assert_eq!(obj_path, PathBuf::from(".lake/build/ir/Foo/Bar.c.o"));
+        #[cfg(not(target_os = "windows"))]
         assert_eq!(obj_path, PathBuf::from(".lake/build/ir/Foo/Bar.c.o.export"));
     }
 

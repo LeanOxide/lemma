@@ -133,16 +133,24 @@ impl BuildPaths {
 
     /// Get the object file path for a module
     ///
-    /// Example: "Foo.Bar" -> ".lake/build/ir/Foo/Bar.c.o.export"
+    /// Platform-specific behavior:
+    /// - Unix/Linux/macOS: "Foo.Bar" -> ".lake/build/ir/Foo/Bar.c.o.export" (with exported symbols)
+    /// - Windows: "Foo.Bar" -> ".lake/build/ir/Foo/Bar.c.o" (no explicit exports)
     pub fn object_path(&self, module_name: &str) -> PathBuf {
         let parts: Vec<&str> = module_name.split('.').collect();
         let mut path = self.ir_dir();
         for part in parts {
             path.push(part);
         }
-        // Add .c.o.export extension
+
+        // Platform-specific extension
         let filename = path.file_name().unwrap().to_str().unwrap().to_string();
-        path.set_file_name(format!("{}.c.o.export", filename));
+        #[cfg(target_os = "windows")]
+        let extended_filename = format!("{}.c.o", filename);
+        #[cfg(not(target_os = "windows"))]
+        let extended_filename = format!("{}.c.o.export", filename);
+
+        path.set_file_name(extended_filename);
         path
     }
 }
@@ -314,6 +322,13 @@ mod tests {
 
         assert_eq!(paths.c_path("Foo.Bar"), build_dir.join("ir/Foo/Bar.c"));
 
+        // Platform-specific object path
+        #[cfg(target_os = "windows")]
+        assert_eq!(
+            paths.object_path("Foo.Bar"),
+            build_dir.join("ir/Foo/Bar.c.o")
+        );
+        #[cfg(not(target_os = "windows"))]
         assert_eq!(
             paths.object_path("Foo.Bar"),
             build_dir.join("ir/Foo/Bar.c.o.export")
