@@ -288,10 +288,17 @@ impl CompilationDriver {
     /// Link an executable
     ///
     /// This will link together object files to create an executable using leanc.
+    ///
+    /// # Arguments
+    /// * `name` - The name of the executable
+    /// * `modules` - The modules to link
+    /// * `libraries` - Library names in topologically sorted order (dependencies before dependents)
+    /// * `output` - The output path for the executable
     pub async fn link_executable(
         &self,
         name: &str,
         modules: &[Module],
+        libraries: &[String],
         output: &Path,
     ) -> Result<()> {
         // Get leanc binary
@@ -334,6 +341,13 @@ impl CompilationDriver {
         // Add all object files
         for obj in &object_files {
             cmd.arg(obj);
+        }
+
+        // Add libraries in topological order (dependencies before dependents)
+        // This ensures the linker can resolve symbols correctly
+        for lib in libraries {
+            cmd.arg("-l");
+            cmd.arg(lib);
         }
 
         // Configure stdio

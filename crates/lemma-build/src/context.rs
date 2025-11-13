@@ -343,7 +343,10 @@ impl BuildContext {
         // Phase 5: Update build cache with new hashes
         self.update_cache_after_build(&all_modules)?;
 
-        // Phase 6: Link executables and libraries
+        // Phase 6: Build library dependency graph and sort libraries
+        let sorted_libraries = self.build_library_graph()?;
+
+        // Phase 7: Link executables and libraries
         // Use the dependency graph from Phase 2 (already cloned in Phase 4)
         // Note: should_build_all and default_targets_set were already computed above
 
@@ -356,6 +359,15 @@ impl BuildContext {
             let output_path = build_dir.join("bin").join(&executable.name);
 
             let start = std::time::Instant::now();
+
+            // Get libraries for this executable (either from deps or all sorted libraries)
+            let exe_libraries = if !executable.deps.is_empty() {
+                // Filter sorted libraries to only include those in executable deps
+                self.get_sorted_dependencies(&executable.deps, &sorted_libraries)?
+            } else {
+                // Use all sorted libraries if no specific deps are specified
+                sorted_libraries.clone()
+            };
 
             // Determine the root module for this executable
             let root_module_name = executable
@@ -416,7 +428,7 @@ impl BuildContext {
                                         &all_modules,
                                         &dep_graph,
                                     ) {
-                                        Ok(mut deps) => {
+                                        Ok(deps) => {
                                             for dep in deps {
                                                 if !exe_modules_with_deps
                                                     .iter()
@@ -448,7 +460,7 @@ impl BuildContext {
             };
 
             driver
-                .link_executable(&executable.name, &exe_modules, &output_path)
+                .link_executable(&executable.name, &exe_modules, &exe_libraries, &output_path)
                 .await?;
             let elapsed = start.elapsed().as_millis();
 
@@ -556,6 +568,102 @@ impl BuildContext {
         Ok(())
     }
 
+    /// Build a dependency graph for libraries and return sorted library names
+    ///
+    /// This builds a graph from library dependencies specified in the lakefile
+    /// and returns them in topologically sorted order (dependencies before dependents).
+    /// This ensures libraries are passed to the linker in the correct order.
+    fn build_library_graph(&self) -> Result<Vec<String>> {
+        use lemma_graph::DependencyGraph;
+
+        // If no libraries defined, return empty vec
+        if self.lakefile.libraries.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Build dependency graph
+        let mut graph = DependencyGraph::new();
+
+        // Add all libraries as nodes
+        for library in &self.lakefile.libraries {
+            graph.add_node_if_missing(library.name.clone());
+        }
+
+        // Add edges for dependencies
+        for library in &self.lakefile.libraries {
+            for dep in &library.deps {
+                // Verify the dependency exists
+                if !self
+                    .lakefile
+                    .libraries
+                    .iter()
+                    .any(|lib| &lib.name == dep)
+                {
+                    return Err(Error::ModuleResolution(format!(
+                        "Library '{}' depends on '{}', but '{}' is not defined in lakefile",
+                        library.name, dep, dep
+                    )));
+                }
+
+                // Add edge: library depends on dep
+                graph.add_edge_with_nodes(library.name.clone(), dep.clone());
+            }
+        }
+
+        // Perform topological sort
+        graph.topological_sort().map_err(|e| {
+            Error::ModuleResolution(format!("Circular library dependency detected: {}", e))
+        })
+    }
+
+    /// Get sorted dependencies for a specific set of library names
+    ///
+    /// Given a list of library names and the full sorted library list,
+    /// returns a filtered and sorted list containing only the specified libraries
+    /// and their transitive dependencies.
+    fn get_sorted_dependencies(
+        &self,
+        requested_libs: &[String],
+        sorted_all_libs: &[String],
+    ) -> Result<Vec<String>> {
+        use std::collections::HashSet;
+
+        // Build a quick lookup for library dependencies
+        let lib_deps: std::collections::HashMap<String, Vec<String>> = self
+            .lakefile
+            .libraries
+            .iter()
+            .map(|lib| (lib.name.clone(), lib.deps.clone()))
+            .collect();
+
+        // Collect all transitive dependencies
+        let mut needed = HashSet::new();
+        let mut to_process: Vec<String> = requested_libs.to_vec();
+
+        while let Some(lib) = to_process.pop() {
+            if needed.insert(lib.clone()) {
+                // Add this library's dependencies to process queue
+                if let Some(deps) = lib_deps.get(&lib) {
+                    for dep in deps {
+                        if !needed.contains(dep) {
+                            to_process.push(dep.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Filter sorted_all_libs to only include needed libraries
+        // This maintains topological order
+        let result: Vec<String> = sorted_all_libs
+            .iter()
+            .filter(|lib| needed.contains(*lib))
+            .cloned()
+            .collect();
+
+        Ok(result)
+    }
+
     /// Clean the build directory
     pub fn clean(&self) -> Result<()> {
         let build_dir = self.project_dir.join(&self.lakefile.build_dir);
@@ -563,5 +671,296 @@ impl BuildContext {
             std::fs::remove_dir_all(&build_dir)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lemma_lakefile::LibraryTarget;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_library_topological_sort_simple() {
+        // Create a simple dependency chain: C -> B -> A
+        let lakefile = Lakefile {
+            name: "test".to_string(),
+            version: "0.1.0".to_string(),
+            src_dir: PathBuf::from("."),
+            libraries: vec![
+                LibraryTarget {
+                    name: "LibA".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec![], // No dependencies
+                },
+                LibraryTarget {
+                    name: "LibB".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibA".to_string()], // Depends on A
+                },
+                LibraryTarget {
+                    name: "LibC".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibB".to_string()], // Depends on B
+                },
+            ],
+            ..Default::default()
+        };
+
+        let module_resolver = ModuleResolver::new(&PathBuf::from("."), &lakefile).unwrap();
+        let cache = BuildCache::new();
+        let context = BuildContext {
+            project_dir: PathBuf::from("."),
+            lakefile,
+            module_resolver,
+            cache,
+        };
+
+        let sorted = context.build_library_graph().unwrap();
+
+        // Libraries should be sorted so dependencies come before dependents
+        // Expected order: A, B, C (or A could be anywhere before B, and B before C)
+        assert_eq!(sorted.len(), 3);
+
+        let pos_a = sorted.iter().position(|s| s == "LibA").unwrap();
+        let pos_b = sorted.iter().position(|s| s == "LibB").unwrap();
+        let pos_c = sorted.iter().position(|s| s == "LibC").unwrap();
+
+        // A must come before B, and B must come before C
+        assert!(pos_a < pos_b, "LibA should come before LibB");
+        assert!(pos_b < pos_c, "LibB should come before LibC");
+    }
+
+    #[test]
+    fn test_library_topological_sort_diamond() {
+        // Create a diamond dependency: D -> {B, C} -> A
+        let lakefile = Lakefile {
+            name: "test".to_string(),
+            version: "0.1.0".to_string(),
+            src_dir: PathBuf::from("."),
+            libraries: vec![
+                LibraryTarget {
+                    name: "LibA".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec![],
+                },
+                LibraryTarget {
+                    name: "LibB".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibA".to_string()],
+                },
+                LibraryTarget {
+                    name: "LibC".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibA".to_string()],
+                },
+                LibraryTarget {
+                    name: "LibD".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibB".to_string(), "LibC".to_string()],
+                },
+            ],
+            ..Default::default()
+        };
+
+        let module_resolver = ModuleResolver::new(&PathBuf::from("."), &lakefile).unwrap();
+        let cache = BuildCache::new();
+        let context = BuildContext {
+            project_dir: PathBuf::from("."),
+            lakefile,
+            module_resolver,
+            cache,
+        };
+
+        let sorted = context.build_library_graph().unwrap();
+
+        assert_eq!(sorted.len(), 4);
+
+        let pos_a = sorted.iter().position(|s| s == "LibA").unwrap();
+        let pos_b = sorted.iter().position(|s| s == "LibB").unwrap();
+        let pos_c = sorted.iter().position(|s| s == "LibC").unwrap();
+        let pos_d = sorted.iter().position(|s| s == "LibD").unwrap();
+
+        // A must come before B and C
+        assert!(pos_a < pos_b, "LibA should come before LibB");
+        assert!(pos_a < pos_c, "LibA should come before LibC");
+
+        // B and C must come before D
+        assert!(pos_b < pos_d, "LibB should come before LibD");
+        assert!(pos_c < pos_d, "LibC should come before LibD");
+    }
+
+    #[test]
+    fn test_get_sorted_dependencies() {
+        // Create libraries with transitive dependencies
+        let lakefile = Lakefile {
+            name: "test".to_string(),
+            version: "0.1.0".to_string(),
+            src_dir: PathBuf::from("."),
+            libraries: vec![
+                LibraryTarget {
+                    name: "LibA".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec![],
+                },
+                LibraryTarget {
+                    name: "LibB".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibA".to_string()],
+                },
+                LibraryTarget {
+                    name: "LibC".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibB".to_string()],
+                },
+                LibraryTarget {
+                    name: "LibD".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec![], // Independent library
+                },
+            ],
+            ..Default::default()
+        };
+
+        let module_resolver = ModuleResolver::new(&PathBuf::from("."), &lakefile).unwrap();
+        let cache = BuildCache::new();
+        let context = BuildContext {
+            project_dir: PathBuf::from("."),
+            lakefile,
+            module_resolver,
+            cache,
+        };
+
+        let sorted_all = context.build_library_graph().unwrap();
+
+        // Request only LibC (should include transitive deps: A and B)
+        let filtered = context.get_sorted_dependencies(&vec!["LibC".to_string()], &sorted_all).unwrap();
+
+        assert_eq!(filtered.len(), 3);
+        assert!(filtered.contains(&"LibA".to_string()));
+        assert!(filtered.contains(&"LibB".to_string()));
+        assert!(filtered.contains(&"LibC".to_string()));
+        assert!(!filtered.contains(&"LibD".to_string()), "LibD should not be included");
+
+        // Verify order is maintained
+        let pos_a = filtered.iter().position(|s| s == "LibA").unwrap();
+        let pos_b = filtered.iter().position(|s| s == "LibB").unwrap();
+        let pos_c = filtered.iter().position(|s| s == "LibC").unwrap();
+        assert!(pos_a < pos_b);
+        assert!(pos_b < pos_c);
+    }
+
+    #[test]
+    fn test_circular_library_dependency_detection() {
+        // Create a circular dependency: A -> B -> C -> A
+        let lakefile = Lakefile {
+            name: "test".to_string(),
+            version: "0.1.0".to_string(),
+            src_dir: PathBuf::from("."),
+            libraries: vec![
+                LibraryTarget {
+                    name: "LibA".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibC".to_string()], // Creates cycle
+                },
+                LibraryTarget {
+                    name: "LibB".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibA".to_string()],
+                },
+                LibraryTarget {
+                    name: "LibC".to_string(),
+                    root: None,
+                    globs: vec![],
+                    src_dir: None,
+                    more_lean_args: vec![],
+                    native_facets: true,
+                    static_lib: true,
+                    deps: vec!["LibB".to_string()],
+                },
+            ],
+            ..Default::default()
+        };
+
+        let module_resolver = ModuleResolver::new(&PathBuf::from("."), &lakefile).unwrap();
+        let cache = BuildCache::new();
+        let context = BuildContext {
+            project_dir: PathBuf::from("."),
+            lakefile,
+            module_resolver,
+            cache,
+        };
+
+        let result = context.build_library_graph();
+
+        // Should detect the circular dependency and return an error
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Circular library dependency") || err_msg.contains("cycle"));
     }
 }

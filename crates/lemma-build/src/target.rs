@@ -395,6 +395,7 @@ mod tests {
                 more_lean_args: vec![],
                 native_facets: true,
                 static_lib: true,
+                deps: vec![],
             }],
             executables: vec![ExecutableTarget {
                 name: "myexe".to_string(),
@@ -404,6 +405,7 @@ mod tests {
                 support_interpreter: false,
                 more_lean_args: vec![],
                 more_link_args: vec![],
+                deps: vec![],
             }],
             ..Default::default()
         }

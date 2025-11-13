@@ -136,6 +136,12 @@ pub struct LibraryTarget {
     /// Whether to build as static library (default: true)
     #[serde(default = "default_true")]
     pub static_lib: bool,
+
+    /// Library dependencies (optional)
+    /// List of library names this library depends on
+    /// Used for topological sorting during linking
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub deps: Vec<String>,
 }
 
 /// An executable target definition
@@ -180,6 +186,12 @@ pub struct ExecutableTarget {
         default
     )]
     pub more_link_args: Vec<String>,
+
+    /// Library dependencies (optional)
+    /// List of library names this executable depends on
+    /// Used for topological sorting during linking
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub deps: Vec<String>,
 }
 
 /// A dependency specification

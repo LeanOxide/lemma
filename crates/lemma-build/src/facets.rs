@@ -201,8 +201,10 @@ impl FacetBuilder {
 
         // Find all modules needed for this executable
         // For now, link all modules (TODO: filter by executable.root)
+        // TODO: Pass sorted library dependencies from executable.deps
+        let libraries = Vec::new(); // Empty for now, libraries should be sorted from lakefile
         self.driver
-            .link_executable(&executable.name, &self.modules, &output_path)
+            .link_executable(&executable.name, &self.modules, &libraries, &output_path)
             .await?;
 
         Ok(vec![output_path])
