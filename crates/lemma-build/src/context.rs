@@ -89,8 +89,8 @@ impl BuildContext {
         let mut driver = crate::compiler::CompilationDriver::new(
             lean_binary,
             self.project_dir.join(&self.lakefile.src_dir),
+            self.project_dir.clone(),
             build_dir.clone(),
-            self.lakefile.name.clone(),
         );
 
         // Add leanOptions as -D flags
@@ -224,8 +224,8 @@ impl BuildContext {
         let mut driver = CompilationDriver::new(
             lean_binary,
             self.project_dir.join(&self.lakefile.src_dir),
+            self.project_dir.clone(),
             build_dir.clone(),
-            self.lakefile.name.clone(),
         );
         // Add leanOptions as -D flags
         if let Some(ref lean_options) = self.lakefile.lean_options {

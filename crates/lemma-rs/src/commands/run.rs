@@ -110,6 +110,18 @@ pub fn execute(
     // Set working directory to project directory
     cmd.current_dir(&project_dir);
 
+    // Set LEAN_PATH so the executable can find compiled .olean files
+    let build_dir = project_dir.join(&lakefile.build_dir);
+    let paths = lemma_build::BuildPaths::new(project_dir.clone(), build_dir);
+
+    if let Some(lean_path) = lemma_build::LeanPathBuilder::new()
+        .add_project_lib(&paths)
+        .add_system_path()
+        .build()
+    {
+        cmd.env("LEAN_PATH", lean_path);
+    }
+
     // Run the command and wait for it to complete
     let status = cmd
         .status()

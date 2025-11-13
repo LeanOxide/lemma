@@ -2,6 +2,7 @@
 
 use crate::error::Result;
 use crate::module::Module;
+use crate::paths::LEAN_LIB_SUBDIR;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -190,10 +191,11 @@ impl BuildCache {
 
     /// Get the artifact path for a module
     ///
-    /// Example: "Foo.Bar" with package "mypackage" -> "build/lib/mypackage/Foo/Bar.olean"
-    fn artifact_path(build_dir: &Path, module_name: &str, package_name: &str) -> PathBuf {
+    /// Example: "Foo.Bar" -> "build/lib/lean/Foo/Bar.olean"
+    /// Note: package_name parameter is kept for API compatibility but unused (always uses "lean")
+    fn artifact_path(build_dir: &Path, module_name: &str, _package_name: &str) -> PathBuf {
         let parts: Vec<&str> = module_name.split('.').collect();
-        let mut path = build_dir.join("lib").join(package_name);
+        let mut path = build_dir.join("lib").join(LEAN_LIB_SUBDIR);
         for part in parts {
             path.push(part);
         }
@@ -355,15 +357,15 @@ mod tests {
         assert!(needs_rebuild.contains(&"A".to_string()));
         assert!(needs_rebuild.contains(&"B".to_string()));
 
-        // Create artifacts with package name in path
-        fs::create_dir_all(build_dir.join("lib").join(package_name)).unwrap();
+        // Create artifacts with standard lean subdirectory
+        fs::create_dir_all(build_dir.join("lib").join(LEAN_LIB_SUBDIR)).unwrap();
         fs::write(
-            build_dir.join("lib").join(package_name).join("A.olean"),
+            build_dir.join("lib").join(LEAN_LIB_SUBDIR).join("A.olean"),
             "artifact",
         )
         .unwrap();
         fs::write(
-            build_dir.join("lib").join(package_name).join("B.olean"),
+            build_dir.join("lib").join(LEAN_LIB_SUBDIR).join("B.olean"),
             "artifact",
         )
         .unwrap();
@@ -415,21 +417,21 @@ mod tests {
     #[test]
     fn test_artifact_path() {
         let build_dir = PathBuf::from("/project/build");
-        let package_name = "mypackage";
+        let package_name = "mypackage"; // Ignored, kept for API compat
 
         assert_eq!(
             BuildCache::artifact_path(&build_dir, "Main", package_name),
-            PathBuf::from("/project/build/lib/mypackage/Main.olean")
+            PathBuf::from("/project/build/lib/lean/Main.olean")
         );
 
         assert_eq!(
             BuildCache::artifact_path(&build_dir, "Foo.Bar", package_name),
-            PathBuf::from("/project/build/lib/mypackage/Foo/Bar.olean")
+            PathBuf::from("/project/build/lib/lean/Foo/Bar.olean")
         );
 
         assert_eq!(
             BuildCache::artifact_path(&build_dir, "A.B.C", package_name),
-            PathBuf::from("/project/build/lib/mypackage/A/B/C.olean")
+            PathBuf::from("/project/build/lib/lean/A/B/C.olean")
         );
     }
 }

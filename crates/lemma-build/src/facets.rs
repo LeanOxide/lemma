@@ -318,8 +318,8 @@ mod tests {
         let driver = Arc::new(CompilationDriver::new(
             PathBuf::from("lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "test".to_string(),
         ));
         let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![]);
 
@@ -341,8 +341,8 @@ mod tests {
         let driver = Arc::new(CompilationDriver::new(
             PathBuf::from("lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "test".to_string(),
         ));
         let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![]);
 

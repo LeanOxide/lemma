@@ -2,6 +2,7 @@
 
 use crate::error::{Error, Result};
 use crate::module::Module;
+use crate::paths::BuildPaths;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tokio::process::Command;
@@ -17,11 +18,8 @@ pub struct CompilationDriver {
     /// Project source directory
     src_dir: PathBuf,
 
-    /// Build output directory
-    build_dir: PathBuf,
-
-    /// Package name (for organizing lib output)
-    package_name: String,
+    /// Build paths manager
+    paths: BuildPaths,
 }
 
 impl CompilationDriver {
@@ -31,15 +29,15 @@ impl CompilationDriver {
     pub fn new(
         lean_binary: PathBuf,
         src_dir: PathBuf,
+        project_dir: PathBuf,
         build_dir: PathBuf,
-        package_name: String,
     ) -> Self {
+        let paths = BuildPaths::new(project_dir, build_dir);
         Self {
             lean_binary,
             flags: Vec::new(),
             src_dir,
-            build_dir,
-            package_name,
+            paths,
         }
     }
 
@@ -50,53 +48,30 @@ impl CompilationDriver {
 
     /// Get the output directory for a module's .olean/.ilean artifacts
     ///
-    /// Example: "Foo.Bar" -> ".lake/build/lib/<package>/Foo"
+    /// Example: "Foo.Bar" -> ".lake/build/lib/lean/Foo"
     fn get_lib_output_dir(&self, module: &Module) -> PathBuf {
-        let parts: Vec<&str> = module.name.split('.').collect();
-        let mut path = self.build_dir.join("lib").join(&self.package_name);
-        for part in &parts[..parts.len().saturating_sub(1)] {
-            path.push(part);
-        }
-        path
+        self.paths.module_output_dir(&module.name)
     }
 
     /// Get the path for a module's .olean artifact
     ///
-    /// Lake structure: `.lake/build/lib/<package>/Module.olean`
+    /// Lake structure: `.lake/build/lib/lean/Module.olean`
     fn get_olean_path(&self, module: &Module) -> PathBuf {
-        let parts: Vec<&str> = module.name.split('.').collect();
-        let mut path = self.build_dir.join("lib").join(&self.package_name);
-        for part in parts {
-            path.push(part);
-        }
-        path.set_extension("olean");
-        path
+        self.paths.olean_path(&module.name)
     }
 
     /// Get the C file path for a module
     ///
     /// Lake structure: `.lake/build/ir/Module/Nested.c` (hierarchical)
     fn get_c_path(&self, module: &Module) -> PathBuf {
-        let parts: Vec<&str> = module.name.split('.').collect();
-        let mut path = self.build_dir.join("ir");
-        for part in parts {
-            path.push(part);
-        }
-        path.set_extension("c");
-        path
+        self.paths.c_path(&module.name)
     }
 
     /// Get the ilean file path for a module
     ///
-    /// Lake structure: `.lake/build/lib/<package>/Module.ilean`
+    /// Lake structure: `.lake/build/lib/lean/Module.ilean`
     fn get_ilean_path(&self, module: &Module) -> PathBuf {
-        let parts: Vec<&str> = module.name.split('.').collect();
-        let mut path = self.build_dir.join("lib").join(&self.package_name);
-        for part in parts {
-            path.push(part);
-        }
-        path.set_extension("ilean");
-        path
+        self.paths.ilean_path(&module.name)
     }
 
     /// Compile a module
@@ -124,24 +99,22 @@ impl CompilationDriver {
 
         // Set up LEAN_PATH environment variable
         // This tells the compiler where to find compiled dependencies
-        // Include both the package library directory and the Lean stdlib directory
-        let package_lib_path = self.build_dir.join("lib").join(&self.package_name);
+        let mut lean_path_builder = crate::paths::LeanPathBuilder::new()
+            .add_project_lib(&self.paths);
 
         // Get Lean stdlib path (usually <lean_binary_dir>/../lib/lean)
-        let lean_stdlib_path = self
+        if let Some(stdlib_path) = self
             .lean_binary
             .parent()
             .and_then(|p| p.parent())
-            .map(|p| p.join("lib").join("lean"));
+            .map(|p| p.join("lib").join("lean"))
+        {
+            lean_path_builder = lean_path_builder.add_lib_dir(stdlib_path);
+        }
 
-        // Construct LEAN_PATH: package lib + lean stdlib
-        let lean_path = if let Some(ref stdlib) = lean_stdlib_path {
-            format!("{}:{}", package_lib_path.display(), stdlib.display())
-        } else {
-            package_lib_path.display().to_string()
-        };
-
-        cmd.env("LEAN_PATH", &lean_path);
+        if let Some(lean_path) = lean_path_builder.build() {
+            cmd.env("LEAN_PATH", &lean_path);
+        }
 
         // Add the source directory to LEAN_SRC_PATH
         cmd.env("LEAN_SRC_PATH", self.src_dir.to_str().unwrap_or(""));
@@ -302,15 +275,7 @@ impl CompilationDriver {
     ///
     /// Lake structure: `.lake/build/ir/Module/Nested.c.o.export` (hierarchical)
     fn get_object_path(&self, module: &Module) -> PathBuf {
-        let parts: Vec<&str> = module.name.split('.').collect();
-        let mut path = self.build_dir.join("ir");
-        for part in parts {
-            path.push(part);
-        }
-        // Add .c.o.export extension
-        let filename = path.file_name().unwrap().to_str().unwrap().to_string();
-        path.set_file_name(format!("{}.c.o.export", filename));
-        path
+        self.paths.object_path(&module.name)
     }
 
     /// Link an executable
@@ -507,13 +472,12 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "TestPackage".to_string(),
         );
         assert_eq!(driver.lean_binary, PathBuf::from("/usr/bin/lean"));
         assert_eq!(driver.src_dir, PathBuf::from("src"));
-        assert_eq!(driver.build_dir, PathBuf::from(".lake/build"));
-        assert_eq!(driver.package_name, "TestPackage");
+        assert_eq!(driver.paths.build_dir, PathBuf::from(".lake/build"));
         assert!(driver.flags.is_empty());
     }
 
@@ -522,8 +486,8 @@ mod tests {
         let mut driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "TestPackage".to_string(),
         );
         driver.add_flag("--verbose".to_string());
         assert_eq!(driver.flags.len(), 1);
@@ -535,8 +499,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let module = Module::new(
@@ -548,7 +512,7 @@ mod tests {
         let output_dir = driver.get_lib_output_dir(&module);
         assert_eq!(
             output_dir,
-            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar")
+            PathBuf::from(".lake/build/lib/lean/Foo/Bar")
         );
     }
 
@@ -557,8 +521,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let module = Module::new(
@@ -570,7 +534,7 @@ mod tests {
         let olean_path = driver.get_olean_path(&module);
         assert_eq!(
             olean_path,
-            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.olean")
+            PathBuf::from(".lake/build/lib/lean/Foo/Bar.olean")
         );
     }
 
@@ -579,8 +543,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let module = Module::new(
@@ -598,8 +562,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let module = Module::new(
@@ -617,8 +581,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let module = Module::new(
@@ -630,7 +594,7 @@ mod tests {
         let ilean_path = driver.get_ilean_path(&module);
         assert_eq!(
             ilean_path,
-            PathBuf::from(".lake/build/lib/mypackage/Foo/Bar.ilean")
+            PathBuf::from(".lake/build/lib/lean/Foo/Bar.ilean")
         );
     }
 
@@ -639,8 +603,8 @@ mod tests {
         let driver = CompilationDriver::new(
             PathBuf::from("/usr/bin/lean"),
             PathBuf::from("src"),
+            PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
-            "mypackage".to_string(),
         );
 
         let leanc_path = driver.get_leanc_path();
