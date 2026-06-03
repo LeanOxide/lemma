@@ -8,7 +8,7 @@ use super::test_helpers::{LemmaTestContext, TestSetup};
 fn test_toolchain_list_empty() {
     let ctx = LemmaTestContext::new();
 
-    let result = ctx.run(&["toolchain", "list"]);
+    let result = ctx.run(&["lean", "list"]);
     result.assert_success();
 
     // Should show no toolchains installed
@@ -25,7 +25,7 @@ fn test_toolchain_list_with_toolchains() {
     // Create a fake toolchain with proper format
     ctx.create_fake_toolchain("leanprover/lean4:v4.24.0");
 
-    let result = ctx.run(&["toolchain", "list"]);
+    let result = ctx.run(&["lean", "list"]);
     result.assert_success();
 
     // Should list the toolchain
@@ -156,6 +156,15 @@ fn test_help_command() {
 fn test_toolchain_help() {
     let ctx = LemmaTestContext::new();
 
+    let result = ctx.run(&["lean", "--help"]);
+    result.assert_success();
+    result.assert_stdout_contains("toolchain");
+}
+
+#[test]
+fn test_toolchain_alias_help() {
+    let ctx = LemmaTestContext::new();
+
     let result = ctx.run(&["toolchain", "--help"]);
     result.assert_success();
     result.assert_stdout_contains("toolchain");
@@ -180,4 +189,16 @@ fn test_completions_all_shells() {
         let result = ctx.run(&["completions", shell]);
         result.assert_success();
     }
+}
+
+#[test]
+fn test_self_update_shows_package_manager_guidance() {
+    let ctx = LemmaTestContext::new();
+
+    let result = ctx.run(&["self", "update"]);
+    result.assert_success();
+    result.assert_stdout_contains("pipx upgrade lemma");
+    result.assert_stdout_contains("python -m pip install --user --upgrade lemma");
+    result.assert_stdout_not_contains(&format!("{}{}", "lemma.", "puqing.work"));
+    result.assert_stdout_not_contains(&format!("{}{}", "manifests/", "stable.toml"));
 }

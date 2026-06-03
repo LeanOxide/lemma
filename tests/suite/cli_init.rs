@@ -35,10 +35,7 @@ fn test_auto_init_creates_settings_file() {
     let _result = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
     // Check that settings file was created
-    assert!(
-        ctx.exists("settings.toml"),
-        "settings.toml should be created"
-    );
+    assert!(ctx.exists("lemma.toml"), "lemma.toml should be created");
 }
 
 #[test]
@@ -152,5 +149,5 @@ fn test_multiple_runs_preserve_structure() {
     // Verify structure still correct
     assert!(ctx.bin_dir().exists());
     assert!(ctx.toolchains_dir().exists());
-    assert!(ctx.exists("settings.toml"));
+    assert!(ctx.exists("lemma.toml"));
 }

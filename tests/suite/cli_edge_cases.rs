@@ -13,7 +13,7 @@ fn test_empty_toolchain_name() {
     // Implementation allows this (clears the default)
     if result.success() {
         // Verify settings were updated
-        let settings = ctx.read_file("settings.toml");
+        let settings = ctx.read_file("lemma.toml");
         assert!(settings.contains("default_toolchain"));
     } else {
         // Or it might reject it
@@ -89,10 +89,10 @@ fn test_concurrent_settings_file_access() {
     // Run multiple commands that access settings
     let _r1 = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
     let _r2 = ctx.run(&["show"]);
-    let _r3 = ctx.run(&["toolchain", "list"]);
+    let _r3 = ctx.run(&["lean", "list"]);
 
     // Settings file should remain consistent
-    let settings = ctx.read_file("settings.toml");
+    let settings = ctx.read_file("lemma.toml");
     assert!(settings.contains("leanprover/lean4:v4.24.0"));
 }
 
@@ -116,7 +116,7 @@ fn test_settings_file_corruption_recovery() {
     let _r = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
     // Corrupt the settings file
-    let settings_path = ctx.lemma_home().join("settings.toml");
+    let settings_path = ctx.lemma_home().join("lemma.toml");
     fs::write(&settings_path, "invalid toml {{{").unwrap();
 
     // Try to run a command - should handle corruption gracefully
@@ -131,10 +131,10 @@ fn test_empty_toolchains_directory() {
     let ctx = LemmaTestContext::new();
 
     // Initialize lemma
-    let _init = ctx.run(&["toolchain", "list"]);
+    let _init = ctx.run(&["lean", "list"]);
 
     // List should succeed even with no toolchains
-    let result = ctx.run(&["toolchain", "list"]);
+    let result = ctx.run(&["lean", "list"]);
     result.assert_success();
 }
 

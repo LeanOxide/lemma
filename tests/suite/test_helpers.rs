@@ -185,8 +185,8 @@ impl TestSetup for LemmaTestContext {
     fn create_fake_toolchain(&self, name: &str) {
         // Convert toolchain name to directory name using the proper ToolchainDesc format
         // New format: "stable" -> "stable-linux", "v4.24.0" -> "v4.24.0-linux"
-        let desc = lemma_toolchain::ToolchainDesc::parse(name)
-            .expect("Failed to parse toolchain name");
+        let desc =
+            lemma_toolchain::ToolchainDesc::parse(name).expect("Failed to parse toolchain name");
         let dir_name = desc.to_directory_name();
         let toolchain_dir = self.toolchains_dir.join(&dir_name);
         std::fs::create_dir_all(toolchain_dir.join("bin"))

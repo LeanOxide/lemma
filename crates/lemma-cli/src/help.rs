@@ -31,7 +31,7 @@ pub static TOOLCHAIN_HELP: &str = r"DISCUSSION:
 
     lemma can also manage symlinked local toolchain builds, which are
     often used for developing Lean itself. For more information see
-    `lemma toolchain help link`.";
+    `lemma lean help link`.";
 
 pub static TOOLCHAIN_INSTALL_HELP: &str = r"DISCUSSION:
     Installs a specific Lean toolchain.
@@ -52,7 +52,7 @@ pub static TOOLCHAIN_LINK_HELP: &str = r"DISCUSSION:
     the Lean build directory. After building, you can test out different
     compiler versions as follows:
 
-        $ lemma toolchain link my-lean <path/to/lean/build>
+        $ lemma lean link my-lean <path/to/lean/build>
         $ lemma override set my-lean
 
     If you now compile a project in the current directory, the custom
@@ -301,35 +301,38 @@ pub static RUN_HELP: &str = r"DISCUSSION:
         $ lemma run nightly lean Main.lean";
 
 pub static SELF_HELP: &str = r"DISCUSSION:
-    The `self` command is used to manipulate the lemma installation.
-    It can update lemma to newer versions, or uninstall lemma entirely.";
+    The `self` command manages lemma-owned data. The lemma executable is
+    installed by your Python package manager, so upgrades and package removal
+    should go through pipx, pip, or the tool you used to install it.";
 
 pub static SELF_UPDATE_HELP: &str = r"DISCUSSION:
-    Updates lemma itself to the latest version. This command will
-    download and install the latest release of lemma from the
-    configured distribution server.
+    Shows safe package-manager commands for upgrading lemma.
 
-    The update downloads the appropriate binary for your platform,
-    extracts it, and replaces the current lemma installation.
+    Lemma is distributed as the `lemma` Python package. This command does not
+    download archives or replace the running executable directly, because pipx,
+    pip, and other package managers own those installed files.
 
-    Supported platforms:
-    - x86_64-unknown-linux-gnu (Linux x64 GNU)
-    - x86_64-unknown-linux-musl (Linux x64 musl)
-    - x86_64-apple-darwin (macOS Intel)
-    - aarch64-apple-darwin (macOS Apple Silicon)
-    - x86_64-pc-windows-gnu (Windows x64)
+    Recommended:
 
-    Example:
+        $ pipx upgrade lemma
 
-        $ lemma self update";
+    Fallback:
+
+        $ python -m pip install --user --upgrade lemma
+
+    Windows fallback:
+
+        PS C:\> py -m pip install --user --upgrade lemma";
 
 pub static SELF_UNINSTALL_HELP: &str = r"DISCUSSION:
-    Uninstalls lemma and all installed toolchains. This will remove:
+    Removes lemma-managed data. This will remove:
     - All installed Lean toolchains
     - All lemma proxy binaries
     - The entire ~/.lemma directory
 
-    This operation is irreversible. Use with caution.
+    It does not uninstall the Python package or remove package-manager owned
+    executables. Use `pipx uninstall lemma` or `python -m pip uninstall lemma`
+    for that.
 
     Example:
 

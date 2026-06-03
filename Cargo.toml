@@ -20,7 +20,6 @@ lemma-platform = { path = "crates/lemma-platform" }
 lemma-download = { path = "crates/lemma-download" }
 lemma-install = { path = "crates/lemma-install" }
 lemma-output = { path = "crates/lemma-output" }
-lemma-sparse-cache = { path = "crates/lemma-sparse-cache" }
 lemma-lakefile = { path = "crates/lemma-lakefile" }
 lemma-graph = { path = "crates/lemma-graph" }
 lemma-build = { path = "crates/lemma-build" }

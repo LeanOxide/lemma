@@ -36,9 +36,6 @@ impl Module {
 
 /// Discovers and resolves module dependencies
 pub struct ModuleResolver {
-    /// Project root directory
-    project_dir: PathBuf,
-
     /// Source directory
     src_dir: PathBuf,
 
@@ -55,7 +52,6 @@ impl ModuleResolver {
         let lean_binary = Self::find_lean_binary();
 
         Ok(Self {
-            project_dir: project_dir.to_path_buf(),
             src_dir,
             lean_binary,
         })

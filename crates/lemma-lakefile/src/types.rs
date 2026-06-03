@@ -328,7 +328,7 @@ supportInterpreter = true
             lakefile.executables[0].src_dir,
             Some(PathBuf::from("scripts"))
         );
-        assert_eq!(lakefile.executables[0].support_interpreter, true);
+        assert!(lakefile.executables[0].support_interpreter);
     }
 
     #[test]

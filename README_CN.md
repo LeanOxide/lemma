@@ -2,15 +2,18 @@
 
 [English](README.md) | [简体中文](README_CN.md)
 
-**Lemma** 是 [elan](https://github.com/leanprover/elan) 的重写版本，解决了关键的可用性问题，特别是代理支持和自定义工具链源的问题。
+**Lemma** 是 [elan](https://github.com/leanprover/elan) 的重写版本，重点改善代理支持、自定义工具链源和受限网络环境下的可用性。
 
 ## 核心特性
 
 ### 完整的代理支持
+
 - **支持 HTTP、HTTPS 和 SOCKS5 代理**
+- 遵循标准环境变量：`HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`
 
 ### 自定义源和镜像
-- 配置自定义注册表 URL
+
+可以配置自定义 Lean release index：
 
 ```toml
 release_url = "https://release.custom.org"
@@ -20,83 +23,80 @@ release_url = "https://release.custom.org"
 
 ### 快速安装（推荐）
 
-**Linux / macOS：**
+Lemma 现在通过 Python 包发布，包名和命令名都是 `lemma`。
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
+pipx install lemma
 ```
 
-或者先下载并检查脚本：
+如果不使用 `pipx`，可以使用 Python user site 安装：
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://lemma.puqing.work/install.sh -o install.sh
-chmod +x install.sh
-./install.sh
+python -m pip install --user lemma
 ```
 
-**Windows (PowerShell)：**
+Windows 可以使用 Python launcher：
 
 ```powershell
-irm https://lemma.puqing.work/install.ps1 | iex
+py -m pip install --user lemma
 ```
 
-或者先下载并检查脚本：
-
-```powershell
-Invoke-WebRequest -Uri https://lemma.puqing.work/install.ps1 -OutFile install.ps1
-.\install.ps1
-```
+安装后，运行 `lemma lean install stable` 等初始化命令。Lemma 会在 `~/.lemma/bin` 下创建 `lean`、`lake`、`leanc` 等代理命令；如果希望直接运行这些代理命令，请把该目录加入 `PATH`。
 
 ### 从源码构建
 
 ```bash
 # 构建发布版本
-cargo build --release
+cargo build --release -p lemma
 
-# 安装
-cargo install --path .
+# 从当前源码安装 CLI
+cargo install --path crates/lemma-rs
 ```
 
 ### 更新
 
-安装完成后，你可以使用下面脚本更新 lemma
+使用安装 Lemma 时的同一个包管理器更新：
 
 ```bash
-lemma self update
+pipx upgrade lemma
+# 或
+python -m pip install --user --upgrade lemma
 ```
 
-该命令会检查最新版本，如果有更新版本则自动下载。
+`lemma self update` 会显示这些安全的包管理器更新命令，不会直接覆盖当前正在运行的二进制文件。
 
 ## 使用方法
 
 ### 基本命令
 
 ```bash
-# 安装工具链
-lemma toolchain install stable
-lemma toolchain install nightly
-lemma toolchain install v4.0.0
+# 安装 Lean 工具链
+lemma lean install stable
+lemma lean install nightly
+lemma lean install v4.0.0
 
-# 列出已安装的工具链
-lemma toolchain list
+# 列出工具链
+lemma lean list
 
 # 设置默认工具链
 lemma default stable
 
-# 更新工具链
-lemma update
+# 更新已安装的 channel 工具链
+lemma lean upgrade
 
-# 显示信息
-lemma info
+# 显示当前工具链信息
+lemma show
 
 # 更新/卸载
-lemma self update              # 更新 lemma 本身
-lemma self uninstall           # 卸载 lemma 及所有工具链
+lemma self update              # 显示包管理器更新命令
+lemma self uninstall           # 删除 Lemma 管理的工具链和 ~/.lemma 数据
 ```
+
+`lemma toolchain ...` 仍作为 `lemma lean ...` 的兼容别名可用，但新文档统一使用 `lemma lean ...`。
 
 ## 配置文件
 
-Lemma 将配置存储在 `~/.lemma/config.toml`（或 `$LEMMA_HOME/config.toml`）中。
+Lemma 将配置存储在 `~/.lemma/lemma.toml`（或 `$LEMMA_HOME/lemma.toml`）中。
 
 配置示例：
 
@@ -117,17 +117,45 @@ Lemma 遵循标准的代理环境变量：
 - `HTTPS_PROXY` / `https_proxy` - HTTPS 代理 URL
 - `ALL_PROXY` / `all_proxy` - 所有协议的代理
 - `NO_PROXY` / `no_proxy` - 绕过代理的域名列表（逗号分隔）
-- `LEMMA_HOME` - Lemma 安装目录（默认：`~/.lemma`）
-- `LEMMA_RELEASE_URL` - 覆盖默认的发布服务器
+- `LEMMA_HOME` - Lemma 管理目录（默认：`~/.lemma`）
+- `LEMMA_RELEASE_URL` - 覆盖 Lean release index URL
+- `LEMMA_TOOLCHAIN` - 为当前会话覆盖活动工具链
 
 ## 换源
 
-[上交大镜像源](https://s3.jcloud.sjtu.edu.cn/899a892efef34b1b944a19981040f55b-oss01/elan/leanprover/mirror_clone_list.html) 虽然提供了 Lean 工具链的镜像，但并未提供 release 索引，所以本项目提供了一个自定义的 release 索引，供国内用户使用。（如果落后于镜像可以发送issue或者邮箱告知）。
-
-编辑 `~/.lemma/config.toml`，将 `release_url` 修改为：
+如果需要使用自定义 Lean release index，可以编辑 `~/.lemma/lemma.toml`：
 
 ```toml
-release_url = "https://lemma.puqing.work/index.json"
+release_url = "https://mirror.example.com/lean-releases"
+```
+
+或者使用环境变量：
+
+```bash
+export LEMMA_RELEASE_URL=https://mirror.example.com/lean-releases
+```
+
+## 常见问题
+
+### 命令找不到
+
+如果找不到 `lemma` 命令，请确认 Python 包管理器的 scripts 目录在 `PATH` 中。使用 pipx 时可以运行：
+
+```bash
+pipx ensurepath
+```
+
+如果找不到 `lean`、`lake`、`leanc` 等代理命令，请确认 Lemma 的代理目录在 `PATH` 中：
+
+```bash
+export PATH="$HOME/.lemma/bin:$PATH"
+```
+
+### 工具链未安装
+
+```bash
+lemma lean list
+lemma lean install stable
 ```
 
 ## 贡献
@@ -140,7 +168,7 @@ release_url = "https://lemma.puqing.work/index.json"
 
 ## 许可证
 
-[MIT]
+[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE)
 
 ## 致谢
 
@@ -148,4 +176,4 @@ release_url = "https://lemma.puqing.work/index.json"
 
 ---
 
-**注意：** Lemma 正处于早期开发阶段。虽然核心基础设施已经就绪，但工具链安装尚未完全实现。使用需自担风险。
+**注意：** Lemma 正处于早期开发阶段。使用前建议先在非关键环境中测试。

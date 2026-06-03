@@ -11,7 +11,7 @@ fn test_settings_file_content() {
     let _result = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
     // Read the settings file
-    let settings = ctx.read_file("settings.toml");
+    let settings = ctx.read_file("lemma.toml");
 
     // Verify it contains expected fields
     assert!(
@@ -33,14 +33,14 @@ fn test_settings_persist_across_runs() {
     let _result = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
     // Read settings
-    let settings_before = ctx.read_file("settings.toml");
+    let settings_before = ctx.read_file("lemma.toml");
     assert!(settings_before.contains("path_setup_shown = true"));
 
     // Second run
     let _result2 = ctx.run(&["show"]);
 
     // Settings should be unchanged
-    let settings_after = ctx.read_file("settings.toml");
+    let settings_after = ctx.read_file("lemma.toml");
     assert_eq!(settings_before, settings_after);
 }
 

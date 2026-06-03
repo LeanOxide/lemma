@@ -370,11 +370,7 @@ impl BuildContext {
             };
 
             // Determine the root module for this executable
-            let root_module_name = executable
-                .root
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or(&executable.name);
+            let root_module_name = executable.root.as_deref().unwrap_or(&executable.name);
 
             // Try to find modules for this executable
             let exe_modules = match self.collect_transitive_dependencies_with_graph(
@@ -423,22 +419,22 @@ impl BuildContext {
                             for import in &custom_mod.imports {
                                 // If this import is in the main project, include its transitive deps
                                 if all_modules.iter().any(|m| &m.name == import) {
-                                    match self.collect_transitive_dependencies_with_graph(
-                                        import,
-                                        &all_modules,
-                                        &dep_graph,
-                                    ) {
-                                        Ok(deps) => {
-                                            for dep in deps {
-                                                if !exe_modules_with_deps
-                                                    .iter()
-                                                    .any(|m: &Module| m.name == dep.name)
-                                                {
-                                                    exe_modules_with_deps.push(dep);
-                                                }
+                                    // Skip imports that cannot be resolved from the main project.
+                                    if let Ok(deps) = self
+                                        .collect_transitive_dependencies_with_graph(
+                                            import,
+                                            &all_modules,
+                                            &dep_graph,
+                                        )
+                                    {
+                                        for dep in deps {
+                                            if !exe_modules_with_deps
+                                                .iter()
+                                                .any(|m: &Module| m.name == dep.name)
+                                            {
+                                                exe_modules_with_deps.push(dep);
                                             }
                                         }
-                                        Err(_) => {} // Skip if not found
                                     }
                                 }
                             }
@@ -593,12 +589,7 @@ impl BuildContext {
         for library in &self.lakefile.libraries {
             for dep in &library.deps {
                 // Verify the dependency exists
-                if !self
-                    .lakefile
-                    .libraries
-                    .iter()
-                    .any(|lib| &lib.name == dep)
-                {
+                if !self.lakefile.libraries.iter().any(|lib| &lib.name == dep) {
                     return Err(Error::ModuleResolution(format!(
                         "Library '{}' depends on '{}', but '{}' is not defined in lakefile",
                         library.name, dep, dep
@@ -889,13 +880,18 @@ mod tests {
         let sorted_all = context.build_library_graph().unwrap();
 
         // Request only LibC (should include transitive deps: A and B)
-        let filtered = context.get_sorted_dependencies(&vec!["LibC".to_string()], &sorted_all).unwrap();
+        let filtered = context
+            .get_sorted_dependencies(&["LibC".to_string()], &sorted_all)
+            .unwrap();
 
         assert_eq!(filtered.len(), 3);
         assert!(filtered.contains(&"LibA".to_string()));
         assert!(filtered.contains(&"LibB".to_string()));
         assert!(filtered.contains(&"LibC".to_string()));
-        assert!(!filtered.contains(&"LibD".to_string()), "LibD should not be included");
+        assert!(
+            !filtered.contains(&"LibD".to_string()),
+            "LibD should not be included"
+        );
 
         // Verify order is maintained
         let pos_a = filtered.iter().position(|s| s == "LibA").unwrap();

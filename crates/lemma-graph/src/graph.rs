@@ -149,9 +149,7 @@ where
     /// Returns an error if the graph contains a cycle.
     pub fn topological_sort(&self) -> Result<Vec<T>> {
         // Check for cycles first
-        if let Err(cycle) = self.check_cycles() {
-            return Err(cycle);
-        }
+        self.check_cycles()?;
 
         // Perform topological sort using petgraph's Topo iterator
         // Note: petgraph's Topo returns nodes such that for edge u->v, u comes before v

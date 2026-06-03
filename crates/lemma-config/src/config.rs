@@ -463,8 +463,11 @@ impl Config {
             #[cfg(windows)]
             {
                 println!(
-                    "{} Add Lemma to your PATH by running one of the following:",
+                    "{} Make sure Lemma's proxy directory is on PATH for lean, lake, and leanc.",
                     "Note:".yellow().bold()
+                );
+                println!(
+                    "   This is separate from the Python scripts directory that contains `lemma`."
                 );
                 println!();
                 println!(
@@ -498,10 +501,14 @@ impl Config {
             #[cfg(not(windows))]
             {
                 println!(
-                    "{} Add the following to your shell profile (~/.bashrc, ~/.zshrc, etc.):",
+                    "{} Add Lemma's proxy directory to your shell profile for lean, lake, and leanc:",
                     "Note:".yellow().bold()
                 );
                 println!("   export PATH=\"{}:$PATH\"", bin_dir.display());
+                println!();
+                println!(
+                    "The `lemma` command itself is managed by your Python installer, such as pipx or pip."
+                );
             }
 
             println!();

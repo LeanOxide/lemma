@@ -105,8 +105,8 @@ impl From<&GlobalArgs> for lemma_config::CliArgs {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Manage toolchains
-    #[command(after_long_help = help::TOOLCHAIN_HELP)]
+    /// Manage Lean toolchains
+    #[command(after_long_help = help::TOOLCHAIN_HELP, visible_alias = "toolchain")]
     Lean {
         #[command(subcommand)]
         command: ToolchainCommands,
@@ -162,28 +162,6 @@ pub enum Commands {
     Completions {
         /// Shell type
         shell: Shell,
-    },
-
-    /// Fetch dependency caches (e.g., mathlib4)
-    Fetch {
-        /// Package to fetch (e.g., mathlib4)
-        package: String,
-
-        /// Specific modules to fetch (can be specified multiple times)
-        #[arg(short, long = "module", value_name = "MODULE")]
-        modules: Vec<String>,
-
-        /// Auto-detect modules from project imports
-        #[arg(short, long, conflicts_with = "modules")]
-        auto: bool,
-
-        /// Show what would be downloaded without actually downloading
-        #[arg(long)]
-        dry_run: bool,
-
-        /// Project path to analyze (defaults to current directory)
-        #[arg(long)]
-        path: Option<String>,
     },
 
     /// Manage the lemma cache
@@ -254,11 +232,11 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum SelfCommands {
-    /// Update lemma to the latest version
+    /// Show package-manager commands for upgrading lemma
     #[command(after_long_help = help::SELF_UPDATE_HELP)]
     Update,
 
-    /// Uninstall lemma and all installed toolchains
+    /// Remove lemma-managed data and installed toolchains
     #[command(after_long_help = help::SELF_UNINSTALL_HELP)]
     Uninstall {
         /// Skip confirmation prompt

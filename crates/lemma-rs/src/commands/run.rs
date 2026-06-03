@@ -64,7 +64,7 @@ pub fn execute(
 
     // Build the project first using native build system
     if settings.is_verbose() {
-        printer.hint(format!("Building project..."))?;
+        printer.hint("Building project...")?;
     }
 
     let build_result = crate::commands::build::execute(

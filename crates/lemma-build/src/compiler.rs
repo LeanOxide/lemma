@@ -46,13 +46,6 @@ impl CompilationDriver {
         self.flags.push(flag);
     }
 
-    /// Get the output directory for a module's .olean/.ilean artifacts
-    ///
-    /// Example: "Foo.Bar" -> ".lake/build/lib/lean/Foo"
-    fn get_lib_output_dir(&self, module: &Module) -> PathBuf {
-        self.paths.module_output_dir(&module.name)
-    }
-
     /// Get the path for a module's .olean artifact
     ///
     /// Lake structure: `.lake/build/lib/lean/Module.olean`
@@ -556,25 +549,6 @@ mod tests {
         driver.add_flag("--verbose".to_string());
         assert_eq!(driver.flags.len(), 1);
         assert_eq!(driver.flags[0], "--verbose");
-    }
-
-    #[test]
-    fn test_get_lib_output_dir() {
-        let driver = CompilationDriver::new(
-            PathBuf::from("/usr/bin/lean"),
-            PathBuf::from("src"),
-            PathBuf::from("/project"),
-            PathBuf::from(".lake/build"),
-        );
-
-        let module = Module::new(
-            "Foo.Bar.Baz".to_string(),
-            PathBuf::from("src/Foo/Bar/Baz.lean"),
-            vec![],
-        );
-
-        let output_dir = driver.get_lib_output_dir(&module);
-        assert_eq!(output_dir, PathBuf::from(".lake/build/lib/lean/Foo/Bar"));
     }
 
     #[test]

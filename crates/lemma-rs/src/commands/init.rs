@@ -25,6 +25,7 @@ impl Default for ProjectKind {
 }
 
 /// Execute the init command
+#[allow(clippy::too_many_arguments)]
 pub fn execute(
     name: Option<String>,
     path: Option<String>,
@@ -559,7 +560,7 @@ fn detect_lean_toolchain() -> Result<String> {
 /// Convert a package name to a module name (PascalCase)
 fn to_module_name(name: &str) -> String {
     // Split on hyphens, underscores, or spaces
-    let parts: Vec<&str> = name.split(|c| c == '-' || c == '_' || c == ' ').collect();
+    let parts: Vec<&str> = name.split(['-', '_', ' ']).collect();
 
     // Convert each part to PascalCase
     parts

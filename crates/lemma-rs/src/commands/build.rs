@@ -36,10 +36,8 @@ pub fn execute(
     };
 
     // Clear build directory if requested
-    if clear {
-        if build_dir.exists() {
-            std::fs::remove_dir_all(&build_dir).context("Failed to clear build directory")?;
-        }
+    if clear && build_dir.exists() {
+        std::fs::remove_dir_all(&build_dir).context("Failed to clear build directory")?;
     }
 
     // Create a Tokio runtime to run the async build

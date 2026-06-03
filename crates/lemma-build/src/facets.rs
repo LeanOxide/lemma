@@ -330,9 +330,12 @@ mod tests {
             PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
         ));
-        // Note: This test requires a Lean toolchain to be installed
-        let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![])
-            .expect("Failed to create FacetBuilder - is a Lean toolchain installed?");
+        let builder = FacetBuilder {
+            driver,
+            build_dir: PathBuf::from(".lake/build"),
+            modules: vec![],
+            c_compiler: PathBuf::from("cc"),
+        };
 
         let module = Module::new(
             "Foo.Bar.Baz".to_string(),
@@ -355,9 +358,12 @@ mod tests {
             PathBuf::from("/project"),
             PathBuf::from(".lake/build"),
         ));
-        // Note: This test requires a Lean toolchain to be installed
-        let builder = FacetBuilder::new(driver, PathBuf::from(".lake/build"), vec![])
-            .expect("Failed to create FacetBuilder - is a Lean toolchain installed?");
+        let builder = FacetBuilder {
+            driver,
+            build_dir: PathBuf::from(".lake/build"),
+            modules: vec![],
+            c_compiler: PathBuf::from("cc"),
+        };
 
         let module = Module::new("Foo.Bar".to_string(), PathBuf::from("Foo/Bar.lean"), vec![]);
 

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "lemma"
+version = "0.1.5"
+description = "A modern Lean4 toolchain manager"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT OR Apache-2.0" }
+authors = [
+    { name = "PuQing", email = "me@puqing.work" },
+]
+keywords = ["lean", "lean4", "toolchain", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/AndPuQing/lemma"
+Repository = "https://github.com/AndPuQing/lemma.git"
+Issues = "https://github.com/AndPuQing/lemma/issues"
+
+[tool.maturin]
+bindings = "bin"
+manifest-path = "crates/lemma-rs/Cargo.toml"
+strip = true

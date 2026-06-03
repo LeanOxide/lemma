@@ -16,6 +16,7 @@ use crate::error::{Error, Result};
 use crate::module::Module;
 use lemma_lakefile::{ExecutableTarget, Lakefile, LibraryTarget};
 use std::path::Path;
+use std::str::FromStr;
 
 /// A facet specifies what artifact to build for a target
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -57,9 +58,10 @@ pub enum Facet {
     Default,
 }
 
-impl Facet {
-    /// Parse a facet from a string
-    pub fn from_str(s: &str) -> Result<Self> {
+impl FromStr for Facet {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
         match s {
             "deps" => Ok(Facet::Deps),
             "leanArts" => Ok(Facet::LeanArts),
@@ -78,7 +80,9 @@ impl Facet {
             _ => Err(Error::InvalidTarget(format!("Unknown facet: {}", s))),
         }
     }
+}
 
+impl Facet {
     /// Get the file extension for this facet
     pub fn extension(&self) -> Option<&'static str> {
         match self {
@@ -133,18 +137,14 @@ impl BuildTarget {
 /// Target specification parser
 pub struct TargetSpec<'a> {
     lakefile: &'a Lakefile,
-    project_dir: &'a Path,
     modules: &'a [Module],
 }
 
 impl<'a> TargetSpec<'a> {
     /// Create a new target specification parser
     pub fn new(lakefile: &'a Lakefile, project_dir: &'a Path, modules: &'a [Module]) -> Self {
-        Self {
-            lakefile,
-            project_dir,
-            modules,
-        }
+        let _ = project_dir;
+        Self { lakefile, modules }
     }
 
     /// Parse a target specification string
@@ -178,13 +178,12 @@ impl<'a> TargetSpec<'a> {
         }
 
         // Check if target starts with '@' (package specifier)
-        if target_spec.starts_with('@') {
-            return self.parse_package_target(&target_spec[1..], facet);
+        if let Some(package_target) = target_spec.strip_prefix('@') {
+            return self.parse_package_target(package_target, facet);
         }
 
         // Check if target starts with '+' (explicit module)
-        if target_spec.starts_with('+') {
-            let module_name = &target_spec[1..];
+        if let Some(module_name) = target_spec.strip_prefix('+') {
             return self.resolve_module_target(module_name, facet);
         }
 
@@ -244,8 +243,8 @@ impl<'a> TargetSpec<'a> {
         facet: Option<Facet>,
     ) -> Result<Vec<BuildTarget>> {
         // Check if target starts with '+'
-        if target.starts_with('+') {
-            return self.resolve_module_target(&target[1..], facet);
+        if let Some(module_name) = target.strip_prefix('+') {
+            return self.resolve_module_target(module_name, facet);
         }
 
         self.resolve_ambiguous_target(target, facet)

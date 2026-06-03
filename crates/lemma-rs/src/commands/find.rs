@@ -143,8 +143,7 @@ fn matches_request(desc: &ToolchainDesc, request: &str) -> bool {
 
             // Match version patterns (v4, v4.24, v4.24.0)
             if let Some(version) = release.strip_prefix('v') {
-                if request.starts_with('v') {
-                    let req_version = &request[1..];
+                if let Some(req_version) = request.strip_prefix('v') {
                     // Check if the version starts with the request
                     return version.starts_with(req_version);
                 }

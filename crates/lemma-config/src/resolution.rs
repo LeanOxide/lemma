@@ -73,7 +73,7 @@ pub fn resolve_toolchain_or_fail(explicit: Option<&str>) -> Result<String> {
         anyhow::anyhow!(
             "No active toolchain found.\n\n\
              Set a default with: lemma default <toolchain>\n\
-             Or install a toolchain with: lemma toolchain install stable"
+             Or install a toolchain with: lemma lean install stable"
         )
     })
 }
@@ -149,8 +149,8 @@ pub fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
             } else {
                 anyhow::bail!(
                     "Toolchain '{}' is not installed.\n\n\
-                     Install it with: lemma toolchain install {}\n\
-                     Or install a channel: lemma toolchain install stable",
+                     Install it with: lemma lean install {}\n\
+                     Or install a channel: lemma lean install stable",
                     toolchain,
                     toolchain
                 );
@@ -158,7 +158,7 @@ pub fn find_tool_binary(toolchain: &str, tool_name: &str) -> Result<PathBuf> {
         } else {
             anyhow::bail!(
                 "Toolchain '{}' is not installed.\n\n\
-                 Install it with: lemma toolchain install {}",
+                 Install it with: lemma lean install {}",
                 toolchain,
                 toolchain
             );

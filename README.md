@@ -1,11 +1,10 @@
 # Lemma - A Modern Lean4 Toolchain Manager
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/AndPuQing/lemma/ci.yml?style=flat-square&logo=github)
-![Crates.io Version](https://img.shields.io/crates/v/lemma-rs?style=flat-square&logo=rust)
-![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/lemma-rs?style=flat-square)
+![PyPI Version](https://img.shields.io/pypi/v/lemma?style=flat-square&logo=pypi)
+![PyPI Downloads](https://img.shields.io/pypi/dm/lemma?style=flat-square&logo=pypi)
 [![dependency status](https://deps.rs/repo/github/AndPuQing/lemma-rs/status.svg?style=flat-square)](https://deps.rs/repo/github/AndPuQing/lemma-rs)
-![Crates.io License](https://img.shields.io/crates/l/lemma-rs?style=flat-square)
-![Crates.io Size](https://img.shields.io/crates/size/lemma-rs?style=flat-square)
+![PyPI License](https://img.shields.io/pypi/l/lemma?style=flat-square)
 [![codecov](https://codecov.io/github/andpuqing/lemma/graph/badge.svg?token=X0RRVLGQZQ)](https://codecov.io/github/andpuqing/lemma)
 
 [English](README.md) | [简体中文](README_CN.md)
@@ -14,16 +13,18 @@
 
 ## Why Lemma?
 
-After analyzing the elan codebase, we identified several critical issues that make it difficult to use in enterprise and restricted network environments:
+After analyzing the elan codebase, we identified several critical issues that make it difficult to use in enterprise and restricted network environments.
 
 ## Key Features
 
 ### Full Proxy Support
+
 - **HTTP, HTTPS, and SOCKS5 proxies** with authentication
 - Standard environment variables: `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`
 
 ### Custom Sources and Mirrors
-- Configure custom registry URLs
+
+Configure custom Lean release index URLs:
 
 ```toml
 release_url = "https://release.custom.org"
@@ -33,83 +34,80 @@ release_url = "https://release.custom.org"
 
 ### Quick Install (Recommended)
 
-**Linux / macOS:**
+Install Lemma as a Python package. The package name and command are both `lemma`.
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://lemma.puqing.work/install.sh | sh
+pipx install lemma
 ```
 
-Or download and inspect the script first:
+If you do not use `pipx`, install with Python's user site instead:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://lemma.puqing.work/install.sh -o install.sh
-chmod +x install.sh
-./install.sh
+python -m pip install --user lemma
 ```
 
-**Windows (PowerShell):**
+On Windows, use the Python launcher if needed:
 
 ```powershell
-irm https://lemma.puqing.work/install.ps1 | iex
+py -m pip install --user lemma
 ```
 
-Or download and inspect the script first:
-
-```powershell
-Invoke-WebRequest -Uri https://lemma.puqing.work/install.ps1 -OutFile install.ps1
-.\install.ps1
-```
+After installation, run a setup command such as `lemma lean install stable`. Lemma will create proxy commands such as `lean`, `lake`, and `leanc` under `~/.lemma/bin`. Add that directory to your `PATH` if you want to call those proxies directly.
 
 ### From Source
 
 ```bash
 # Build from source
-cargo build --release
+cargo build --release -p lemma
 
-# Install
-cargo install --path .
+# Install the CLI from this checkout
+cargo install --path crates/lemma-rs
 ```
 
-### Self-Update
+### Updating Lemma
 
-Once installed, you can update lemma itself:
+Use the same package manager that installed Lemma:
 
 ```bash
-lemma self update
+pipx upgrade lemma
+# or
+python -m pip install --user --upgrade lemma
 ```
 
-This will check for the latest version and download it automatically if a newer version is available.
+`lemma self update` prints these safe package-manager commands instead of replacing the running binary directly.
 
 ## Usage
 
 ### Basic Commands
 
 ```bash
-# Install a toolchain
-lemma toolchain install stable
-lemma toolchain install nightly
-lemma toolchain install v4.0.0
+# Install a Lean toolchain
+lemma lean install stable
+lemma lean install nightly
+lemma lean install v4.0.0
 
-# List installed toolchains
-lemma toolchain list
+# List toolchains
+lemma lean list
 
 # Set default toolchain
 lemma default stable
 
-# Update toolchains
-lemma update
+# Upgrade installed channel toolchains
+lemma lean upgrade
 
-# Show information
-lemma info
+# Show active toolchain information
+lemma show
 
 # Self-management
-lemma self update              # Update lemma itself
-lemma self uninstall           # Uninstall lemma and all toolchains
+lemma self update              # Show package-manager upgrade commands
+lemma self uninstall           # Remove Lemma-managed toolchains and ~/.lemma data
 ```
+
+`lemma toolchain ...` remains available as a compatibility alias for `lemma lean ...`, but new documentation uses `lemma lean ...`.
 
 ## Configuration File
 
-Lemma stores its configuration in `~/.lemma/config.toml` (or `$LEMMA_HOME/config.toml`).
+Lemma stores its configuration in `~/.lemma/lemma.toml` (or `$LEMMA_HOME/lemma.toml`).
 
 Example configuration:
 
@@ -130,8 +128,8 @@ Lemma respects standard proxy environment variables:
 - `HTTPS_PROXY` / `https_proxy` - HTTPS proxy URL
 - `ALL_PROXY` / `all_proxy` - Proxy for all protocols
 - `NO_PROXY` / `no_proxy` - Comma-separated list of domains to bypass proxy
-- `LEMMA_HOME` - Lemma installation directory (default: `~/.lemma`)
-- `LEMMA_RELEASE_URL` - Override default release server
+- `LEMMA_HOME` - Lemma home directory (default: `~/.lemma`)
+- `LEMMA_RELEASE_URL` - Override the Lean release index URL
 - `LEMMA_TOOLCHAIN` - Override active toolchain for current session
 
 ## Advanced Usage
@@ -175,9 +173,9 @@ List all directory overrides:
 lemma override list
 ```
 
-### Custom Release Sources
+### Custom Lean Release Sources
 
-Configure a custom release server in `~/.lemma/config.toml`:
+Configure a custom Lean release index in `~/.lemma/lemma.toml`:
 
 ```toml
 release_url = "https://mirror.example.com/lean-releases"
@@ -207,10 +205,10 @@ If you see "Toolchain not installed" errors:
 
 ```bash
 # List installed toolchains
-lemma toolchain list
+lemma lean list
 
 # Install the required toolchain
-lemma toolchain install stable
+lemma lean install stable
 ```
 
 ### Proxy connection issues
@@ -228,12 +226,13 @@ curl -v https://release.lean-lang.org
 export HTTPS_PROXY=http://your-proxy:port
 ```
 
-### Permission denied errors
+### Command not found errors
 
-On Linux/macOS, ensure lemma's bin directory is in your PATH and has execute permissions:
+If `lemma` is not found, ensure your Python package manager's scripts directory is on `PATH` (`pipx ensurepath` can help for pipx installs).
+
+If `lean`, `lake`, or `leanc` are not found, ensure Lemma's proxy directory is on `PATH`:
 
 ```bash
-chmod +x ~/.lemma/bin/lemma
 export PATH="$HOME/.lemma/bin:$PATH"
 ```
 
@@ -241,20 +240,12 @@ export PATH="$HOME/.lemma/bin:$PATH"
 
 Contributions are welcome! Key areas that need work:
 
-1. **Toolchain Installation** - Implement the full download and install pipeline
-2. **Binary Proxying** - Implement the toolchain binary wrapper system
+1. **Toolchain Installation** - Improve the download and install pipeline
+2. **Binary Proxying** - Improve the toolchain binary wrapper system
 3. **Testing** - Add comprehensive test coverage
 4. **Documentation** - Expand user and developer documentation
 5. **Platform Support** - Test on Windows, macOS, Linux
 
 ## License
 
-[MIT](LICENSE)
-
-## Acknowledgments
-
-- **Elan** - The original Lean toolchain manager that inspired this project
-
----
-
-**Note:** Lemma is in early development. While the core infrastructure is in place, toolchain installation is not yet fully implemented. Use at your own risk.
+[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE)

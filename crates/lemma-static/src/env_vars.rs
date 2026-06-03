@@ -68,9 +68,4 @@ impl EnvVars {
     ///
     /// WARNING: This is insecure and should only be used for debugging.
     pub const LEMMA_INSECURE: &'static str = "LEMMA_INSECURE";
-
-    /// Sparse cache URL for R2 client.
-    ///
-    /// URL endpoint for the sparse cache storage service.
-    pub const LEMMA_SPARSE_CACHE_URL: &'static str = "LEMMA_SPARSE_CACHE_URL";
 }

@@ -8,7 +8,6 @@ pub mod cache;
 pub mod completions;
 pub mod default;
 pub mod dir;
-pub mod fetch;
 pub mod find;
 pub mod init;
 pub mod install;
@@ -62,14 +61,6 @@ pub fn handle_command(command: Commands, settings: GlobalSettings) -> Result<()>
         }
 
         Commands::Completions { shell } => completions::execute(shell, &settings, &printer),
-
-        Commands::Fetch {
-            package,
-            modules,
-            auto,
-            dry_run,
-            path,
-        } => fetch::execute(&package, modules, auto, dry_run, path, &settings, &printer),
 
         Commands::Cache { command } => cache::execute(command, &settings, &printer),
 

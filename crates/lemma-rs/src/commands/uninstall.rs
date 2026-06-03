@@ -19,7 +19,7 @@ pub fn execute(toolchain: &str, _settings: &GlobalSettings, printer: &Printer) -
     // Check if toolchain exists
     if !toolchain_path.exists() {
         anyhow::bail!(
-            "Toolchain '{}' is not installed.\nRun 'lemma toolchain list' to see installed toolchains.",
+            "Toolchain '{}' is not installed.\nRun 'lemma lean list' to see installed toolchains.",
             toolchain
         );
     }

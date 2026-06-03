@@ -5,10 +5,15 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+default-run = "lemma"
 
 [[bin]]
 name = "lemma"
 path = "src/main.rs"
+
+[[test]]
+name = "integration_tests"
+path = "../../tests/integration_tests.rs"
 
 [dependencies]
 # Internal crates
@@ -19,7 +24,6 @@ lemma-toolchain.workspace = true
 lemma-download.workspace = true
 lemma-install.workspace = true
 lemma-output.workspace = true
-lemma-sparse-cache.workspace = true
 lemma-build.workspace = true
 lemma-lakefile.workspace = true
 

@@ -51,25 +51,25 @@ fn test_which_with_environment_override() {
 }
 
 #[test]
-fn test_run_command_with_toolchain() {
+fn test_run_command_requires_lean_project() {
     let ctx = LemmaTestContext::new();
 
-    // Create a fake toolchain
+    // Create a fake toolchain so the failure is about project discovery, not toolchain setup.
     ctx.create_fake_toolchain("leanprover/lean4:v4.24.0");
+    let _setup = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
-    // Use lemma run to execute with specific toolchain
-    let result = ctx.run(&["run", "leanprover/lean4:v4.24.0", "lean", "--version"]);
+    let result = ctx.run(&["run"]);
 
-    result.assert_success();
+    result.assert_failed();
+    result.assert_stderr_contains("No lakefile.toml found");
 }
 
 #[test]
-fn test_run_command_without_toolchain_fails() {
+fn test_run_command_without_project_fails() {
     let ctx = LemmaTestContext::new();
 
-    // Try to run with a non-existent toolchain
-    let result = ctx.run(&["run", "nonexistent", "lean", "--version"]);
+    let result = ctx.run(&["run"]);
 
     result.assert_failed();
-    result.assert_stderr_contains("not installed");
+    result.assert_stderr_contains("This doesn't appear to be a Lean project");
 }
