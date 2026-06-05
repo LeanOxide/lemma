@@ -10,19 +10,19 @@ fn test_uninstall_toolchain() {
     ctx.create_fake_toolchain("leanprover/lean4:v4.24.0");
 
     // Verify it exists
-    let list_result = ctx.run(&["lean", "list"]);
+    let list_result = ctx.run(&["toolchain", "list"]);
     list_result.assert_success();
-    list_result.assert_stdout_contains("leanprover/lean4:v4.24.0");
+    list_result.assert_stdout_contains("v4.24.0");
 
     // Uninstall it
-    let result = ctx.run(&["lean", "uninstall", "leanprover/lean4:v4.24.0"]);
+    let result = ctx.run(&["toolchain", "uninstall", "leanprover/lean4:v4.24.0"]);
     result.assert_success();
 
     // Verify it's gone
-    let list_result = ctx.run(&["lean", "list"]);
+    let list_result = ctx.run(&["toolchain", "list"]);
     list_result.assert_success();
     assert!(
-        !list_result.stdout.contains("leanprover/lean4:v4.24.0"),
+        !list_result.stdout.contains("v4.24.0"),
         "Toolchain should be removed from list"
     );
 }
@@ -32,7 +32,7 @@ fn test_uninstall_nonexistent_toolchain() {
     let ctx = LemmaTestContext::new();
 
     // Try to uninstall a toolchain that doesn't exist
-    let _result = ctx.run(&["lean", "uninstall", "nonexistent"]);
+    let _result = ctx.run(&["toolchain", "uninstall", "nonexistent"]);
 
     // Should handle gracefully (either error or no-op)
     // The exact behavior depends on the implementation
@@ -47,7 +47,7 @@ fn test_uninstall_default_toolchain() {
     let _setup = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
 
     // Uninstall the default toolchain
-    let result = ctx.run(&["lean", "uninstall", "leanprover/lean4:v4.24.0"]);
+    let result = ctx.run(&["toolchain", "uninstall", "leanprover/lean4:v4.24.0"]);
     result.assert_success();
 
     // Check that default is cleared or shows an error
@@ -76,7 +76,7 @@ fn test_uninstall_toolchain_with_override() {
     ]);
 
     // Uninstall the toolchain
-    let result = ctx.run(&["lean", "uninstall", "leanprover/lean4:v4.24.0"]);
+    let result = ctx.run(&["toolchain", "uninstall", "leanprover/lean4:v4.24.0"]);
     result.assert_success();
 
     // The override should still exist but point to a missing toolchain

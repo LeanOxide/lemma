@@ -41,7 +41,7 @@ Windows 可以使用 Python launcher：
 py -m pip install --user lemma
 ```
 
-安装后，运行 `lemma lean install stable` 等初始化命令。Lemma 会在 `~/.lemma/bin` 下创建 `lean`、`lake`、`leanc` 等代理命令；如果希望直接运行这些代理命令，请把该目录加入 `PATH`。
+安装后，运行 `lemma toolchain install stable` 等初始化命令。Lemma 会在 `~/.lemma/bin` 下创建 `lean`、`lake`、`leanc` 等代理命令；如果希望直接运行这些代理命令，请把该目录加入 `PATH`。
 
 ### 从源码构建
 
@@ -71,18 +71,18 @@ python -m pip install --user --upgrade lemma
 
 ```bash
 # 安装 Lean 工具链
-lemma lean install stable
-lemma lean install nightly
-lemma lean install v4.0.0
+lemma toolchain install stable
+lemma toolchain install nightly
+lemma toolchain install v4.0.0
 
 # 列出工具链
-lemma lean list
+lemma toolchain list
 
 # 设置默认工具链
 lemma default stable
 
 # 更新已安装的 channel 工具链
-lemma lean upgrade
+lemma toolchain upgrade
 
 # 显示当前工具链信息
 lemma show
@@ -92,7 +92,7 @@ lemma self update              # 显示包管理器更新命令
 lemma self uninstall           # 删除 Lemma 管理的工具链和 ~/.lemma 数据
 ```
 
-`lemma toolchain ...` 仍作为 `lemma lean ...` 的兼容别名可用，但新文档统一使用 `lemma lean ...`。
+所有工具链管理操作统一使用 `lemma toolchain ...`。
 
 ## 配置文件
 
@@ -154,8 +154,8 @@ export PATH="$HOME/.lemma/bin:$PATH"
 ### 工具链未安装
 
 ```bash
-lemma lean list
-lemma lean install stable
+lemma toolchain list
+lemma toolchain install stable
 ```
 
 ## 贡献

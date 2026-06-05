@@ -40,7 +40,7 @@ pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Prin
     // Check if toolchains directory exists
     if !toolchains_dir.exists() {
         anyhow::bail!(
-            "No toolchains installed yet.\nRun 'lemma lean install {}' to install it.",
+            "No toolchains installed yet.\nRun 'lemma toolchain install {}' to install it.",
             request_str
         );
     }
@@ -90,7 +90,7 @@ pub fn execute(request: Option<&str>, _settings: &GlobalSettings, printer: &Prin
 
     if matching_toolchains.is_empty() {
         anyhow::bail!(
-            "No installed toolchain matches '{}'.\nRun 'lemma lean list' to see installed toolchains.",
+            "No installed toolchain matches '{}'.\nRun 'lemma toolchain list' to see installed toolchains.",
             request_str
         );
     }

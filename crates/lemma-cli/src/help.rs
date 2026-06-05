@@ -31,7 +31,7 @@ pub static TOOLCHAIN_HELP: &str = r"DISCUSSION:
 
     lemma can also manage symlinked local toolchain builds, which are
     often used for developing Lean itself. For more information see
-    `lemma lean help link`.";
+    `lemma toolchain help link`.";
 
 pub static TOOLCHAIN_INSTALL_HELP: &str = r"DISCUSSION:
     Installs a specific Lean toolchain.
@@ -52,7 +52,7 @@ pub static TOOLCHAIN_LINK_HELP: &str = r"DISCUSSION:
     the Lean build directory. After building, you can test out different
     compiler versions as follows:
 
-        $ lemma lean link my-lean <path/to/lean/build>
+        $ lemma toolchain link my-lean <path/to/lean/build>
         $ lemma override set my-lean
 
     If you now compile a project in the current directory, the custom
@@ -70,16 +70,16 @@ pub static TOOLCHAIN_LIST_HELP: &str = r"DISCUSSION:
         --only-available    Show only available downloads
 
     EXAMPLES:
-        $ lemma lean list
+        $ lemma toolchain list
         Shows both installed and available toolchains
 
-        $ lemma lean list --only-installed
+        $ lemma toolchain list --only-installed
         Shows only what's currently installed
 
-        $ lemma lean list --only-available
+        $ lemma toolchain list --only-available
         Shows only what can be downloaded
 
-        $ lemma lean list -v
+        $ lemma toolchain list -v
         Shows detailed information about all toolchains";
 
 pub static TOOLCHAIN_DIR_HELP: &str = r"DISCUSSION:
@@ -96,10 +96,10 @@ pub static TOOLCHAIN_DIR_HELP: &str = r"DISCUSSION:
 
     Examples:
 
-        $ lemma lean dir
+        $ lemma toolchain dir
         ~/.lemma/toolchains
 
-        $ lemma lean dir stable
+        $ lemma toolchain dir stable
         ~/.lemma/toolchains/stable-linux";
 
 pub static TOOLCHAIN_FIND_HELP: &str = r"DISCUSSION:
@@ -117,13 +117,13 @@ pub static TOOLCHAIN_FIND_HELP: &str = r"DISCUSSION:
 
     Examples:
 
-        $ lemma lean find
+        $ lemma toolchain find
         stable-linux
 
-        $ lemma lean find v4
+        $ lemma toolchain find v4
         v4.24.0-linux
 
-        $ lemma lean find stable
+        $ lemma toolchain find stable
         stable-linux";
 
 pub static TOOLCHAIN_UNINSTALL_HELP: &str = r"DISCUSSION:
@@ -285,21 +285,6 @@ pub static COMPLETIONS_HELP: &str = r"DISCUSSION:
 
         PS C:\> lemma completions powershell >> %USERPROFILE%\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1";
 
-pub static RUN_HELP: &str = r"DISCUSSION:
-    Configures the environment to run a command with a specific toolchain.
-
-    This is useful for testing and one-off commands without changing your
-    default toolchain or the active toolchain for a directory.
-
-    The command is run with the specified toolchain's binaries in the PATH,
-    and the LEMMA_TOOLCHAIN environment variable set appropriately.
-
-    Examples:
-
-        $ lemma run stable lean --version
-        $ lemma run v4.23.0 lake build
-        $ lemma run nightly lean Main.lean";
-
 pub static SELF_HELP: &str = r"DISCUSSION:
     The `self` command manages lemma-owned data. The lemma executable is
     installed by your Python package manager, so upgrades and package removal
@@ -388,96 +373,3 @@ pub static CACHE_PRUNE_HELP: &str = r"DISCUSSION:
 
         $ lemma cache prune       # Prompts for confirmation
         $ lemma cache prune -y    # Skip confirmation";
-
-pub static INIT_HELP: &str = r"DISCUSSION:
-    Initialize a new Lean project in the specified directory (or the
-    current directory if not specified).
-
-    By default, creates a standard project with both library and executable.
-    All projects include:
-    - lakefile.toml configuration file
-    - README.md with project description
-    - .gitignore configured for Lean projects
-    - Git repository initialization
-    - lean-toolchain file
-
-    PROJECT TYPES:
-
-    Standard (default): Library + executable (matches Lake's 'std' template)
-        $ lemma init myapp
-        $ lemma init myapp --std
-
-    Executable: Executable-only project (matches Lake's 'exe' template)
-        $ lemma init mytool --exe
-
-    Library: Library-only project (matches Lake's 'lib' template)
-        $ lemma init mylib --lib
-
-    Bare: Only creates lakefile.toml, useful for custom setups
-        $ lemma init myproject --bare
-
-    FLAGS:
-
-        --std           Create standard project with library and executable (default)
-        --exe           Create executable-only project
-        --lib           Create library-only project
-        --bare          Create minimal project (lakefile.toml only)
-        --no-readme     Do not create README.md
-        --path <PATH>   Create project at specified path
-
-    EXAMPLES:
-
-        $ lemma init                    # Initialize in current directory
-        $ lemma init myapp              # Create 'myapp' standard project
-        $ lemma init mytool --exe       # Create 'mytool' executable
-        $ lemma init mylib --lib        # Create 'mylib' library
-        $ lemma init --bare             # Minimal setup
-        $ lemma init --path ./projects/myapp myapp";
-
-pub static BUILD_HELP: &str = r"DISCUSSION:
-    Build the current Lean project using Lake. This command wraps the
-    `lake build` command from your active toolchain, automatically
-    detecting the appropriate toolchain based on your project settings.
-
-    By default, lemma will use the active toolchain determined by:
-    1. The --toolchain flag if specified
-    2. The LEMMA_TOOLCHAIN environment variable
-    3. Directory override (set with `lemma override set`)
-    4. The lean-toolchain file in the project
-    5. The default toolchain
-
-    You can specify build targets such as specific modules, libraries,
-    or executables. If no targets are specified, Lake will build the
-    default targets defined in your lakefile.
-
-    USAGE:
-
-        $ lemma build                   # Build default targets
-        $ lemma build MyModule          # Build specific module
-        $ lemma build exe:mytool        # Build specific executable
-        $ lemma build lib:mylib         # Build specific library
-
-    FLAGS:
-
-        -t, --toolchain <TOOLCHAIN>
-            Override the toolchain to use for building
-
-        --path <PATH>
-            Path to the Lean project (defaults to current directory)
-
-    EXAMPLES:
-
-        $ lemma build
-        Build the current project with active toolchain
-
-        $ lemma build MyModule OtherModule
-        Build specific modules
-
-        $ lemma build --toolchain v4.24.0
-        Build with a specific toolchain
-
-        $ lemma build --path ./myproject
-        Build a project in a different directory
-
-        $ lemma build -- --verbose
-        Pass --verbose flag to lake";

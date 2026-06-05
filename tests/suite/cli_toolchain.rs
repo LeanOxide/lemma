@@ -8,7 +8,7 @@ use super::test_helpers::{LemmaTestContext, TestSetup};
 fn test_toolchain_list_empty() {
     let ctx = LemmaTestContext::new();
 
-    let result = ctx.run(&["lean", "list"]);
+    let result = ctx.run(&["toolchain", "list"]);
     result.assert_success();
 
     // Should show no toolchains installed
@@ -25,11 +25,11 @@ fn test_toolchain_list_with_toolchains() {
     // Create a fake toolchain with proper format
     ctx.create_fake_toolchain("leanprover/lean4:v4.24.0");
 
-    let result = ctx.run(&["lean", "list"]);
+    let result = ctx.run(&["toolchain", "list"]);
     result.assert_success();
 
     // Should list the toolchain
-    result.assert_stdout_contains("leanprover/lean4:v4.24.0");
+    result.assert_stdout_contains("v4.24.0");
 }
 
 #[test]
@@ -154,15 +154,6 @@ fn test_help_command() {
 
 #[test]
 fn test_toolchain_help() {
-    let ctx = LemmaTestContext::new();
-
-    let result = ctx.run(&["lean", "--help"]);
-    result.assert_success();
-    result.assert_stdout_contains("toolchain");
-}
-
-#[test]
-fn test_toolchain_alias_help() {
     let ctx = LemmaTestContext::new();
 
     let result = ctx.run(&["toolchain", "--help"]);

@@ -46,6 +46,7 @@ impl LemmaTestContext {
         let mut cmd = Command::new(&self.lemma_exe);
         cmd.args(args)
             .env(EnvVars::LEMMA_HOME, &self.lemma_home)
+            .env(EnvVars::NO_COLOR, "true")
             .env("PATH", env::var("PATH").unwrap_or_default());
 
         let output = cmd.output().expect("Failed to execute command");
@@ -57,6 +58,7 @@ impl LemmaTestContext {
         let mut cmd = Command::new(&self.lemma_exe);
         cmd.args(args)
             .env(EnvVars::LEMMA_HOME, &self.lemma_home)
+            .env(EnvVars::NO_COLOR, "true")
             .env("PATH", env::var("PATH").unwrap_or_default());
 
         for (key, value) in env_vars {

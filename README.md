@@ -52,7 +52,7 @@ On Windows, use the Python launcher if needed:
 py -m pip install --user lemma
 ```
 
-After installation, run a setup command such as `lemma lean install stable`. Lemma will create proxy commands such as `lean`, `lake`, and `leanc` under `~/.lemma/bin`. Add that directory to your `PATH` if you want to call those proxies directly.
+After installation, run a setup command such as `lemma toolchain install stable`. Lemma will create proxy commands such as `lean`, `lake`, and `leanc` under `~/.lemma/bin`. Add that directory to your `PATH` if you want to call those proxies directly.
 
 ### From Source
 
@@ -82,18 +82,18 @@ python -m pip install --user --upgrade lemma
 
 ```bash
 # Install a Lean toolchain
-lemma lean install stable
-lemma lean install nightly
-lemma lean install v4.0.0
+lemma toolchain install stable
+lemma toolchain install nightly
+lemma toolchain install v4.0.0
 
 # List toolchains
-lemma lean list
+lemma toolchain list
 
 # Set default toolchain
 lemma default stable
 
 # Upgrade installed channel toolchains
-lemma lean upgrade
+lemma toolchain upgrade
 
 # Show active toolchain information
 lemma show
@@ -103,7 +103,7 @@ lemma self update              # Show package-manager upgrade commands
 lemma self uninstall           # Remove Lemma-managed toolchains and ~/.lemma data
 ```
 
-`lemma toolchain ...` remains available as a compatibility alias for `lemma lean ...`, but new documentation uses `lemma lean ...`.
+Use `lemma toolchain ...` for all toolchain-management operations.
 
 ## Configuration File
 
@@ -205,10 +205,10 @@ If you see "Toolchain not installed" errors:
 
 ```bash
 # List installed toolchains
-lemma lean list
+lemma toolchain list
 
 # Install the required toolchain
-lemma lean install stable
+lemma toolchain install stable
 ```
 
 ### Proxy connection issues

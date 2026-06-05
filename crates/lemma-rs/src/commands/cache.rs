@@ -142,7 +142,7 @@ fn prune_all(_settings: &GlobalSettings, printer: &Printer, yes: bool) -> Result
 
     printer.success(format!("Removed {} total", format_size(total_size)))?;
     writeln!(printer.stdout())?;
-    printer.hint("Reinstall toolchains with 'lemma lean install <toolchain>'")?;
+    printer.hint("Reinstall toolchains with 'lemma toolchain install <toolchain>'")?;
     Ok(())
 }
 

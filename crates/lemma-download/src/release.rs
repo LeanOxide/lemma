@@ -176,13 +176,13 @@ mod tests {
     fn test_current_platform() {
         let platform = current_platform();
         assert!(!platform.is_empty());
-        // Should be one of: linux, linux_aarch64, linux_x86, darwin, darwin_aarch64, windows
+        // Should be one of the platform suffixes produced by lemma-platform.
         assert!(
             platform == "linux"
                 || platform == "linux_aarch64"
                 || platform == "linux_x86"
-                || platform == "darwin"
-                || platform == "darwin_aarch64"
+                || platform == "macos"
+                || platform == "macos_aarch64"
                 || platform == "windows"
         );
     }

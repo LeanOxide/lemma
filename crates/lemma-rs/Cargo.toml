@@ -24,8 +24,6 @@ lemma-toolchain.workspace = true
 lemma-download.workspace = true
 lemma-install.workspace = true
 lemma-output.workspace = true
-lemma-build.workspace = true
-lemma-lakefile.workspace = true
 
 # Core dependencies
 anyhow.workspace = true
@@ -49,9 +47,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
 fs-err.workspace = true
-
-# Async runtime for native build
-tokio = { version = "1.40", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 tempfile.workspace = true

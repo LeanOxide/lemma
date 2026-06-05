@@ -89,7 +89,7 @@ fn test_concurrent_settings_file_access() {
     // Run multiple commands that access settings
     let _r1 = ctx.run(&["default", "leanprover/lean4:v4.24.0"]);
     let _r2 = ctx.run(&["show"]);
-    let _r3 = ctx.run(&["lean", "list"]);
+    let _r3 = ctx.run(&["toolchain", "list"]);
 
     // Settings file should remain consistent
     let settings = ctx.read_file("lemma.toml");
@@ -131,10 +131,10 @@ fn test_empty_toolchains_directory() {
     let ctx = LemmaTestContext::new();
 
     // Initialize lemma
-    let _init = ctx.run(&["lean", "list"]);
+    let _init = ctx.run(&["toolchain", "list"]);
 
     // List should succeed even with no toolchains
-    let result = ctx.run(&["lean", "list"]);
+    let result = ctx.run(&["toolchain", "list"]);
     result.assert_success();
 }
 

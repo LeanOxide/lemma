@@ -25,7 +25,7 @@ pub fn execute(
 
         if !toolchain_path.exists() {
             anyhow::bail!(
-                "Toolchain '{}' is not installed.\nRun 'lemma lean install {}' to install it.",
+                "Toolchain '{}' is not installed.\nRun 'lemma toolchain install {}' to install it.",
                 toolchain_name,
                 toolchain_name
             );

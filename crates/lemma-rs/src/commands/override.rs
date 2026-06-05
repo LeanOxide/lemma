@@ -57,7 +57,7 @@ fn set_override(
     if !toolchain_path.exists() {
         anyhow::bail!(
             "Toolchain '{}' is not installed.\n\n\
-             Install it with: lemma lean install {}",
+             Install it with: lemma toolchain install {}",
             canonical_name,
             canonical_name
         );

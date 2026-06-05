@@ -33,7 +33,7 @@ fn upgrade_toolchain(name: &str, settings: &GlobalSettings, printer: &Printer) -
     // Check if toolchain is installed
     if !installer.is_installed(name)? {
         printer.warning(format!("Toolchain '{}' is not installed", name))?;
-        printer.hint(format!("Use 'lemma lean install {}' to install it", name))?;
+        printer.hint(format!("Use 'lemma toolchain install {}' to install it", name))?;
         return Ok(());
     }
 

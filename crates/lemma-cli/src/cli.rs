@@ -106,8 +106,8 @@ impl From<&GlobalArgs> for lemma_config::CliArgs {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Manage Lean toolchains
-    #[command(after_long_help = help::TOOLCHAIN_HELP, visible_alias = "toolchain")]
-    Lean {
+    #[command(after_long_help = help::TOOLCHAIN_HELP)]
+    Toolchain {
         #[command(subcommand)]
         command: ToolchainCommands,
     },
@@ -141,22 +141,6 @@ pub enum Commands {
         toolchain: Option<String>,
     },
 
-    /// Build and run the project's executable
-    #[command(after_long_help = help::RUN_HELP)]
-    Run {
-        /// Project path (defaults to current directory)
-        #[arg(long)]
-        path: Option<String>,
-
-        /// Binary name to run (defaults to first executable in lakefile)
-        #[arg(long)]
-        bin: Option<String>,
-
-        /// Arguments to pass to the binary
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        args: Vec<String>,
-    },
-
     /// Generate tab-completion scripts for your shell
     #[command(after_long_help = help::COMPLETIONS_HELP)]
     Completions {
@@ -169,56 +153,6 @@ pub enum Commands {
     Cache {
         #[command(subcommand)]
         command: CacheCommands,
-    },
-
-    /// Initialize a new Lean project
-    #[command(after_long_help = help::INIT_HELP)]
-    Init {
-        /// Name of the project (defaults to directory name)
-        name: Option<String>,
-
-        /// Path to create the project (defaults to current directory)
-        #[arg(long)]
-        path: Option<String>,
-
-        /// Create a minimal project with only lakefile.toml
-        #[arg(long)]
-        bare: bool,
-
-        /// Create a standard project with library and executable (default)
-        #[arg(long, alias = "app", conflicts_with_all = ["exe", "lib"])]
-        std: bool,
-
-        /// Create an executable-only project
-        #[arg(long, conflicts_with_all = ["std", "lib"])]
-        exe: bool,
-
-        /// Create a library-only project
-        #[arg(long, conflicts_with_all = ["std", "exe"])]
-        lib: bool,
-
-        /// Do not create a README.md file
-        #[arg(long)]
-        no_readme: bool,
-    },
-
-    /// Build the current Lean project
-    #[command(after_long_help = help::BUILD_HELP)]
-    Build {
-        /// Project path (defaults to current directory)
-        #[arg(long)]
-        path: Option<String>,
-
-        /// Clear the build directory before building
-        #[arg(long)]
-        clear: bool,
-
-        /// Custom output directory for build artifacts (defaults to .lake/build)
-        #[arg(long, value_name = "DIR")]
-        out_dir: Option<String>,
-
-        /// Build targets (e.g., module names, executable names)
-        targets: Vec<String>,
     },
 
     /// Modify the lemma installation
