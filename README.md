@@ -1,11 +1,11 @@
 # Lemma - A Modern Lean4 Toolchain Manager
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/AndPuQing/lemma/ci.yml?style=flat-square&logo=github)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/LeanOxide/lemma/ci.yml?style=flat-square&logo=github)
 ![PyPI Version](https://img.shields.io/pypi/v/lemma?style=flat-square&logo=pypi)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/lemma?style=flat-square&logo=pypi)
-[![dependency status](https://deps.rs/repo/github/AndPuQing/lemma-rs/status.svg?style=flat-square)](https://deps.rs/repo/github/AndPuQing/lemma-rs)
+[![dependency status](https://deps.rs/repo/github/LeanOxide/lemma/status.svg?style=flat-square)](https://deps.rs/repo/github/LeanOxide/lemma)
 ![PyPI License](https://img.shields.io/pypi/l/lemma?style=flat-square)
-[![codecov](https://codecov.io/github/andpuqing/lemma/graph/badge.svg?token=X0RRVLGQZQ)](https://codecov.io/github/andpuqing/lemma)
+[![codecov](https://codecov.io/github/LeanOxide/lemma/graph/badge.svg)](https://codecov.io/github/LeanOxide/lemma)
 
 [English](README.md) | [简体中文](README_CN.md)
 

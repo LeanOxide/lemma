@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.75"
 license = "MIT OR Apache-2.0"
 authors = ["PuQing <me@puqing.work>"]
-repository = "https://github.com/AndPuQing/lemma.git"
+repository = "https://github.com/LeanOxide/lemma.git"
 
 [workspace.dependencies]
 lemma-cli = { path = "crates/lemma-cli" }
