@@ -100,7 +100,8 @@ pub enum ColorChoice {
 /// [paths]
 /// home = "/custom/lemma/home"
 ///
-/// lean_release = "https://mirror.example.com/lean"
+/// release_url = "https://mirror.example.com/lean-releases"
+/// release_asset_url_prefix = "https://mirror.example.com"
 /// ```
 ///
 /// ## Usage
@@ -170,6 +171,14 @@ pub struct Config {
     /// Lean release server URL (overrides default https://release.lean-lang.org)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_url: Option<String>,
+
+    /// Optional prefix for rewriting Lean release asset download URLs.
+    ///
+    /// When set, official asset URLs such as
+    /// `https://releases.lean-lang.org/lean4/v4.30.0/lean-4.30.0-linux.tar.zst`
+    /// are downloaded from `{prefix}/lean4/v4.30.0/lean-4.30.0-linux.tar.zst`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_asset_url_prefix: Option<String>,
 }
 
 impl Default for Config {
@@ -182,6 +191,7 @@ impl Default for Config {
             global: None,
             paths: None,
             release_url: None,
+            release_asset_url_prefix: None,
         }
     }
 }
@@ -207,7 +217,8 @@ impl Config {
     /// to denote nested fields:
     ///
     /// - `LEMMA_HOME` - Lemma home directory (special: used before config loading)
-    /// - `LEMMA_MIRRORS__LEAN_RELEASE` - Lean release server URL
+    /// - `LEMMA_RELEASE_URL` - Lean release server URL
+    /// - `LEMMA_RELEASE_ASSET_URL_PREFIX` - Lean release asset URL prefix
     /// - `LEMMA_GLOBAL__VERBOSE` - Verbosity level (0-2)
     /// - `LEMMA_GLOBAL__COLOR` - Color output (always/never/auto)
     /// - `LEMMA_PATHS__HOME` - Custom home path
@@ -268,14 +279,8 @@ impl Config {
             }
         }
 
-        // 4. Environment variables (highest precedence)
-        // LEMMA_MIRRORS__LEAN_RELEASE -> mirrors.lean_release
-        // LEMMA_GLOBAL__VERBOSE -> global.verbose
-        // LEMMA_GLOBAL__COLOR -> global.color
-        // LEMMA_PATHS__HOME -> paths.home
-        //
-        // Note: LEMMA_HOME is handled separately in lemma_home() as it's needed
-        // before config loading to determine the config file location.
+        // 4. Environment variables (highest precedence). LEMMA_HOME is handled
+        // separately in lemma_home() because it is needed before config loading.
         builder = builder.add_source(
             config::Environment::with_prefix("LEMMA")
                 .prefix_separator("_")
@@ -568,13 +573,23 @@ impl Config {
 
     /// Get the Lean release server URL
     ///
-    /// Checks mirrors.lean_release in config, falls back to default.
+    /// Checks release_url in config, falls back to default.
     /// Can be overridden by LEMMA_RELEASE_URL environment variable.
     pub fn lean_release_url(&self) -> String {
         self.release_url
             .as_ref()
             .cloned()
             .unwrap_or_else(|| "https://release.lean-lang.org".to_string())
+    }
+
+    /// Get the optional Lean release asset URL rewrite prefix.
+    ///
+    /// `LEMMA_RELEASE_ASSET_URL_PREFIX` takes precedence over the config file.
+    pub fn release_asset_url_prefix(&self) -> Option<String> {
+        std::env::var(EnvVars::LEMMA_RELEASE_ASSET_URL_PREFIX)
+            .ok()
+            .or_else(|| self.release_asset_url_prefix.clone())
+            .filter(|prefix| !prefix.trim().is_empty())
     }
 
     /// Resolve the Lean release URL with precedence
@@ -671,6 +686,7 @@ mod tests {
         assert!(config.global.is_none());
         assert!(config.paths.is_none());
         assert!(config.release_url.is_none());
+        assert!(config.release_asset_url_prefix.is_none());
     }
 
     #[test]
@@ -690,6 +706,8 @@ mod tests {
 version = "1"
 default_toolchain = "lean-4.24.0-linux"
 path_setup_shown = true
+release_url = "https://mirror.example.com/lean-releases"
+release_asset_url_prefix = "https://mirror.example.com"
 
 [overrides]
 "/path/to/project" = "lean-4.23.0-linux"
@@ -700,9 +718,6 @@ color = "auto"
 
 [paths]
 home = "/custom/path"
-
-[mirrors]
-lean_release = "https://mirror.example.com/lean"
 "#;
 
         let config: Config = toml::from_str(toml).unwrap();
@@ -725,6 +740,14 @@ lean_release = "https://mirror.example.com/lean"
             config.paths.as_ref().unwrap().home,
             Some(PathBuf::from("/custom/path"))
         );
+        assert_eq!(
+            config.release_url.as_deref(),
+            Some("https://mirror.example.com/lean-releases")
+        );
+        assert_eq!(
+            config.release_asset_url_prefix.as_deref(),
+            Some("https://mirror.example.com")
+        );
     }
 
     #[test]
@@ -733,6 +756,19 @@ lean_release = "https://mirror.example.com/lean"
 
         // Default URL
         assert_eq!(config.lean_release_url(), "https://release.lean-lang.org");
+    }
+
+    #[test]
+    fn test_release_asset_url_prefix_from_config() {
+        let config = Config {
+            release_asset_url_prefix: Some("https://mirror.example.com".to_string()),
+            ..Config::default()
+        };
+
+        assert_eq!(
+            config.release_asset_url_prefix().as_deref(),
+            Some("https://mirror.example.com")
+        );
     }
 
     #[test]
@@ -752,7 +788,11 @@ lean_release = "https://mirror.example.com/lean"
         // Test structured environment variable names
         std::env::set_var("LEMMA_GLOBAL__VERBOSE", "2");
         std::env::set_var("LEMMA_GLOBAL__COLOR", "always");
-        std::env::set_var("LEMMA_MIRRORS__LEAN_RELEASE", "https://test.mirror.com");
+        std::env::set_var("LEMMA_RELEASE_URL", "https://test.mirror.com");
+        std::env::set_var(
+            "LEMMA_RELEASE_ASSET_URL_PREFIX",
+            "https://assets.test.mirror.com",
+        );
 
         // Note: We can't easily test Config::load() here as it reads from actual files
         // and depends on the filesystem state. The environment variable handling
@@ -761,6 +801,7 @@ lean_release = "https://mirror.example.com/lean"
         // Clean up
         std::env::remove_var("LEMMA_GLOBAL__VERBOSE");
         std::env::remove_var("LEMMA_GLOBAL__COLOR");
-        std::env::remove_var("LEMMA_MIRRORS__LEAN_RELEASE");
+        std::env::remove_var("LEMMA_RELEASE_URL");
+        std::env::remove_var("LEMMA_RELEASE_ASSET_URL_PREFIX");
     }
 }

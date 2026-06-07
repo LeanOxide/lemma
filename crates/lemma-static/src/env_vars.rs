@@ -37,4 +37,10 @@ impl EnvVars {
     ///
     /// URL endpoint for Lean toolchain releases.
     pub const LEMMA_RELEASE_URL: &str = "LEMMA_RELEASE_URL";
+
+    /// Prefix used to rewrite Lean release asset download URLs.
+    ///
+    /// This is useful when the release index is reachable but the large
+    /// archives should be downloaded from a regional mirror.
+    pub const LEMMA_RELEASE_ASSET_URL_PREFIX: &str = "LEMMA_RELEASE_ASSET_URL_PREFIX";
 }

@@ -38,5 +38,8 @@ dirs.workspace = true
 # Terminal utilities
 colored.workspace = true
 
+# URL handling
+url.workspace = true
+
 [lints]
 workspace = true

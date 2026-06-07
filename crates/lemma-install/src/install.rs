@@ -20,6 +20,7 @@ use crate::archive::extract_archive;
 pub struct Installer {
     download_client: DownloadClient,
     release_client: ReleaseServerClient,
+    release_asset_url_prefix: Option<String>,
 }
 
 impl Installer {
@@ -34,17 +35,26 @@ impl Installer {
     pub fn with_override_url(override_url: Option<&str>) -> Result<Self> {
         let config = Config::load()?;
         let url = config.resolve_release_url(override_url);
-        Self::with_url(url)
+        Self::with_url_and_asset_prefix(url, config.release_asset_url_prefix())
     }
 
     /// Create a new installer with a custom release URL
     pub fn with_url(release_url: String) -> Result<Self> {
+        Self::with_url_and_asset_prefix(release_url, None)
+    }
+
+    /// Create a new installer with a custom release URL and optional asset URL prefix
+    pub fn with_url_and_asset_prefix(
+        release_url: String,
+        release_asset_url_prefix: Option<String>,
+    ) -> Result<Self> {
         let download_client = DownloadClient::new()?;
         let release_client = ReleaseServerClient::new(download_client.clone(), release_url);
 
         Ok(Self {
             download_client,
             release_client,
+            release_asset_url_prefix,
         })
     }
 
@@ -84,7 +94,10 @@ impl Installer {
             .context("No compatible asset found for your platform")?;
 
         let asset_name = asset.name.clone();
-        let asset_url = asset.browser_download_url.clone();
+        let asset_url = rewrite_release_asset_url(
+            &asset.browser_download_url,
+            self.release_asset_url_prefix.as_deref(),
+        );
 
         println!("   Asset: {}", asset_name);
 
@@ -209,6 +222,29 @@ impl Installer {
     }
 }
 
+/// Rewrite official Lean release asset URLs to a mirror prefix.
+///
+/// The official release index points assets at `https://releases.lean-lang.org/...`.
+/// That host eventually redirects to GitHub release assets, which is often the
+/// slow or blocked part for users in China. A mirror prefix keeps the same path
+/// while replacing the host/prefix.
+pub fn rewrite_release_asset_url(url: &str, prefix: Option<&str>) -> String {
+    let Some(prefix) = prefix.map(str::trim).filter(|prefix| !prefix.is_empty()) else {
+        return url.to_string();
+    };
+
+    let Ok(parsed) = url::Url::parse(url) else {
+        return url.to_string();
+    };
+
+    if parsed.host_str() != Some("releases.lean-lang.org") {
+        return url.to_string();
+    }
+
+    let path = parsed.path().trim_start_matches('/');
+    format!("{}/{}", prefix.trim_end_matches('/'), path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +292,41 @@ mod tests {
         let desc = ToolchainDesc::parse("latest").unwrap();
         assert_eq!(desc.release(), "latest");
         // It won't be a tracking channel unless we explicitly handle it in install
+    }
+
+    #[test]
+    fn test_rewrite_release_asset_url_with_prefix() {
+        let rewritten = rewrite_release_asset_url(
+            "https://releases.lean-lang.org/lean4/v4.30.0/lean-4.30.0-linux.tar.zst",
+            Some("https://mirror.example.com"),
+        );
+
+        assert_eq!(
+            rewritten,
+            "https://mirror.example.com/lean4/v4.30.0/lean-4.30.0-linux.tar.zst"
+        );
+    }
+
+    #[test]
+    fn test_rewrite_release_asset_url_trims_slashes() {
+        let rewritten = rewrite_release_asset_url(
+            "https://releases.lean-lang.org/lean4/v4.30.0/lean-4.30.0-linux.tar.zst",
+            Some("https://mirror.example.com/"),
+        );
+
+        assert_eq!(
+            rewritten,
+            "https://mirror.example.com/lean4/v4.30.0/lean-4.30.0-linux.tar.zst"
+        );
+    }
+
+    #[test]
+    fn test_rewrite_release_asset_url_leaves_custom_urls_unchanged() {
+        let url = "https://mirror.example.com/lean4/v4.30.0/lean-4.30.0-linux.tar.zst";
+
+        assert_eq!(
+            rewrite_release_asset_url(url, Some("https://other.example.com")),
+            url
+        );
     }
 }

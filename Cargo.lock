@@ -999,6 +999,7 @@ dependencies = [
  "tar",
  "thiserror 1.0.69",
  "tracing",
+ "url",
  "zip",
  "zstd 0.13.3",
 ]

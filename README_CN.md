@@ -19,6 +19,20 @@
 release_url = "https://release.custom.org"
 ```
 
+在中国网络环境下，建议同时配置 release index 和大文件下载前缀：
+
+```toml
+release_url = "https://mirror.example.com/lean-releases"
+release_asset_url_prefix = "https://mirror.example.com"
+```
+
+`release_url` 只控制 Lemma 从哪里获取 `index.json`。`release_asset_url_prefix`
+会把官方归档 URL，例如
+`https://releases.lean-lang.org/lean4/v4.30.0/lean-4.30.0-linux.tar.zst`
+改写为
+`https://mirror.example.com/lean4/v4.30.0/lean-4.30.0-linux.tar.zst`，这样真正的大体积 toolchain
+归档也会从镜像下载，而不是继续跳转到 GitHub release assets。
+
 ## 安装
 
 ### 快速安装（推荐）
@@ -105,6 +119,7 @@ version = "1"
 default_toolchain = "leanprover/lean4:stable"
 path_setup_shown = true
 release_url = "https://release.lean-lang.org"
+release_asset_url_prefix = "https://mirror.example.com"
 
 [overrides]
 ```
@@ -119,6 +134,7 @@ Lemma 遵循标准的代理环境变量：
 - `NO_PROXY` / `no_proxy` - 绕过代理的域名列表（逗号分隔）
 - `LEMMA_HOME` - Lemma 管理目录（默认：`~/.lemma`）
 - `LEMMA_RELEASE_URL` - 覆盖 Lean release index URL
+- `LEMMA_RELEASE_ASSET_URL_PREFIX` - 将 Lean release 归档 URL 改写到镜像前缀
 - `LEMMA_TOOLCHAIN` - 为当前会话覆盖活动工具链
 
 ## 换源
@@ -127,13 +143,19 @@ Lemma 遵循标准的代理环境变量：
 
 ```toml
 release_url = "https://mirror.example.com/lean-releases"
+release_asset_url_prefix = "https://mirror.example.com"
 ```
 
 或者使用环境变量：
 
 ```bash
 export LEMMA_RELEASE_URL=https://mirror.example.com/lean-releases
+export LEMMA_RELEASE_ASSET_URL_PREFIX=https://mirror.example.com
 ```
+
+如果镜像只提供 `index.json`，Lemma 可以通过镜像列出 release，但下载时仍可能沿用官方 asset URL，最终跳转到 GitHub-backed release assets。当镜像也按
+`/lean4/<version>/<archive>` 路径托管 toolchain 归档时，请设置
+`release_asset_url_prefix`。
 
 ## 常见问题
 

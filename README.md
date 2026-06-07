@@ -30,6 +30,21 @@ Configure custom Lean release index URLs:
 release_url = "https://release.custom.org"
 ```
 
+For regional mirrors, especially in China, configure both the release index and
+the large release-asset prefix:
+
+```toml
+release_url = "https://mirror.example.com/lean-releases"
+release_asset_url_prefix = "https://mirror.example.com"
+```
+
+`release_url` controls where Lemma fetches `index.json`. The asset prefix rewrites
+official archive URLs such as
+`https://releases.lean-lang.org/lean4/v4.30.0/lean-4.30.0-linux.tar.zst` to
+`https://mirror.example.com/lean4/v4.30.0/lean-4.30.0-linux.tar.zst`, so the
+large toolchain archive can also come from the mirror instead of redirecting to
+GitHub release assets.
+
 ## Installation
 
 ### Quick Install (Recommended)
@@ -116,6 +131,7 @@ version = "1"
 default_toolchain = "leanprover/lean4:stable"
 path_setup_shown = true
 release_url = "https://release.lean-lang.org"
+release_asset_url_prefix = "https://mirror.example.com"
 
 [overrides]
 ```
@@ -130,6 +146,7 @@ Lemma respects standard proxy environment variables:
 - `NO_PROXY` / `no_proxy` - Comma-separated list of domains to bypass proxy
 - `LEMMA_HOME` - Lemma home directory (default: `~/.lemma`)
 - `LEMMA_RELEASE_URL` - Override the Lean release index URL
+- `LEMMA_RELEASE_ASSET_URL_PREFIX` - Rewrite Lean release archive URLs to a mirror prefix
 - `LEMMA_TOOLCHAIN` - Override active toolchain for current session
 
 ## Advanced Usage
@@ -179,13 +196,20 @@ Configure a custom Lean release index in `~/.lemma/lemma.toml`:
 
 ```toml
 release_url = "https://mirror.example.com/lean-releases"
+release_asset_url_prefix = "https://mirror.example.com"
 ```
 
-Or use environment variable:
+Or use environment variables:
 
 ```bash
 export LEMMA_RELEASE_URL=https://mirror.example.com/lean-releases
+export LEMMA_RELEASE_ASSET_URL_PREFIX=https://mirror.example.com
 ```
+
+If your mirror only provides `index.json`, Lemma can list releases through the
+mirror but downloads may still follow the official asset URL to GitHub-backed
+release assets. Set `release_asset_url_prefix` when the mirror also hosts the
+toolchain archives under the same `/lean4/<version>/<archive>` path.
 
 ## Toolchain Resolution
 
