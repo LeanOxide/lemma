@@ -82,6 +82,7 @@ jobs:
           slug: LeanOxide/lemma
           files: lcov.info
           fail_ci_if_error: true
+          skip_validation: true
           verbose: true
 
   python-package:
