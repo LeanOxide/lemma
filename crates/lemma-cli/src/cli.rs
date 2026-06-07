@@ -63,7 +63,7 @@ pub struct GlobalArgs {
     /// You can configure fine-grained logging using the `RUST_LOG` environment variable.
     /// (<https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives>)
     #[arg(global = true, action = clap::ArgAction::Count, long, short,
-          conflicts_with = "quiet", env = "LEMMA_VERBOSE")]
+          conflicts_with = "quiet", env = EnvVars::LEMMA_VERBOSE)]
     pub verbose: u8,
 
     /// Disable colors.
@@ -74,7 +74,7 @@ pub struct GlobalArgs {
         long,
         hide = true,
         conflicts_with = "color",
-        env = "NO_COLOR"
+        env = EnvVars::NO_COLOR
     )]
     pub no_color: bool,
 
@@ -87,7 +87,7 @@ pub struct GlobalArgs {
         value_enum,
         conflicts_with = "no_color",
         value_name = "COLOR_CHOICE",
-        env = "LEMMA_COLOR"
+        env = EnvVars::LEMMA_COLOR
     )]
     pub color: Option<lemma_config::ColorChoice>,
 }
