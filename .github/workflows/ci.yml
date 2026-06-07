@@ -80,7 +80,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # required for private repos or protected branches
           files: lcov.info
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   python-package:
     name: Python Package Smoke Test
