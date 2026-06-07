@@ -79,7 +79,6 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: AndPuQing/lemma
           files: lcov.info
           fail_ci_if_error: true
           verbose: true
